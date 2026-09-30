@@ -17,14 +17,14 @@ try {
   await page.selectOption('#theme',theme); await page.selectOption('#theme',theme==='dark'?'light':'dark'); await page.selectOption('#theme',theme);
   assert.equal(await page.getAttribute('html','data-theme'),theme);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`overflow ${width} ${theme}`);
-  const disclosure=page.locator('details summary'); await disclosure.focus(); await disclosure.press('Enter'); assert.ok(await page.locator('details').evaluate(e=>e.open)); await disclosure.press('Space'); assert.equal(await page.locator('details').evaluate(e=>e.open),false);
+  const disclosure=page.locator('#evidence-build-hotspot summary'); await disclosure.focus(); await disclosure.press('Enter'); assert.ok(await page.locator('#evidence-build-hotspot').evaluate(e=>e.open)); await disclosure.press('Space'); assert.equal(await page.locator('#evidence-build-hotspot').evaluate(e=>e.open),false);
   await page.locator('a[href="#hotspots"]').click(); assert.ok(page.url().endsWith('#hotspots')); await page.goBack(); assert.ok(!page.url().endsWith('#hotspots'));
   await page.evaluate(()=>scrollTo(0,0)); await page.screenshot({path:`${dir}/${width}-${theme}.png`,fullPage:true});
   await page.emulateMedia({reducedMotion:'reduce'}); assert.equal(await page.evaluate(()=>matchMedia('(prefers-reduced-motion: reduce)').matches),true);
-  await page.emulateMedia({media:'print'}); assert.ok(await page.locator('.ap-details-body').isVisible());
+  await page.emulateMedia({media:'print'}); assert.ok(await page.locator('#evidence-build-hotspot .ap-details-body').isVisible());
   assert.deepEqual(requests,[]); assert.deepEqual(errors,[]); checks.push(`${width}/${theme}: pass`); await page.close();
  }
- const nojs=await browser.newContext({javaScriptEnabled:false,offline:true}); const p=await nojs.newPage(); await p.goto(new URL('../preview.html',import.meta.url).href); assert.equal(await p.locator('#theme').isVisible(),false); await p.locator('summary').click(); assert.ok(await p.getByText('One experiment.',{exact:false}).isVisible());
+ const nojs=await browser.newContext({javaScriptEnabled:false,offline:true}); const p=await nojs.newPage(); await p.goto(new URL('../preview.html',import.meta.url).href); assert.equal(await p.locator('#theme').isVisible(),false); await p.locator('#evidence-build-hotspot summary').click(); assert.ok(await p.getByText('One experiment.',{exact:false}).isVisible());
  const malicious=structuredClone(snapshot); malicious.title='</script><img src=x onerror="globalThis.injected=true">'; await writeFile(`${dir}/malicious.html`,await renderReport(malicious)); const attack=await context.newPage(); await attack.goto(`file://${dir}/malicious.html`); assert.equal(await attack.evaluate(()=>globalThis.injected),undefined); assert.equal(await attack.locator('#title img').count(),0);
  console.log(JSON.stringify({checks,noJavaScript:'pass',xss:'pass',externalRequests:0},null,2));
 } finally {await browser.close();}

@@ -7,3 +7,27 @@
 .ap-report-table th,.ap-report-table td { vertical-align: top; }
 @media(max-width:640px) { .ap-report-context { grid-template-columns:1fr; } .ap-report-table th,.ap-report-table td { padding: .5rem .25rem; font-size: .75rem; } }
 @media print { details > .ap-details-body { display: block !important; } }
+.report-heading h1 { font-size: clamp(2rem,5vw,3.75rem); }
+.report-heading { padding-bottom: 0; }
+.report-summary { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.report-two-up { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--ap-space-6); }
+.report-time-row { margin-block:var(--ap-space-6); }
+.report-time-row p { margin-top:var(--ap-space-2); }
+.report-bar { height:12px; margin-top:8px; }
+.report-big { font-size:clamp(2rem,5vw,3rem); font-weight:650; font-variant-numeric:tabular-nums; margin-block:20px; }
+.report-big span { font-size:1rem; color:var(--ap-text-muted); }
+.report-token-chart { width:100%; height:24px; border-radius:4px; }
+.report-legend { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.report-legend dt { font-size:.75rem; color:var(--ap-text-muted); }
+.report-legend dd { margin:8px 0; font-variant-numeric:tabular-nums; font-weight:650; }
+.report-axis { display:flex; justify-content:space-between; margin:24px 130px 12px 140px; color:var(--ap-text-muted); font-size:.75rem; }
+.report-span-row { display:grid; grid-template-columns:128px minmax(0,1fr) 118px; gap:12px; align-items:center; min-height:44px; }
+.report-span-row a { color:var(--ap-brand-text); font-size:.875rem; min-height:44px; display:flex; align-items:center; }
+.report-span-row svg { width:100%; height:18px; }
+.report-span-row > span { font-size:.75rem; }
+.report-pending { stroke:var(--ap-warning); stroke-width:1; }
+.report-span-details { margin-top:24px; }
+.report-actions { grid-template-columns:minmax(0,2fr) minmax(0,1fr); }
+.report-provenance summary { font-weight:400; }
+@media(max-width:800px) { .report-two-up,.report-actions { grid-template-columns:1fr; } .report-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:480px) { .report-summary { grid-template-columns:1fr; } .report-span-row { grid-template-columns:80px minmax(0,1fr); gap:8px; margin-bottom:12px; } .report-span-row > span { grid-column:2; } .report-axis { margin-left:88px; margin-right:0; } .report-legend { grid-template-columns:1fr; } .report-legend > div { display:flex; justify-content:space-between; align-items:center; } }

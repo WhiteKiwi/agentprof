@@ -6,7 +6,7 @@ From the repository root:
 
 ```sh
 node report/build.mjs
-node --test report/tests/render.test.mjs
+node --test report/tests/*.test.mjs
 ```
 
 Open `report/preview.html` locally. It is generated and ignored by Git. No server, install, network, remote asset, telemetry or storage is required. The supplied salamander remains unmodified; design tokens and helpers remain in `design/`.
@@ -17,7 +17,7 @@ Open `report/preview.html` locally. It is generated and ignored by Git. No serve
 
 This is not a public snapshot, storage or provider schema. Text is HTML-escaped, but escaping does not remove sensitive content. A future product adapter must enforce the existing privacy allowlist before rendering. The model contains no raw log/command/prompt/output/path fields; unexpected fields are not serialized. Only synthetic input is accepted in this preparation.
 
-Native evidence disclosures work without JavaScript. JavaScript only enables appearance and print controls; there is no filter, form, upload or fetch. The exact inline stylesheet/script hashes are placed in CSP. Changes to source require a rebuild.
+Native evidence disclosures work without JavaScript. JavaScript only enables appearance/print controls and opens focused span details; there is no filter, form, upload or fetch. The exact inline stylesheet/script hashes are placed in CSP. Changes to source require a rebuild.
 
 ## Checks
 
@@ -30,3 +30,7 @@ CHROMIUM_PATH=/path/to/chromium AP_QA_DIR=/tmp/agentprof-report-qa node report/t
 The suite covers dark/light at 320, 390 and 1440px, repeated theme changes, native keyboard disclosure, in-page navigation/back, print, reduced motion, no-JavaScript access, escaped injection and external request monitoring. See [QA.md](QA.md) for actual results; test presence does not mean it passed.
 
 Plan and limitations: [REPORT-PREVIEW](../docs/REPORT-PREVIEW.md). Product metric semantics: [METRICS](../docs/METRICS.md).
+
+## Visual-first revision
+
+Large metrics lead into separately scoped time bars, a synthetic token composition, selected hotspot bars/table and a five-minute session excerpt. Span endpoints are explicit, pending items have start ticks only, and a table preserves all interval values. The excerpt is not an exhaustive export or dependency graph. The internal display model now has explicit synthetic token and timeline sections; it still does not define a provider contract. No real token observations or span analysis are inferred. See the planning supplement for the primary-source review and the decision to defer a local server.

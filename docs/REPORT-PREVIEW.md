@@ -21,3 +21,31 @@ Display the synthetic source/version as synthetic, not as verified Codex/Claude 
 3. Test the fixture and boundary, then browser-test dark/light at 320/390/1440px, keyboard disclosure/navigation, repeated theme selection, no JavaScript, reduced motion and print. Verify zero external requests, no page overflow and inspect screenshots. Record pass/fail/not-run accurately.
 
 Publication is a separate parent review and draft PR. It does not authorize merge, deployment, P5/P6 closure or a claim of CLI/report parity.
+
+## Visual-first revision — 2026-09-30
+
+User requested charts, aggregate metrics and session flow over paragraphs. Keep this bounded static presentation, with four large metrics, time/coverage bars, a declared token partition, selected-session interval lanes, tabular equivalents and brief action/evidence cards. Scope and coverage stay adjacent; explanatory details move into native disclosures. The synthetic timeline is a selected five-minute excerpt, not a complete reconstruction of the 30-minute aggregate.
+
+### References and decisions
+
+- [Perfetto large traces](https://perfetto.dev/docs/visualization/large-traces) documents native local TraceProcessor offload for traces that strain browser processing. Adopt the progressive boundary: bounded embedded views first; query-backed local processing only after measured browser limits. No Perfetto dependency is added.
+- [Langfuse sessions](https://langfuse.com/docs/observability/features/sessions) groups related traces into a session view. Adopt session context around span lanes; grouping does not prove causality or parentage.
+- [Jaeger UI's own configuration](https://github.com/jaegertracing/jaeger-ui/blob/main/packages/jaeger-ui/src/types/config.ts) distinguishes trace graph and trace timeline, with inline/side-panel details. Adopt aligned time lanes plus inspectable detail; omit dependency graph and critical path without verified relationship evidence.
+
+These are product-design inferences from primary references, not claims of feature parity or copied assets.
+
+### HTML versus local dashboard
+
+| Need | Bounded offline HTML now | Local query-backed dashboard later |
+| --- | --- | --- |
+| Read aggregate results and share a fixed snapshot | Strong fit; no running process | Unnecessary overhead |
+| Inspect selected session spans | Embedded lanes, evidence links and native disclosures | Not inherently required |
+| Search all sessions, zoom arbitrary windows over large history | Limited by intentionally exported subset | Paginated SQLite queries, virtualized lanes |
+| Fresh appended data | Regenerate snapshot | Incremental refresh, explicit local lifecycle |
+| Privacy and operations | Inert normalized payload, no listener | Loopback binding, access/origin controls, query limits and shutdown need design |
+
+Recommendation: improve the offline report before introducing a server. Measure generated size, load time, memory and interaction latency on representative bounded exports. A server becomes justified when users repeatedly need arbitrary historical queries or those measurements miss an agreed budget, not merely because the UI contains spans. Whole-log size is not HTML payload size. Neither architecture makes missing timestamps, relationships or token semantics observable. Server architecture/implementation remains deferred and requires a separate scoped decision.
+
+### Revision verification
+
+Check numerical chart domains, finite/non-negative intervals and token partition consistency; missing values get text, not zero-width marks. Span widths use the selected window's scale; no parent-child connectors or inferred critical path. Accessible labels and data tables retain timing values without SVG or JavaScript. Preserve CSP, escaping, deterministic output and existing tests. Browser rendering remains a separate outstanding gate.
