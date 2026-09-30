@@ -82,6 +82,8 @@ P1 구현 경계는 [NORMALIZATION.md](NORMALIZATION.md)다. CLI help/version과
 
 ### P2 / P3 — Provider Adapters
 
+P2 Codex의 실제 shape·API·pairing·privacy·검증 세부는 [CODEX-PARSER.md](CODEX-PARSER.md)에 둔다. 이슈 #3의 작업과 Verify를 먼저 확정한 뒤 개발 서브세션이 구현한다. P1 PR #9가 열려 있는 동안 P2는 기반 브랜치 위의 별도 PR로 검토한다.
+
 Codex는 검증된 구조화 `item_completed`를 우선하고 같은 response를 중복 세지 않는다. namespace·call ID·content-block output과 직접 duration을 처리한다. Claude는 UUID·parent·tool IDs를 연결하고 직접 duration과 관측 latency를 구분한다.
 
 pending 갱신, 취소·background·polling, 복사된 과거와 실제 새 실행, schema drift를 명시적으로 다룬다. 관계·scope가 불명확하면 capability와 coverage를 낮추고 raw 내용 없는 진단을 제공한다. 원문을 폐기하기 전에 commandPattern·operationKey·lookup/content/error fingerprint를 생성한다. 대상·플래그·편집/범위 차이와 비밀값 sentinel fixture를 통과해야 P4로 넘긴다. 각 공급자 단계에서 P0 실로그 표본의 수작업 의미와 정규화 출력을 로컬 대조하고 지원 행렬을 갱신한다. 권한/입력 부재는 NOT RUN으로 남긴다.
