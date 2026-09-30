@@ -83,3 +83,5 @@ CLI는 help/version만 구현했다. `scan`, `stats`, `insights`, `report`, `ope
 [PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)의 통합 작업 트리에서 main `c33f137`의 디자인 소스·brand 자산·canonical 디자인 문서 16개가 byte 단위로 동일함을 확인했다. macOS arm64 Node 26.7.0에서 `npm run check`를 다시 수행해 60개 테스트·14파일 artifact의 격리 npm exec/global install을 통과했다. `node design/build.mjs`, `node design/tests/static.mjs`, `node design/tests/contrast.mjs`도 통과했다. 디자인 브라우저 gate는 계속 NOT RUN이다.
 
 충돌 marker 없음, 로컬 문서 링크 124개와 whitespace를 확인했다. Project의 private·저장소 연결·9개 이슈 항목을 확인하고 기존 #1–#8 체크리스트·Verify가 그대로 보존되었음을 본문 readback으로 대조했다. 별도 디자인 QA는 #10으로 이관했으며 TODO의 병행 진행 체크리스트를 제거했다.
+
+마지막 원격 확인에서 main `514ee77`의 도롱뇽 README hero 변경을 추가 통합했다. 디자인·brand 소스 18개가 최신 main과 byte 동일하며 새 README로 `npm run verify:artifact`를 다시 통과했다. 시스템 소스는 변경되지 않았고 이미지·README의 브라우저 검증은 #10에서 계속 추적한다.

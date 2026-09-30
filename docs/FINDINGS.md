@@ -4,7 +4,7 @@
 
 사용자 요청에 따라 [AgentProf Project](https://github.com/users/WhiteKiwi/projects/2)를 private로 유지하고 저장소에 연결했다. 기존 P0–P7 이슈의 작업·Verify를 보존하고 이슈·Project를 실행 상태의 원본으로 삼는다. [TODO.md](TODO.md)는 탐색과 운영 규칙만 남긴다. 제품 계약·구현 결정·실제 검증 evidence는 유지 관리 문서에 남긴다.
 
-최신 main `c33f137`의 디자인 guideline·재사용 컴포넌트·README 초안을 기반 작업 브랜치에 통합했다. 디자인 소스와 시스템 구현의 역할을 유지하며, 디자인 브라우저 검증의 `NOT RUN` gate를 별도 이슈로 추적한다. 조사·계약 검토 완료와 코드 PR 리뷰·병합 대기를 구분한다.
+main `c33f137`의 디자인 guideline·재사용 컴포넌트·README 초안을 기반 작업 브랜치에 통합했다. 이후 최신 main `514ee77`의 도롱뇽 README hero와 참고 자산도 통합했다. 디자인 소스와 시스템 구현의 역할을 유지하며, 디자인 브라우저 검증의 `NOT RUN` gate를 별도 이슈로 추적한다. 조사·계약 검토 완료와 코드 PR 리뷰·병합 대기를 구분한다.
 
 ## 로그 형식 조사
 
