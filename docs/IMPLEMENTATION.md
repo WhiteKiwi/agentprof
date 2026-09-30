@@ -90,6 +90,8 @@ pending 갱신, 취소·background·polling, 복사된 과거와 실제 새 실�
 
 ### P4 — Transactional Incremental Scan
 
+다른 세션이 독립 부분을 맡을 때는 [담당 규칙](TODO.md#담당-세션과-병렬-작업)을 따른다. P3 어댑터와 P4의 저장 primitive는 파일·공유 타입 소유권을 정해 병렬로 진행할 수 있다. 공급자 연동·durable parser-state 복구·증분 재시작은 P2/P3 계약 검증을 기다린다. 이는 P4 전체의 선행 조건을 없애지 않으며, 한 세션이 여러 티켓을 자동으로 잡는 근거가 아니다.
+
 완전한 줄의 byte offset과 경계 digest를 저장한다. 이벤트·pending 갱신·checkpoint를 같은 transaction에 commit한다. append의 잘린 끝줄은 미루고 교체·truncate·parser version 변경 시 소스 기여분을 원자적으로 교체한다.
 
 file move·archive·duplicate discovery에서 논리 ID를 유지한다. 읽을 수 없거나 미지원인 파일을 조용히 건너뛰지 않는다. 대형 줄·전체 파일 buffering을 제한한다. 정규화된 identity·evidence·버전의 DB round-trip을 검증하며 raw 저장을 우회 경로로 사용하지 않는다.
