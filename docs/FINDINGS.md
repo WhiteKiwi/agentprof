@@ -2,9 +2,9 @@
 
 ## 실행 추적을 GitHub Projects로 이동 — 2026-09-30
 
-사용자 요청에 따라 [AgentProf Project](https://github.com/users/WhiteKiwi/projects/2)를 private로 유지하고 저장소에 연결했다. 기존 P0–P7 이슈의 작업·Verify를 보존하고 이슈·Project를 실행 상태의 원본으로 삼는다. [TODO.md](TODO.md)는 탐색과 운영 규칙만 남긴다. 제품 계약·구현 결정·실제 검증 evidence는 유지 관리 문서에 남긴다.
+사용자 요청에 따라 [AgentProf Project](https://github.com/users/WhiteKiwi/projects/2)를 private로 유지하고 저장소에 연결했다. 2026-10-01에는 repository issue를 새로 만들지 않는 추적 방식으로 바꿨다. 기존 10개 이슈의 본문·작업·Verify·담당·상태·milestone/label 정보를 Project draft에 보존했다. 이전 이슈는 이관 안내와 함께 닫아 이력을 남기고 보드의 연결 issue item은 제거했다. 현재 실행 상태의 원본은 Project 전용 티켓이며 [TODO.md](TODO.md)는 티켓 위치와 운영 규칙만 안내한다. 제품 계약·구현 결정·실제 검증 evidence는 유지 관리 문서에 남긴다.
 
-main `c33f137`의 디자인 guideline·재사용 컴포넌트·README 초안을 기반 작업 브랜치에 통합했다. 이후 main `514ee77`의 도롱뇽 README hero와 참고 자산, PR #11의 측정·개선 계약을 보존해 통합했다. P0/P1 검토·검증 후 PR #9는 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 병합되었다. 디자인 소스와 시스템 구현의 역할을 유지하며, 디자인 브라우저 검증의 `NOT RUN` gate를 별도 이슈 #10으로 추적한다. P2 Codex 파서의 범위·출처·대조 근거는 [CODEX-EVIDENCE.md](CODEX-EVIDENCE.md)에서 이어 간다.
+main `c33f137`의 디자인 guideline·재사용 컴포넌트·README 초안을 기반 작업 브랜치에 통합했다. 이후 main `514ee77`의 도롱뇽 README hero와 참고 자산, PR #11의 측정·개선 계약을 보존해 통합했다. P0/P1 검토·검증 후 PR #9는 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 병합되었다. 디자인 소스와 시스템 구현의 역할을 유지하며, 디자인 브라우저 검증의 `NOT RUN` gate를 별도 Design Project 티켓으로 추적한다. P2 Codex 파서의 범위·출처·대조 근거는 [CODEX-EVIDENCE.md](CODEX-EVIDENCE.md)에서 이어 간다.
 
 ## 로그 형식 조사
 

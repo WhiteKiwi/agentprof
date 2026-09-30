@@ -71,7 +71,7 @@
 
 두 source 문서를 읽고 최근 로컬 로그의 필드 구조를 조사했다. 이는 구현 acceptance 통과가 아니다. 현재 확인한 사실과 한계는 [FINDINGS.md](FINDINGS.md)에 있다.
 
-2026-09-30 초기 bootstrap 검토에서는 Downloads 원문 2개·참고 PNG 3개의 SHA-256 동일성, 로컬 문서 링크 49개, 당시 TODO 18개 항목의 Verify와 staged diff whitespace를 확인했다. 계획 서브세션·부모 검토를 마쳤고 `00000ed89054180014db5a89ede7d4fa8bda3fc2`의 로컬 HEAD와 private GitHub main이 같았다. 이 기록은 초기 문서 게시 근거이며 현재 구현 상태는 Project·이슈와 아래 실행 evidence로 확인한다.
+2026-09-30 초기 bootstrap 검토에서는 Downloads 원문 2개·참고 PNG 3개의 SHA-256 동일성, 로컬 문서 링크 49개, 당시 TODO 18개 항목의 Verify와 staged diff whitespace를 확인했다. 계획 서브세션·부모 검토를 마쳤고 `00000ed89054180014db5a89ede7d4fa8bda3fc2`의 로컬 HEAD와 private GitHub main이 같았다. 이 기록은 초기 문서 게시 근거이며 현재 구현 상태는 Project draft와 아래 실행 evidence로 확인한다.
 
 ## P0 Contract Review — 2026-09-30
 
@@ -112,7 +112,7 @@ CLI는 help/version만 구현했다. `scan`, `stats`, `insights`, `report`, `ope
 
 ## P2 Codex Adapter Verification — 2026-10-01 KST
 
-P1 통합 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 기반한 P2 구현이다. 검증한 코드 revision은 `fb6e3ad86d886487f12196211c4c8b4a5a94d733`이며 parser/normalization/key version 1, package `0.1.0-dev.0`, DB schema 1을 사용했다. 구현 계약은 [CODEX-PARSER.md](CODEX-PARSER.md), 독립 실표본 대조와 tag별 의미·한계는 [CODEX-EVIDENCE.md](CODEX-EVIDENCE.md)에 있다. [PR #12](https://github.com/WhiteKiwi/agentprof/pull/12)와 [P2 이슈 #3](https://github.com/WhiteKiwi/agentprof/issues/3)에 게시·최종 head 검증을 연결한다. 아래 CI는 이 코드 revision의 [Linux run](https://github.com/WhiteKiwi/agentprof/actions/runs/36738136770)이다.
+P1 통합 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 기반한 P2 구현이다. 검증한 코드 revision은 `fb6e3ad86d886487f12196211c4c8b4a5a94d733`이며 parser/normalization/key version 1, package `0.1.0-dev.0`, DB schema 1을 사용했다. 구현 계약은 [CODEX-PARSER.md](CODEX-PARSER.md), 독립 실표본 대조와 tag별 의미·한계는 [CODEX-EVIDENCE.md](CODEX-EVIDENCE.md)에 있다. [PR #12](https://github.com/WhiteKiwi/agentprof/pull/12)와 [P2 Project 티켓](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833002)에 게시·최종 head 검증을 연결한다. 아래 CI는 이 코드 revision의 [Linux run](https://github.com/WhiteKiwi/agentprof/actions/runs/36738136770)이다.
 
 | 환경·대상 | 실행 | 실제 결과 |
 | --- | --- | --- |
@@ -130,3 +130,11 @@ P1 통합 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 기반한 P2 구현
 P2 행동 검증은 구조화 우선·inert shell argv·wrapper 분리, 같은 ID pending 갱신·결과 역순·terminal poll, 안전한 상태·진단과 aggregate wrapper links 한도, archive/fork의 명시 관계와 ambiguity, source/record endpoint 분리, required/optional usage component, trusted partial 6→8→final 10·더 이른 partial replay·충돌, cache containment와 snapshot 분리를 포함한다. 실제 표본의 unsupported call→result 57쌍에는 false `REORDERED_RECORD` 0개였고 last snapshot의 정상 감소는 `USAGE_RESET`으로 만들지 않았다. native response 301개 중 origin/source-terminal 근거가 확인된 31개만 eligible이며 270개는 provisional이다.
 
 이 결과는 bounded adapter의 명시 shape·field 대조다. 실제 legacy polling, 변경된 동일 response ID의 partial→final, 양수 cache-write, fork copied-boundary의 실제 의미는 NOT RUN이고 합성 시험과 구분한다. 실제 reader·CLI·DB 이벤트 transaction·지표·HTML을 연결한 A01–A27, 성능과 사람 파일럿은 계속 NOT RUN이다.
+
+## Project-Only Tracking Migration — 2026-10-01 KST
+
+사용자 요청으로 기존 이슈 10개의 제목·본문·체크리스트·Verify·담당 claim·PR/evidence 링크와 milestone/label/assignee 정보를 Project draft에 이관했다. 각 새 draft의 원래 본문 포함과 상태를 readback한 뒤 기존 이슈에 새 티켓 링크·이력 전용 안내를 남기고 닫았다. 미완료 이슈의 이관 종료는 구현 완료를 뜻하지 않으며 Todo/In Progress는 새 draft에 보존한다. 기존 issue Project item만 제거했고 원래 이슈·댓글 이력은 삭제하지 않았다.
+
+최종 CLI readback은 10개 item 모두 DraftIssue, 이관 본문 10개 보존, 빠진 item·기존 issue item·open repository issue 0개였다. P0/P1/P2는 검증·병합 근거에 따라 Done, 다른 세션의 P5 preview claim·reserved paths는 In Progress로 보존했다. 새 Owner/Owner session 텍스트 필드를 추가했고 확인되지 않은 다른 세션의 runtime ID는 추측하지 않았다. 추적 규칙 갱신은 Workflow draft에서 별도 단계로 진행하며 완료 후에만 Done으로 바꾼다.
+
+GitHub GraphQL의 draft 생성·본문 편집·상태 갱신은 [공식 Projects schema](https://docs.github.com/en/graphql/reference/projects)를 확인했다. [TODO.md](TODO.md)에 실제 Project item ID 기반 티켓 링크와 조작 규칙, [AGENTS.md](../AGENTS.md)에 repository issue 생성·draft 변환 금지와 한 세션/한 티켓 원칙을 반영한다. 이 검증은 작업 관리 이관이며 제품 A01–A27 통과가 아니다.
