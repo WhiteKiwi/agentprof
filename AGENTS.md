@@ -2,14 +2,14 @@
 
 ## Core Workflow
 
-Documentation is the source of truth for product contracts and verification evidence. The [AgentProf GitHub Project](https://github.com/users/WhiteKiwi/projects/2) and its linked issues own execution checklists and progress. Read `docs/SPEC.md`, `docs/IMPLEMENTATION.md`, `docs/TODO.md` (tracking rules), and the relevant project issue before changing code. For new or materially changed work, update the applicable plan and issue before implementation.
+Documentation is the source of truth for product contracts and verification evidence. The [AgentProf GitHub Project](https://github.com/users/WhiteKiwi/projects/2) uses Project-only draft items for execution checklists, ownership and progress. Do not create repository issues or convert drafts into issues. Read `docs/SPEC.md`, `docs/IMPLEMENTATION.md`, `docs/TODO.md` and the relevant draft item before changing code. For new or materially changed work, update the applicable plan and Project item before implementation. Existing closed repository issues are historical migration records.
 
 Follow this order, adapted from `WhiteKiwi/locron`:
 
 1. Draft or update `docs/SPEC.md`.
 2. Resolve open questions through research and record evidence in `docs/FINDINGS.md`.
 3. Complete or update `docs/IMPLEMENTATION.md`.
-4. Create or update the relevant GitHub issue and add it to the AgentProf Project. Every implementation step in a plan with three or more steps needs a concrete `Verify` entry in the issue. Do not mirror mutable checklists or statuses in `docs/TODO.md`.
+4. Create or update a draft item directly in the AgentProf Project. Every implementation step in a plan with three or more steps needs a concrete `Verify` entry in its body. Do not create a repository issue, convert the draft to an issue, or mirror mutable checklists or statuses in `docs/TODO.md`.
 5. Review the completed plan before implementation.
 6. Hand code implementation to a separate development sub-session. The parent planning session owns planning, review, and repository publication; it does not implement code after drafting the specification.
 
@@ -19,13 +19,13 @@ Update the applicable planning document first when a decision changes. Do not im
 
 ## Parallel Work and Ownership
 
-Follow the [claim and parallel-work rules](docs/TODO.md#담당-세션과-병렬-작업) before starting or handing off an issue. Read existing claims, register the actual coordinator session ID and development agent ID, branch, scope, dependencies and next verification in the issue, then move its Project item to In Progress. Each session owns one active issue at a time; research/development/review contributors for that issue are listed separately. Do not dispatch additional tickets merely because parallel work is possible. Other sessions can claim independent work in isolated worktrees after agreeing interfaces and shared-file ownership; dependent integration stays behind its verification gate. Keep live ownership in issues, not a second Markdown roster. The parent coordinates plans, review and publication.
+Follow the [claim and parallel-work rules](docs/TODO.md#담당-세션과-병렬-작업) before starting or handing off a Project ticket. Read existing claims, register the actual coordinator session ID and development agent ID, branch, scope, dependencies and next verification in its draft body, then move its Status to In Progress. Each session owns one active ticket at a time; research/development/review contributors for that ticket are listed separately. Do not dispatch additional tickets merely because parallel work is possible. Other sessions can claim independent work in isolated worktrees after agreeing interfaces and shared-file ownership; dependent integration stays behind its verification gate. Keep live ownership in Project items, not a second Markdown roster. The parent coordinates plans, review and publication.
 
 ## Planning Documents
 
 - `docs/SPEC.md`: what and why; goals, observable behavior, completion criteria, scope and product questions. Keep modules, classes, tables and implementation steps elsewhere. Draft is not a frozen or user-approved specification.
 - `docs/IMPLEMENTATION.md`: how and why; approach, trade-offs, change order, edge cases and verification. Keep the plan limited to this repository.
-- GitHub Project and issues: execution order, current status, task checklists and concrete `Verify` entries. Close a completed issue only after its verification succeeds; code work also needs its PR merged. Put actual evidence in the relevant maintained document and link it from the issue.
+- GitHub Project draft items: execution order, current status, ownership, checklists and concrete `Verify` entries. Set Status to Done only after verification succeeds; code work also needs its PR merged. Put actual evidence in the maintained document and link it from the draft. Reference the Project item in PRs; do not use repository-issue closing keywords for ongoing tracking.
 - `docs/TODO.md`: navigation and tracking rules for the GitHub Project; no parallel progress checklist.
 - `docs/ARCHITECTURE.md`: durable component boundaries, data flow and invariants.
 - `docs/METRICS.md`: metric definitions, timing evidence, denominators, diagnostic evidence and overlap rules.

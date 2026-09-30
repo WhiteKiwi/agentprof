@@ -1,6 +1,6 @@
 # Codex Adapter — P2 Implementation Contract
 
-2026-09-30. [P2 issue #3](https://github.com/WhiteKiwi/agentprof/issues/3)의 구현·검증 계획이다. 검토된 P0 계약과 P1 기반을 사용한다. [PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)는 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 병합되었으며 `codex/codex-adapter`의 PR 기준은 main이다. 실행 상태·체크리스트는 이슈와 Project에서 관리한다.
+2026-09-30 작성, 2026-10-01 추적 방식 갱신. [P2 Project 티켓](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833002)의 구현·검증 계획이다. 검토된 P0 계약과 P1 기반을 사용한다. [PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)는 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 병합되었으며 `codex/codex-adapter`의 PR 기준은 main이다. 실행 상태·담당·체크리스트는 Project draft에서 관리한다.
 
 ## Scope and source authority
 

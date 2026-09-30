@@ -76,9 +76,9 @@ The v0.1 target is 10 metrics, 6 diagnostic rules, and a manual [quality-preserv
 2. **P4–P5 · Can we trust it?** Build incremental storage, a minimal time/failure/retry CLI and HTML path, metrics, and diagnostics with false-positive checks
 3. **P6–P7 · Can we use it?** Add offline evidence navigation, installation and resource-budget verification, and a local pilot
 
-The [implementation priorities](docs/IMPLEMENTATION.md#efficiency-review-priorities) put freshness and coverage before hotspots, actionable suggestions, and matched verification. The [GitHub Project](https://github.com/users/WhiteKiwi/projects/2) and linked [implementation issues](https://github.com/WhiteKiwi/agentprof/issues) and [v0.1-alpha](https://github.com/WhiteKiwi/agentprof/milestone/1) / [v0.1](https://github.com/WhiteKiwi/agentprof/milestone/2) milestones track the broader work.
+The [implementation priorities](docs/IMPLEMENTATION.md#efficiency-review-priorities) put freshness and coverage before hotspots, actionable suggestions, and matched verification. [GitHub Project draft tickets](https://github.com/users/WhiteKiwi/projects/2) track the broader work, with task checklists, owners, dependencies and verification. New work stays in the Project without creating repository issues.
 
-Maintained planning documents define the detailed scope and verification criteria. Existing issue text may need separate synchronization. Completing the design showcase does not complete P5/P6 product implementation.
+Maintained planning documents define the detailed scope and verification criteria. Keep each draft ticket synchronized with its plan. Completing the design showcase does not complete P5/P6 product implementation.
 
 ## Documentation
 
@@ -91,7 +91,7 @@ The README is in English. Detailed planning and research documents are currently
 | [ARCHITECTURE](docs/ARCHITECTURE.md) | Data flow, storage, identity, and privacy boundaries |
 | [METRICS](docs/METRICS.md) | Metrics, diagnostic rules, aggregation, and improvement cards |
 | [IMPLEMENTATION](docs/IMPLEMENTATION.md) | Implementation order, trade-offs, and verification |
-| [GitHub Project](https://github.com/users/WhiteKiwi/projects/2) · [Tracking rules](docs/TODO.md) | Progress, issue checklists, and Verify entries |
+| [GitHub Project](https://github.com/users/WhiteKiwi/projects/2) · [Tracking rules](docs/TODO.md) | Draft ticket ownership, progress, checklists, and Verify entries |
 | [ACCEPTANCE](docs/ACCEPTANCE.md) | Recorded product and foundation verification evidence |
 | [DESIGN](DESIGN.md) · [Guidelines](docs/DESIGN-GUIDELINES.md) | Concise execution rules and design rationale |
 | [Brand references](docs/DESIGN.md) · [BACKLOG](docs/BACKLOG.md) | Supplied artwork and deferred ideas |

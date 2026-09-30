@@ -4,7 +4,7 @@
 
 Draft, 2026-10-01 KST. [SPEC.md](SPEC.md)의 사용자 동작, [ARCHITECTURE.md](ARCHITECTURE.md)의 불변 조건, [METRICS.md](METRICS.md)의 계산 계약을 구현하는 계획이다. `36bb389`의 개정 계획에 따른 P0 계약 검토와 P1 실행 기반 검증을 완료했으며 [PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)는 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 병합되었다. P2 Codex 계약·bounded 검증은 [CODEX-PARSER.md](CODEX-PARSER.md)·[CODEX-EVIDENCE.md](CODEX-EVIDENCE.md)·[ACCEPTANCE.md](ACCEPTANCE.md)에 있고 P3 Claude 어댑터가 다음 단계다. [FINDINGS.md](FINDINGS.md)는 조사 근거이며 사양을 덮어쓰지 않는다. 디자인 기반은 아래 별도 트랙으로 유지하고 데이터 파서·분석기 구현과 구분한다.
 
-새 지표 제안을 반영해 v0.1에 10개 지표와 6개 자동 진단을 포함했다. 이 계획을 검토한 뒤 개발 서브세션이 구현한다. 제품 범위를 바꾸면 SPEC, 구조·불변 조건은 ARCHITECTURE, 계산 의미는 METRICS, 접근·선행 조건은 이 문서를 먼저 갱신한다. 실행 작업·Verify·상태는 해당 GitHub issue와 [Project](https://github.com/users/WhiteKiwi/projects/2)에 반영한다.
+새 지표 제안을 반영해 v0.1에 10개 지표와 6개 자동 진단을 포함했다. 이 계획을 검토한 뒤 개발 서브세션이 구현한다. 제품 범위를 바꾸면 SPEC, 구조·불변 조건은 ARCHITECTURE, 계산 의미는 METRICS, 접근·선행 조건은 이 문서를 먼저 갱신한다. 실행 작업·Verify·담당·상태는 [Project](https://github.com/users/WhiteKiwi/projects/2)의 해당 draft ticket에 반영한다. repository issue를 새로 만들지 않는다.
 
 ## Selected Approach
 
@@ -49,16 +49,16 @@ docs/          specification, evidence, plans and acceptance
 
 | ID | 결과물 | 선행 조건 | 마일스톤 | 초기 추정 |
 | --- | --- | --- | --- | --- |
-| [P0](https://github.com/WhiteKiwi/agentprof/issues/1) | 실로그 의미·coverage, 로그·지표 계약, 합성 기대값 | 없음 | v0.1-alpha | 1–2 작업일 |
-| [P1](https://github.com/WhiteKiwi/agentprof/issues/2) | CLI 기반, 타입·개인정보·설치 검증 | P0 | v0.1-alpha | 1–2 작업일 |
-| [P2](https://github.com/WhiteKiwi/agentprof/issues/3) | Codex adapter | P0, P1 | v0.1-alpha | 1–2 작업일 |
-| [P3](https://github.com/WhiteKiwi/agentprof/issues/4) | Claude adapter | P0, P1 | v0.1-alpha | 1–2 작업일 |
-| [P4](https://github.com/WhiteKiwi/agentprof/issues/5) | SQLite·증분 scan | P1, P2, P3 | v0.1-alpha | 1–2 작업일 |
-| [P5](https://github.com/WhiteKiwi/agentprof/issues/6) | 최소 세로 단면 → 10 지표·6 진단·stats·insights | P0, P2, P3, P4 | v0.1-alpha | 3–5 작업일 |
-| [P6](https://github.com/WhiteKiwi/agentprof/issues/7) | single HTML·타임라인·open | P5 | v0.1 | 2–4 작업일 |
-| [P7](https://github.com/WhiteKiwi/agentprof/issues/8) | packed artifact·파일럿·출시 준비 | P6 | v0.1 | 1–2 작업일 |
+| [P0](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258832949) | 실로그 의미·coverage, 로그·지표 계약, 합성 기대값 | 없음 | v0.1-alpha | 1–2 작업일 |
+| [P1](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258832975) | CLI 기반, 타입·개인정보·설치 검증 | P0 | v0.1-alpha | 1–2 작업일 |
+| [P2](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833002) | Codex adapter | P0, P1 | v0.1-alpha | 1–2 작업일 |
+| [P3](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833029) | Claude adapter | P0, P1 | v0.1-alpha | 1–2 작업일 |
+| [P4](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833059) | SQLite·증분 scan | P1, P2, P3 | v0.1-alpha | 1–2 작업일 |
+| [P5](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833093) | 최소 세로 단면 → 10 지표·6 진단·stats·insights | P0, P2, P3, P4 | v0.1-alpha | 3–5 작업일 |
+| [P6](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833122) | single HTML·타임라인·open | P5 | v0.1 | 2–4 작업일 |
+| [P7](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833142) | packed artifact·파일럿·출시 준비 | P6 | v0.1 | 1–2 작업일 |
 
-한 명의 순차 작업 기준 11–21 작업일의 초기 추정이다. 출시일 약속이 아니며 공급자·시간 의미 대조 결과로 다시 산정한다. 각 issue의 구현 단계에 구체적인 Verify를 둔다. 2026-09-30 개정된 단계·Verify를 이슈 #1–#8에 동기화하고 본문 readback을 확인했다. 진행 상태는 [Project](https://github.com/users/WhiteKiwi/projects/2), 설계상 선행 조건은 본 계획, 실제 실행 증거는 ACCEPTANCE를 따른다.
+한 명의 순차 작업 기준 11–21 작업일의 초기 추정이다. 출시일 약속이 아니며 공급자·시간 의미 대조 결과로 다시 산정한다. 각 draft ticket의 구현 단계에 구체적인 Verify를 둔다. 2026-10-01 기존 이슈의 본문·Verify·담당·진행 상태를 Project 전용 draft로 이관했다. 진행 상태는 Project, 설계상 선행 조건은 본 계획, 실제 실행 증거는 ACCEPTANCE를 따른다.
 
 ### P0 — Empirical Contracts Before Parsers
 
@@ -82,7 +82,7 @@ P1 구현 경계는 [NORMALIZATION.md](NORMALIZATION.md)다. CLI help/version과
 
 ### P2 / P3 — Provider Adapters
 
-P2 Codex의 실제 shape·API·pairing·privacy·검증 세부는 [CODEX-PARSER.md](CODEX-PARSER.md)에 둔다. 이슈 #3의 작업과 Verify를 먼저 확정한 뒤 개발 서브세션이 구현한다. P1 PR #9 병합 후 P2 PR은 main을 기준으로 검토한다.
+P2 Codex의 실제 shape·API·pairing·privacy·검증 세부는 [CODEX-PARSER.md](CODEX-PARSER.md)에 둔다. 해당 Project draft의 작업과 Verify를 먼저 확정한 뒤 개발 서브세션이 구현한다. P1 PR #9 병합 후 P2 PR은 main을 기준으로 검토한다.
 
 Codex는 검증된 구조화 `item_completed`를 우선하고 같은 response를 중복 세지 않는다. namespace·call ID·content-block output과 직접 duration을 처리한다. Claude는 UUID·parent·tool IDs를 연결하고 직접 duration과 관측 latency를 구분한다.
 
@@ -145,9 +145,9 @@ Homebrew tap·formula 게시, npm 공개와 license 선택은 이 계획의 구�
 
 ## Verification and Handoff
 
-[GitHub Project](https://github.com/users/WhiteKiwi/projects/2)의 연결 issue마다 구현 체크와 Verify가 있다. [TODO.md](TODO.md)는 보드 운영 규칙을 안내하며 상태를 복제하지 않는다. [ACCEPTANCE.md](ACCEPTANCE.md)는 실행 전 NOT RUN이고, 실행 후 revision·환경·명령·기대값·실제 결과를 기록한다. fixture·개인정보·DB 복구·지표 일치·offline UI·설치 시험을 변경 범위에 맞게 수행한다.
+[GitHub Project](https://github.com/users/WhiteKiwi/projects/2)의 draft item마다 구현 체크·담당·Verify가 있다. [TODO.md](TODO.md)는 티켓 링크와 보드 운영 규칙을 안내하며 상태를 복제하지 않는다. [ACCEPTANCE.md](ACCEPTANCE.md)는 실행 전 NOT RUN이고, 실행 후 revision·환경·명령·기대값·실제 결과를 기록한다. fixture·개인정보·DB 복구·지표 일치·offline UI·설치 시험을 변경 범위에 맞게 수행한다.
 
-개발 서브세션에는 SPEC·FINDINGS·ARCHITECTURE·METRICS·IMPLEMENTATION, Project의 해당 issue·Verify·선행 조건을 전달한다. 구현 결정 변경은 해당 문서와 issue부터 반영하고 parent에 변경·검증·한계를 보고한다. parent는 계획·변경·검증 증거를 검토하고 저장소 수준 게시를 맡는다.
+개발 서브세션에는 SPEC·FINDINGS·ARCHITECTURE·METRICS·IMPLEMENTATION, Project의 해당 draft·Verify·선행 조건을 전달한다. 구현 결정 변경은 해당 문서와 draft부터 반영하고 parent에 변경·검증·한계를 보고한다. parent는 계획·변경·검증 증거를 검토하고 저장소 수준 게시를 맡는다.
 
 
 ## Design Foundation Track (2026-09-30)
@@ -156,6 +156,6 @@ Homebrew tap·formula 게시, npm 공개와 license 선택은 이 계획의 구�
 
 1. 제공 이미지·design-guidelines skill·Design Index·Recent를 검토하고 [canonical guideline](DESIGN-GUIDELINES.md)과 [간결한 실행 계약](../DESIGN.md)을 작성한다.
 2. 별도 구현 세션에서 framework-free `design/`의 semantic CSS tokens·native HTML primitives·최소 vanilla 동작과 합성 오프라인 single-file showcase를 만든다. 재사용 소스를 커밋하고 생성 HTML은 로컬에만 둔다.
-3. dark/light·320px/phone/desktop·keyboard·reduced-motion·privacy·contrast·print를 검증하고 [DESIGN-QA](DESIGN-QA.md)에 실제 결과와 제한을 기록한다. README는 배포/측정된 제품인 것처럼 표시하지 않는다. 남은 브라우저·README 검증은 [#10](https://github.com/WhiteKiwi/agentprof/issues/10)에서 추적한다.
+3. dark/light·320px/phone/desktop·keyboard·reduced-motion·privacy·contrast·print를 검증하고 [DESIGN-QA](DESIGN-QA.md)에 실제 결과와 제한을 기록한다. README는 배포/측정된 제품인 것처럼 표시하지 않는다. 남은 브라우저·README 검증은 [Design 티켓](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833178)에서 추적한다.
 
 제품 적용은 P5 최소 report부터 시작한다. 실제 snapshot 연결·파서·injection 방어의 제품 acceptance는 그대로 미실행이다. 전역 framework/package 구성을 만들거나 watcher·server·배포를 추가하지 않는다.
