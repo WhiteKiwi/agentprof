@@ -2,7 +2,7 @@
 
 ## Status
 
-2026-10-01 KST. 아래는 **제품 흐름의 예정된 검증**이다. P0의 조사·계약·독립 합성 기대값 검토와 P1 실행 기반의 macOS/Linux 검증을 마쳤다. P2 Codex 어댑터는 아래 범위의 로컬 대조·macOS 검증을 통과했다. 두 공급자를 연결한 제품 scan·분석·HTML·출시 파일럿은 아직 `NOT RUN`이다. 부분 검증과 전체 제품 acceptance를 구분해 기록한다. 별도 디자인 scaffold 검증은 [DESIGN-QA.md](DESIGN-QA.md)에 기록하며 제품 acceptance 통과로 취급하지 않는다.
+2026-10-01 KST. 아래는 **제품 흐름의 예정된 검증**이다. P0의 조사·계약·독립 합성 기대값 검토와 P1 실행 기반의 macOS/Linux 검증을 마쳤다. P2 Codex 어댑터는 아래 범위의 로컬 대조·macOS/Linux 검증을 통과했다. 두 공급자를 연결한 제품 scan·분석·HTML·출시 파일럿은 아직 `NOT RUN`이다. 부분 검증과 전체 제품 acceptance를 구분해 기록한다. 별도 디자인 scaffold 검증은 [DESIGN-QA.md](DESIGN-QA.md)에 기록하며 제품 acceptance 통과로 취급하지 않는다.
 
 | ID | 기대 동작 | 검증 방식 | 상태 |
 | --- | --- | --- | --- |
@@ -112,14 +112,15 @@ CLI는 help/version만 구현했다. `scan`, `stats`, `insights`, `report`, `ope
 
 ## P2 Codex Adapter Verification — 2026-10-01 KST
 
-P1 통합 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 기반한 P2 구현이다. parser/normalization/key version 1, package `0.1.0-dev.0`, DB schema 1을 사용했다. 구현 계약은 [CODEX-PARSER.md](CODEX-PARSER.md), 독립 실표본 대조와 tag별 의미·한계는 [CODEX-EVIDENCE.md](CODEX-EVIDENCE.md)에 있다. 코드 revision·PR·최종 CI는 [P2 이슈 #3](https://github.com/WhiteKiwi/agentprof/issues/3)의 게시 evidence로 연결한다.
+P1 통합 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 기반한 P2 구현이다. 검증한 코드 revision은 `fb6e3ad86d886487f12196211c4c8b4a5a94d733`이며 parser/normalization/key version 1, package `0.1.0-dev.0`, DB schema 1을 사용했다. 구현 계약은 [CODEX-PARSER.md](CODEX-PARSER.md), 독립 실표본 대조와 tag별 의미·한계는 [CODEX-EVIDENCE.md](CODEX-EVIDENCE.md)에 있다. [PR #12](https://github.com/WhiteKiwi/agentprof/pull/12)와 [P2 이슈 #3](https://github.com/WhiteKiwi/agentprof/issues/3)에 게시·최종 head 검증을 연결한다. 아래 CI는 이 코드 revision의 [Linux run](https://github.com/WhiteKiwi/agentprof/actions/runs/36738136770)이다.
 
 | 환경·대상 | 실행 | 실제 결과 |
 | --- | --- | --- |
 | macOS arm64, Node 24.15.0 | `npm run check` | PASS: 타입 검사·빌드, 8개 파일·116개 테스트, 20파일 production tarball 설치 |
 | macOS arm64, Node 24.21.0 | 동일 실행 | PASS: 116개 테스트·20파일 tarball 설치 |
 | macOS arm64, Node 26.7.0 | 동일 실행 | PASS: 116개 테스트·20파일 tarball 설치 |
-| Ubuntu 24.04, 지원 Node 3종·22.16.0 guard | 게시 후 GitHub CI | NOT RUN: 로컬 검증 이후 별도 CI 결과를 기록한다 |
+| Ubuntu 24.04 x64, Node 24.15.0·24.21.0·26.7.0 | `npm ci --ignore-scripts --no-audit --no-fund` + `npm run check` | PASS: 각 8개 파일·116개 테스트·20파일 tarball npm exec/global install; CI 3개 job success |
+| Ubuntu 24.04 x64, Node 22.16.0 | bootstrap만 복사한 CI guard | PASS: CLI/SQLite import 전 거부, stderr JSON `UNSUPPORTED_RUNTIME`, stdout 없음·exit 2 |
 | 고정 P0 Codex prefix S4–S12, Node 26.7.0 | 독립 기준과 통합·9개 개별·메모리 내 archive 재표현 대조 | PASS: reader eligible 3,104개에서 실행 362개·턴 84개·usage 1,611개 및 원천 observedUsage 1,611개 불일치 0 |
 | 동일 source replay·archive canonical 의미 | 별도 source 관측과 canonical 출력 대조 | PASS: 같은 source의 state/counter 불변, archive의 ID·수치·선택 의미 불변. archive는 명시 확장 상태 한도로 실행 |
 | 원문 없는 반환·retained state | 16자 이상 민감 문자열 후보 6,141개 대조 | PASS: 선정 후보의 완전 문자열 노출 0. 짧은 문자열 전체·VM heap·zeroization 검증은 아님 |
