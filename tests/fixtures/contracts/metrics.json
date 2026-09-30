@@ -1,0 +1,862 @@
+{
+  "schema": "agentprof.fixture-metrics/v1",
+  "synthetic": true,
+  "oracle": "hand-calculated-before-implementation",
+  "cases": [
+    {
+      "id": "parallel-turns",
+      "input": {
+        "turns": [
+          [
+            0,
+            20000
+          ],
+          [
+            10000,
+            30000
+          ]
+        ],
+        "events": [
+          {
+            "id": "a",
+            "startMs": 0,
+            "endMs": 10000,
+            "kind": "search",
+            "durationMs": 10000
+          },
+          {
+            "id": "b",
+            "startMs": 5000,
+            "endMs": 15000,
+            "kind": "shell",
+            "durationMs": 10000
+          }
+        ]
+      },
+      "expected": {
+        "activeTimeMs": 30000,
+        "toolDurationSumMs": 20000,
+        "toolBusyMs": 15000,
+        "categoryBusyMs": {
+          "search": 5000,
+          "shell": 5000,
+          "concurrent": 5000
+        },
+        "unclassifiedTurnMs": 15000
+      }
+    },
+    {
+      "id": "resumed-pending",
+      "input": {
+        "turns": [
+          [
+            0,
+            10000
+          ],
+          [
+            172800000,
+            172805000
+          ],
+          [
+            172806000,
+            null
+          ]
+        ],
+        "observedRange": [
+          0,
+          172805000
+        ]
+      },
+      "expected": {
+        "activeTimeMs": 15000,
+        "observedSpanMs": 172805000,
+        "pendingEndMs": null
+      }
+    },
+    {
+      "id": "latency-boundaries",
+      "input": {
+        "samples": [
+          [],
+          [
+            7
+          ],
+          [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19
+          ],
+          [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ]
+        ],
+        "nonMixingScopes": [
+          "process_runtime",
+          "invocation_latency"
+        ],
+        "nonMixingEvidence": [
+          "source_reported",
+          "paired_timestamps"
+        ]
+      },
+      "expected": {
+        "p50": [
+          null,
+          7,
+          10,
+          10
+        ],
+        "p95": [
+          null,
+          7,
+          19,
+          19
+        ],
+        "n": [
+          0,
+          1,
+          19,
+          20
+        ],
+        "lowSampleP95": [
+          true,
+          true,
+          true,
+          false
+        ]
+      }
+    },
+    {
+      "id": "statuses",
+      "input": {
+        "events": [
+          {
+            "id": "ok",
+            "status": "completed",
+            "exitCode": 0
+          },
+          {
+            "id": "no-match",
+            "status": "completed",
+            "exitCode": 1,
+            "program": "rg"
+          },
+          {
+            "id": "bad",
+            "status": "failed",
+            "exitCode": 2
+          },
+          {
+            "id": "cancel",
+            "status": "cancelled"
+          },
+          {
+            "id": "pend",
+            "status": "pending"
+          },
+          {
+            "id": "u",
+            "status": "unknown"
+          }
+        ]
+      },
+      "expected": {
+        "completed": 2,
+        "failed": 1,
+        "cancelled": 1,
+        "pending": 1,
+        "unknown": 1,
+        "terminalDenominator": 4,
+        "failedNumerator": 1,
+        "failedRate": 0.25
+      }
+    },
+    {
+      "id": "retry-resolved",
+      "input": {
+        "events": [
+          {
+            "id": "f1",
+            "startMs": 0,
+            "endMs": 2000,
+            "status": "failed",
+            "operation": "alpha",
+            "error": "E1"
+          },
+          {
+            "id": "f2",
+            "startMs": 3000,
+            "endMs": 6000,
+            "status": "failed",
+            "operation": "alpha",
+            "error": "E1"
+          },
+          {
+            "id": "f3",
+            "startMs": 7000,
+            "endMs": 11000,
+            "status": "failed",
+            "operation": "alpha",
+            "error": "E1"
+          },
+          {
+            "id": "s1",
+            "startMs": 12000,
+            "endMs": 13000,
+            "status": "completed",
+            "operation": "alpha"
+          }
+        ],
+        "session": "s1",
+        "turn": "t1",
+        "project": "p1"
+      },
+      "expected": {
+        "attemptCount": 4,
+        "failedAttemptCount": 3,
+        "failedAttemptDurationSumMs": 9000,
+        "retryOverheadMs": 9000,
+        "resolved": true,
+        "terminalSuccessEventId": "s1",
+        "chainElapsedMs": 13000,
+        "recoveryElapsedMs": 11000,
+        "includedEventIds": [
+          "f1",
+          "f2",
+          "f3"
+        ],
+        "excludedEventIds": [
+          "s1"
+        ]
+      }
+    },
+    {
+      "id": "retry-other-target",
+      "input": {
+        "events": [
+          {
+            "id": "f1",
+            "startMs": 0,
+            "endMs": 2000,
+            "status": "failed",
+            "operation": "alpha",
+            "error": "E1"
+          },
+          {
+            "id": "f2",
+            "startMs": 3000,
+            "endMs": 6000,
+            "status": "failed",
+            "operation": "alpha",
+            "error": "E1"
+          },
+          {
+            "id": "f3",
+            "startMs": 7000,
+            "endMs": 11000,
+            "status": "failed",
+            "operation": "alpha",
+            "error": "E1"
+          },
+          {
+            "id": "s1",
+            "startMs": 12000,
+            "endMs": 13000,
+            "status": "completed",
+            "operation": "beta"
+          }
+        ],
+        "displayPattern": "npm test <target>"
+      },
+      "expected": {
+        "alphaResolved": false,
+        "alphaRecoveryElapsedMs": null,
+        "betaSuccessResolvesAlpha": false,
+        "unresolved": 1
+      }
+    },
+    {
+      "id": "retry-overlap",
+      "input": {
+        "events": [
+          {
+            "id": "p1",
+            "startMs": 0,
+            "endMs": 5000,
+            "status": "failed"
+          },
+          {
+            "id": "p2",
+            "startMs": 3000,
+            "endMs": 8000,
+            "status": "failed"
+          },
+          {
+            "id": "p3",
+            "startMs": 8000,
+            "endMs": 10000,
+            "status": "failed"
+          }
+        ]
+      },
+      "expected": {
+        "canonicalExecutionCount": 3,
+        "failedAttemptDurationSumMs": 12000,
+        "retryOverheadMs": 10000
+      }
+    },
+    {
+      "id": "repeated-error",
+      "input": {
+        "events": [
+          {
+            "id": "er1",
+            "startMs": 0,
+            "endMs": 4000,
+            "session": "a",
+            "error": "E1"
+          },
+          {
+            "id": "er2",
+            "startMs": 4000,
+            "endMs": 8000,
+            "session": "b",
+            "error": "E1"
+          },
+          {
+            "id": "er3",
+            "startMs": 8000,
+            "endMs": 12000,
+            "session": "b",
+            "error": "E1"
+          }
+        ]
+      },
+      "expected": {
+        "occurrences": 3,
+        "affectedSessions": 2,
+        "repeatedErrorMs": 12000,
+        "includedEventIds": [
+          "er1",
+          "er2",
+          "er3"
+        ]
+      }
+    },
+    {
+      "id": "read-search-ratio",
+      "input": {
+        "readFileIds": [
+          "file0",
+          "file1",
+          "file2",
+          "file3",
+          "file4",
+          "file5",
+          "file6",
+          "file7",
+          "file8",
+          "file9",
+          "file10",
+          "file11",
+          "file12",
+          "file13",
+          "file14",
+          "file15",
+          "file16",
+          "file17",
+          "file18",
+          "file19",
+          "file20",
+          "file21",
+          "file22",
+          "file23",
+          "file24",
+          "file25",
+          "file26",
+          "file27",
+          "file28",
+          "file29",
+          "file30",
+          "file31",
+          "file32",
+          "file33",
+          "file34",
+          "file35",
+          "file36",
+          "file37",
+          "file0",
+          "file1",
+          "file2",
+          "file3",
+          "file4",
+          "file5",
+          "file6",
+          "file7",
+          "file8",
+          "file9",
+          "file10",
+          "file11",
+          "file12",
+          "file13",
+          "file14",
+          "file15",
+          "file16",
+          "file17",
+          "file18",
+          "file19",
+          "file20",
+          "file21",
+          "file22",
+          "file23",
+          "file24",
+          "file25",
+          "file26",
+          "file27",
+          "file28",
+          "file29",
+          "file30",
+          "file31",
+          "file32",
+          "file33",
+          "file34",
+          "file35",
+          "file36",
+          "file37",
+          "file0",
+          "file1",
+          "file2",
+          "file3",
+          "file4",
+          "file5",
+          "file6",
+          "file7",
+          "file8",
+          "file9",
+          "file10",
+          "file11",
+          "file12",
+          "file13",
+          "file14"
+        ],
+        "searchKeys": [
+          "q1",
+          "q1",
+          "q2",
+          "q2"
+        ]
+      },
+      "expected": {
+        "readCount": 91,
+        "uniqueFileCount": 38,
+        "readRepeatedNumerator": 53,
+        "readRepeatedDenominator": 91,
+        "searchCount": 4,
+        "searchUnique": 2,
+        "searchRepeatedNumerator": 2,
+        "searchRepeatedDenominator": 4
+      }
+    },
+    {
+      "id": "read-changes",
+      "input": {
+        "reads": [
+          {
+            "id": "r1",
+            "file": "a",
+            "range": [
+              1,
+              10
+            ],
+            "content": "v1",
+            "change": "unchanged"
+          },
+          {
+            "id": "r2",
+            "file": "a",
+            "range": [
+              1,
+              10
+            ],
+            "content": "v1",
+            "change": "unchanged"
+          },
+          {
+            "id": "r3",
+            "file": "a",
+            "range": [
+              1,
+              10
+            ],
+            "content": "v2",
+            "change": "changed"
+          },
+          {
+            "id": "r4",
+            "file": "a",
+            "range": [
+              11,
+              20
+            ],
+            "content": "v2",
+            "change": "unknown"
+          }
+        ]
+      },
+      "expected": {
+        "revisitNumerator": 3,
+        "revisitDenominator": 4,
+        "sameLookupCandidateIds": [
+          "r1",
+          "r2"
+        ],
+        "highConfidenceChurnIncludedIds": [],
+        "excludedIds": [
+          "r3",
+          "r4"
+        ],
+        "reason": "candidate group size2 is below4 threshold"
+      }
+    },
+    {
+      "id": "validation-cycles",
+      "input": {
+        "cycles": [
+          {
+            "id": "v1",
+            "first": "completed",
+            "scope": "targeted",
+            "editIds": [
+              "a",
+              "b"
+            ]
+          },
+          {
+            "id": "v2",
+            "first": "failed",
+            "retry": "completed",
+            "scope": "full",
+            "editIds": [
+              "c"
+            ]
+          },
+          {
+            "id": "v3",
+            "first": "pending",
+            "scope": "unknown",
+            "editIds": [
+              "d"
+            ]
+          },
+          {
+            "id": "v4",
+            "first": "completed",
+            "scope": "unknown",
+            "editIds": []
+          }
+        ]
+      },
+      "expected": {
+        "firstPassNumerator": 1,
+        "firstPassDenominator": 2,
+        "firstPassRate": 0.5,
+        "fullNumerator": 1,
+        "knownScopeDenominator": 2,
+        "fullValidationRatio": 0.5,
+        "excludedIds": [
+          "v3",
+          "v4"
+        ]
+      }
+    },
+    {
+      "id": "codex-tokens",
+      "input": {
+        "responses": [
+          {
+            "id": "A",
+            "input": 100,
+            "output": 20,
+            "cachedIncludedInput": 40
+          },
+          {
+            "id": "A",
+            "input": 100,
+            "output": 20,
+            "cachedIncludedInput": 40
+          },
+          {
+            "id": "B",
+            "input": 50,
+            "output": 10,
+            "cachedIncludedInput": 10
+          }
+        ],
+        "cumulativeSnapshot": {
+          "input": 150,
+          "output": 30,
+          "cachedIncludedInput": 50
+        }
+      },
+      "expected": {
+        "input": 150,
+        "output": 30,
+        "cachedIncludedInput": 50,
+        "total": 180,
+        "uniqueResponses": 2,
+        "phase": "unattributed",
+        "toolAttribution": null
+      }
+    },
+    {
+      "id": "claude-tokens",
+      "input": {
+        "messages": [
+          {
+            "id": "A",
+            "input": 100,
+            "output": 6,
+            "cacheRead": 30,
+            "cacheCreate": 20
+          },
+          {
+            "id": "A",
+            "input": 100,
+            "output": 10,
+            "cacheRead": 30,
+            "cacheCreate": 20
+          },
+          {
+            "id": "A",
+            "input": 100,
+            "output": 10,
+            "cacheRead": 30,
+            "cacheCreate": 20
+          }
+        ],
+        "snapshotSelection": "last-complete-source-ordered-snapshot-for-same-message"
+      },
+      "expected": {
+        "uncachedInput": 100,
+        "cacheRead": 30,
+        "cacheCreate": 20,
+        "allInput": 150,
+        "output": 10,
+        "total": 160,
+        "uniqueMessages": 1,
+        "phase": "unattributed",
+        "toolAttribution": null
+      }
+    },
+    {
+      "id": "period-clipping",
+      "input": {
+        "period": [
+          5000,
+          12000
+        ],
+        "events": [
+          {
+            "id": "left",
+            "startMs": 0,
+            "endMs": 10000,
+            "durationMs": 10000
+          },
+          {
+            "id": "right",
+            "startMs": 10000,
+            "endMs": 15000,
+            "durationMs": 5000
+          },
+          {
+            "id": "only",
+            "startMs": null,
+            "endMs": null,
+            "durationMs": 2000
+          },
+          {
+            "id": "unknown",
+            "startMs": null,
+            "endMs": null,
+            "durationMs": null
+          }
+        ]
+      },
+      "expected": {
+        "toolBusyMs": 7000,
+        "intervalDurationClippedSumMs": 7000,
+        "callCountByStart": 1,
+        "latencySelectedEventIds": [
+          "right"
+        ],
+        "latencyP50Ms": 5000,
+        "durationOnlyUnionContribution": 0,
+        "unknownUnionContribution": 0
+      }
+    },
+    {
+      "id": "duration-only-unknown",
+      "input": {
+        "events": [
+          {
+            "id": "only",
+            "startMs": null,
+            "endMs": null,
+            "durationMs": 2000,
+            "timingEvidence": "source_reported"
+          },
+          {
+            "id": "u1",
+            "startMs": null,
+            "endMs": null,
+            "durationMs": null
+          },
+          {
+            "id": "u2",
+            "startMs": null,
+            "endMs": null,
+            "durationMs": null
+          }
+        ]
+      },
+      "expected": {
+        "toolDurationSumMs": 2000,
+        "toolBusyMs": null,
+        "timedNumerator": 1,
+        "eligibleDenominator": 3,
+        "inferredIntervalCount": 0
+      }
+    },
+    {
+      "id": "day-boundary",
+      "input": {
+        "timezone": "Asia/Seoul",
+        "start": "2026-09-01T14:59:58.000Z",
+        "end": "2026-09-01T15:00:02.000Z"
+      },
+      "expected": {
+        "durationByDayMs": {
+          "2026-09-01": 2000,
+          "2026-09-02": 2000
+        },
+        "callsByDay": {
+          "2026-09-01": 1,
+          "2026-09-02": 0
+        }
+      }
+    },
+    {
+      "id": "dst-boundary",
+      "input": {
+        "timezone": "America/New_York",
+        "start": "2026-11-01T05:30:00.000Z",
+        "end": "2026-11-01T06:30:00.000Z"
+      },
+      "expected": {
+        "durationMs": 3600000,
+        "calls": 1,
+        "startLocalOffset": "-04:00",
+        "endLocalOffset": "-05:00"
+      }
+    },
+    {
+      "id": "operation-flags-targets",
+      "input": {
+        "commands": [
+          "npm test alpha --runInBand",
+          "npm test beta --runInBand",
+          "npm test alpha --watch",
+          "npm test alpha --runInBand"
+        ],
+        "display": "npm test <target>"
+      },
+      "expected": {
+        "sameOperationPairs": [
+          [
+            0,
+            3
+          ]
+        ],
+        "differentOperationPairs": [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            2
+          ]
+        ],
+        "rawArgumentStored": false
+      }
+    },
+    {
+      "id": "duration-interval-scopes",
+      "input": {
+        "events": [
+          {
+            "id": "different-scope",
+            "startMs": 0,
+            "endMs": 10000,
+            "durationMs": 8000,
+            "intervalScope": "item_lifecycle",
+            "intervalTimingEvidence": "paired_timestamps",
+            "durationScope": "process_runtime",
+            "timingEvidence": "source_reported"
+          },
+          {
+            "id": "same-scope-conflict",
+            "startMs": 0,
+            "endMs": 10000,
+            "durationMs": 8000,
+            "intervalScope": "process_runtime",
+            "intervalTimingEvidence": "paired_timestamps",
+            "durationScope": "process_runtime",
+            "timingEvidence": "source_reported"
+          }
+        ]
+      },
+      "expected": {
+        "differentScopePreserved": true,
+        "differentScopeError": false,
+        "sameScopeConflictDiagnostic": true,
+        "sameScopeChoice": "adapter-contract-required-not-silent-relabel"
+      }
+    }
+  ]
+}

@@ -55,5 +55,4 @@ agentprof open ./agentprof.html
 
 P0에서 로컬 실로그의 필드·의미·커버리지와 합성 기대값을 함께 확인한다. 이어 CLI → 공급자 파서의 실로그 대조 → 증분 스캔 → 시간·실패·재시도의 최소 CLI/HTML 세로 단면 → 10 지표·6 진단 → 상세 화면 → 설치·파일럿 순서로 진행한다. 원문 로그는 저장소에 올리지 않는다. v0.1 파일럿에서는 조건을 맞춘 수동 전후 검증을 수행하고, 자동 비교 UI는 v0.2에 둔다. 개발 서브세션이 구현하고 계획 세션이 검토·게시한다.
 
-구현 작업은 [8개 이슈](https://github.com/WhiteKiwi/agentprof/issues)와 [v0.1-alpha](https://github.com/WhiteKiwi/agentprof/milestone/1)·[v0.1](https://github.com/WhiteKiwi/agentprof/milestone/2) 마일스톤으로 추적한다. 이 문서 개정의 세부 검증 기준은 계획 문서를 우선하며, 기존 이슈 본문의 동기화는 별도 작업이다.
-
+구현 작업은 [8개 이슈](https://github.com/WhiteKiwi/agentprof/issues)와 [v0.1-alpha](https://github.com/WhiteKiwi/agentprof/milestone/1)·[v0.1](https://github.com/WhiteKiwi/agentprof/milestone/2) 마일스톤으로 추적한다. 2026-09-30 개정 단계·Verify를 이슈 본문에도 반영했다. 세부 검증 기준과 실제 진행 상태는 계획 문서를 우선한다.

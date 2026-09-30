@@ -2,7 +2,7 @@
 
 ## Status and Authority
 
-Draft, 2026-09-30. [SPEC.md](SPEC.md)의 사용자 동작, [ARCHITECTURE.md](ARCHITECTURE.md)의 불변 조건, [METRICS.md](METRICS.md)의 계산 계약을 구현하는 계획이다. 코드 구현은 아직 시작하지 않았다. [FINDINGS.md](FINDINGS.md)는 조사 근거이며 사양을 덮어쓰지 않는다.
+Draft, 2026-09-30. [SPEC.md](SPEC.md)의 사용자 동작, [ARCHITECTURE.md](ARCHITECTURE.md)의 불변 조건, [METRICS.md](METRICS.md)의 계산 계약을 구현하는 계획이다. `36bb389`의 개정 계획으로 P0를 시작했으며 첫 개발 묶음은 P0 계약과 P1 실행 기반이다. [FINDINGS.md](FINDINGS.md)는 조사 근거이며 사양을 덮어쓰지 않는다.
 
 새 지표 제안을 반영해 v0.1에 10개 지표와 6개 자동 진단을 포함했다. 이 계획을 검토한 뒤 개발 서브세션이 구현한다. 제품 범위를 바꾸면 SPEC, 구조·불변 조건은 ARCHITECTURE, 계산 의미는 METRICS, 접근·순서는 이 문서와 TODO를 먼저 갱신한다.
 
@@ -22,6 +22,8 @@ Draft, 2026-09-30. [SPEC.md](SPEC.md)의 사용자 동작, [ARCHITECTURE.md](ARC
 | 패키지 관리 | npm + committed lockfile | 배포와 같은 생태계로 유지. 실행은 빌드된 JS이며 TS runtime을 요구하지 않음 |
 
 P1에서 `node:sqlite`의 준비된 statement·transaction·migration·close 동작과 최소 런타임 설치를 검증한다. 필요한 동작이 불안정하면 코드 구현 전에 이 문서를 갱신하고 `better-sqlite3` v13을 검토한다. v13의 N-API·npm 내 prebuilt 개선을 구버전 다운로드 방식과 구분한다.
+
+2026-09-30 첫 개발 묶음은 [FIXTURES.md](FIXTURES.md)의 독립 합성 입력·수작업 기대값과 [NORMALIZATION.md](NORMALIZATION.md)의 개인정보 API 계약을 먼저 검토했다. 이를 기반으로 P1의 공급자 독립 실행·저장 primitive를 구현한다. P0의 실로그 행렬·품질·자원 문서 검증은 함께 마무리하며, 해당 검증 없이 P0 완료나 공급자 지원을 선언하지 않는다. P2/P3와 제품 성능 acceptance는 P0 증거 gate 이후에 진행한다.
 
 ## Structure and Boundaries
 
@@ -56,7 +58,7 @@ docs/          specification, evidence, plans and acceptance
 | [P6](https://github.com/WhiteKiwi/agentprof/issues/7) | single HTML·타임라인·open | P5 | v0.1 | 2–4 작업일 |
 | [P7](https://github.com/WhiteKiwi/agentprof/issues/8) | packed artifact·파일럿·출시 준비 | P6 | v0.1 | 1–2 작업일 |
 
-한 명의 순차 작업 기준 11–21 작업일의 초기 추정이다. 출시일 약속이 아니며 P0에서 지원 버전·시간 의미를 확정한 뒤 다시 산정한다. TODO의 각 단계에 구체적인 Verify를 둔다. 실로그 대조·품질 gate를 포함하도록 P0에서 추정을 다시 산정한다. 연결된 이슈 본문은 이 개정에서 수정하지 않았으므로 세부 순서·검증은 본 계획을 우선하고 이슈 동기화 여부를 별도로 확인한다.
+한 명의 순차 작업 기준 11–21 작업일의 초기 추정이다. 출시일 약속이 아니며 P0에서 지원 버전·시간 의미를 확정한 뒤 다시 산정한다. TODO의 각 단계에 구체적인 Verify를 둔다. 실로그 대조·품질 gate를 포함한 추정을 P0에서 다시 산정한다. 2026-09-30 개정된 단계·Verify를 이슈 #1–#8에 동기화하고 본문 readback을 확인했다. 세부 순서·검증은 본 계획을 우선한다.
 
 ### P0 — Empirical Contracts Before Parsers
 
@@ -66,13 +68,17 @@ Codex 구조화 완료 항목과 response 표현, Claude call/result·메시지 
 
 P0에서 허용된 로컬 실로그의 소규모 층화 표본을 수작업으로 읽어 [METRICS의 행렬](METRICS.md#metric-evidence-matrix)을 작성한다. 공급자·정확한 버전·관측 기간·선택 기준, 지표별 필요 필드·direct/observed/inferred/unsupported, 표본 수·커버리지·누락 이유를 기록한다. 원문·명령·출력은 커밋하거나 다른 환경으로 옮기지 않는다. 접근이 없으면 NOT RUN과 차단 사유를 남기고 해당 버전의 검증된 지원 주장을 보류한다. P2/P3의 파서 결과 대조와 P7의 출시 파일럿은 이 초기 조사를 대체하지 않는다.
 
-6개 진단마다 양성·정상 음성 사례와 근거/시간 포함 이벤트를 설계한다. 오탐 검토, 제안의 적용 가능성·후속 확인 방법과 파일럿 보정 절차를 정한다. 성능은 대표 합성 workload의 파일 수·크기·이벤트 수·최대 줄 크기, 장비·Node·cold/warm 조건을 먼저 고정하고 full/incremental scan 시간·peak RSS·HTML 크기의 합격 예산을 결정한다. 현재 예산은 TBD, 측정은 NOT RUN이며 측정 전 숫자를 성공 기준으로 꾸며 넣지 않는다. 예산 결정은 성능 acceptance 실행보다 선행한다.
+6개 진단마다 양성·정상 음성 사례와 근거/시간 포함 이벤트를 설계한다. 오탐 검토, 제안의 적용 가능성·후속 확인 방법과 파일럿 보정 절차는 [QUALITY.md](QUALITY.md)에 있다. 성능은 [BENCHMARKS.md](BENCHMARKS.md)의 대표 합성 workload·장비·Node·cold/warm 조건과 full/incremental scan 시간·peak RSS·HTML 크기 예산을 측정 전에 고정했다. 제품 성능 측정은 NOT RUN이며 Linux 기준 장비 배정·브라우저 응답 예산은 미확정이다. 예산 결정은 성능 acceptance 실행보다 선행한다.
 
 ### P1 — Installation and Privacy Foundations
 
 패키지의 단일 `bin`은 `agentprof`를 가리키고 shebang·실행 권한·빌드된 JS·HTML assets만 배포한다. minimum Node와 지원 플랫폼을 검사하고, 도움말과 명확한 runtime 오류를 제공한다. npx에서 source compile·agent runtime 설치·SQLite addon 다운로드가 필요하지 않게 한다.
 
 로컬 데이터 경로, config·key 권한, source overrides, JSON envelope와 비밀값 없는 진단을 구현한다. 공급자 어댑터에는 원문을 읽을 권한만 주고 정규화 경계 밖으로 전달하지 않는다. P1에서 commandPattern·operationKey·lookup/content/error fingerprint의 필드·null·정규화/키 버전 계약과 비실행 정규화 API를 고정한다.
+
+초기 foundation package는 `0.1.0-dev.0`, `private: true`, `UNLICENSED`로 공개 배포를 막는다. npm lockfile에 Commander 15.0.0, TypeScript 7.0.2, Vitest 5.0.2, Node 타입 24.19.0을 고정했다. 실행 의존성은 Commander뿐이며 SQLite는 Node 내장 모듈이다. TypeScript·테스트 도구의 platform binary는 개발 의존성으로만 설치하며 packed artifact에는 compiled JS만 넣는다. clean install과 production tarball 설치는 lifecycle scripts를 끄고 검증한다. public npm 이름·license 결정과 실제 게시 후 npx 검증은 P7에 남긴다.
+
+P1 구현 경계는 [NORMALIZATION.md](NORMALIZATION.md)다. CLI help/version과 원문 없는 오류, inert 정규화, bounded reader, private key·SQLite migration/동기 transaction만 포함한다. `scan`, `stats`, `insights`, `report`, `open`은 exit 2의 `NOT_IMPLEMENTED`로 처리한다. 이벤트/checkpoint 저장은 P4이며 리포트·대시보드 디자인 시스템은 별도 작업이다. CI는 Ubuntu 24.04에서 Node 24.15.0·24.21.0·26.7.0의 동일 check와 Node 22.16.0의 실행 전 거부를 수행한다. 실제 실행 결과는 [ACCEPTANCE.md](ACCEPTANCE.md)에 기록한다.
 
 ### P2 / P3 — Provider Adapters
 
@@ -119,4 +125,3 @@ Homebrew tap·formula 게시, npm 공개와 license 선택은 이 계획의 구�
 [TODO.md](TODO.md)의 모든 구현 체크에는 Verify가 있다. [ACCEPTANCE.md](ACCEPTANCE.md)는 실행 전 NOT RUN이고, 실행 후 revision·환경·명령·기대값·실제 결과를 기록한다. fixture·개인정보·DB 복구·지표 일치·offline UI·설치 시험을 변경 범위에 맞게 수행한다.
 
 개발 서브세션에는 완료된 SPEC·FINDINGS·ARCHITECTURE·METRICS·IMPLEMENTATION·TODO와 첫 단계 P0를 전달한다. 구현 결정 변경은 해당 문서부터 반영하고 parent에 변경·검증·한계를 보고한다. parent는 계획·변경·검증 증거를 검토하고 저장소 수준 게시를 맡는다.
-

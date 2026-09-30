@@ -1,6 +1,6 @@
 # AgentProf Architecture
 
-상태: 구현 전 설계. [SPEC.md](SPEC.md), [METRICS.md](METRICS.md), [FINDINGS.md](FINDINGS.md)를 반영한다. 단계별 접근은 [IMPLEMENTATION.md](IMPLEMENTATION.md)에 있다.
+상태: P0 계약 검토 완료, P1 실행 기반 구현 중. [SPEC.md](SPEC.md), [METRICS.md](METRICS.md), [FINDINGS.md](FINDINGS.md)를 반영한다. 파서·집계·리포트는 후속 단계이며, 단계별 접근은 [IMPLEMENTATION.md](IMPLEMENTATION.md)에 있다.
 
 ## 데이터 흐름
 
@@ -52,6 +52,8 @@ type NormalizedEvent = {
   operationKey: string | null;   // 대상·중요 플래그를 구분하는 로컬 fingerprint
   startAt: string | null;
   endAt: string | null;
+  intervalTimingEvidence: TimingEvidence;
+  intervalScope: "invocation_latency" | "process_runtime" | "item_lifecycle" | "unknown";
   durationMs: number | null;
   timingEvidence: TimingEvidence;
   durationScope: "invocation_latency" | "process_runtime" | "item_lifecycle" | "unknown";
@@ -66,7 +68,7 @@ type NormalizedEvent = {
 
 P1에서 commandPattern·operationKey·lookup/content/error fingerprint의 허용 필드·null·키 버전 계약을 정한다. P2/P3의 파서 정규화 단계에서 필요한 원문이 메모리에 있을 때 비실행 방식으로 안전한 패턴과 식별자를 생성한 뒤 원문을 폐기한다. P4는 이 결과와 normalization/key version을 저장하고 P5는 소비만 한다. 원문 폐기 후 P5에서 대상을 복원하거나 fingerprint를 새로 만들지 않는다. 필수 정보가 없으면 null과 unsupported 이유를 남긴다. 키·정규화 버전이 다르면 동일성 비교를 하지 않으며, 재처리에 필요한 로컬 원본이 없으면 비교 불가로 남긴다.
 
-소스의 직접 duration과 시작·종료 시각은 모두 검증한다. 충돌하면 두 근거를 진단에 남기고 정의가 맞는 값만 채택한다. duration만 있고 배치할 구간이 없으면 호출 합계에는 포함할 수 있지만 구간 합집합에는 넣지 않는다.
+소스의 직접 duration과 시작·종료 시각은 모두 검증한다. `durationScope`·`timingEvidence`는 duration 값의 의미이고, `intervalScope`·`intervalTimingEvidence`는 배치 가능한 경계 구간의 의미다. 프로세스 runtime과 항목 lifecycle은 서로 다른 scope로 함께 보존할 수 있으며 `durationMs = endAt - startAt`를 강제하지 않는다. 같은 scope의 근거가 충돌하면 원문 없는 진단을 남기고 공급자 계약으로 선택한다. duration만 있고 배치할 구간이 없으면 호출 합계에는 포함할 수 있지만 구간 합집합에는 넣지 않는다. lifecycle 구간을 process runtime 구간으로 역산하거나 재명명하지 않는다.
 
 ## 시간 회계
 
@@ -132,4 +134,3 @@ P1에서 commandPattern·operationKey·lookup/content/error fingerprint의 허�
 HTML에는 JS·CSS·SVG·분석 데이터를 모두 포함한다. CDN, 외부 폰트, 원격 이미지와 fetch를 사용하지 않는다. 데이터 삽입 시 `</script>`, HTML 태그와 제어 문자를 안전하게 처리하며 문자열은 텍스트로 렌더링한다. 원문 로그는 리포트의 실행 코드가 될 수 없다.
 
 전체 파일을 메모리에 올리지 않는다. P0에서 최대 줄 크기·전체/증분 scan 시간·peak RSS·HTML 크기의 측정 workload와 합격 예산을 정하고 초과 입력·파싱 오류는 원문 없는 진단으로 남긴다. DB와 설정·로컬 키 파일의 접근 권한도 설치 테스트에서 확인한다.
-

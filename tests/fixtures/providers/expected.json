@@ -1,0 +1,180 @@
+{
+  "schema": "agentprof.fixture-provider/v1",
+  "synthetic": true,
+  "supportStatus": "SHAPE_ONLY_NOT_PROVIDER_VERSION_SUPPORT",
+  "cases": [
+    {
+      "id": "codex-structured",
+      "files": [
+        "codex-structured.jsonl"
+      ],
+      "canonicalEventAliases": [
+        "cx:c1",
+        "cx:c2"
+      ],
+      "executionCount": 2,
+      "explicitFixtureRelations": [
+        {
+          "representation": "wrap1",
+          "canonicalChildren": [
+            "cx:c1",
+            "cx:c2"
+          ],
+          "relation": "annotated-shared-execution-not-product-field-guarantee"
+        }
+      ],
+      "timing": [
+        {
+          "event": "cx:c1",
+          "sourceRuntimeMs": 8000,
+          "observedLifecycleMs": 10000,
+          "sameScope": false,
+          "durationScope": "process_runtime",
+          "intervalScope": "item_lifecycle"
+        },
+        {
+          "event": "cx:c2",
+          "sourceRuntimeMs": 10000,
+          "observedLifecycleMs": 10000,
+          "scopeRequiresAdapterCheck": true
+        }
+      ],
+      "activeTimeMs": 20000,
+      "tokenUsage": {
+        "input": 100,
+        "output": 20,
+        "cachedIncludedInput": 40
+      }
+    },
+    {
+      "id": "codex-archive",
+      "files": [
+        "codex-structured.jsonl",
+        "codex-archive.jsonl"
+      ],
+      "canonicalEventAliases": [
+        "cx:c1",
+        "cx:c2"
+      ],
+      "executionCount": 2,
+      "sourceCount": 2
+    },
+    {
+      "id": "codex-legacy",
+      "files": [
+        "codex-legacy.jsonl"
+      ],
+      "canonicalEventAliases": [
+        "cx:l1",
+        "cx:pending1",
+        "cx:process1"
+      ],
+      "executionCount": 3,
+      "completedCount": 2,
+      "pendingCount": 1,
+      "pollExecutionCount": 0,
+      "pollWallTimeSumForbidden": 8,
+      "processRuntimeMs": null,
+      "processObservedLatencyMs": 5000,
+      "noMatchEvent": "cx:l1"
+    },
+    {
+      "id": "codex-pending-update",
+      "files": [
+        "codex-legacy.jsonl",
+        "codex-pending-append.jsonl"
+      ],
+      "canonicalEventAliases": [
+        "cx:l1",
+        "cx:pending1",
+        "cx:process1"
+      ],
+      "executionCount": 3,
+      "pendingCount": 0,
+      "pendingObservedLatencyMs": 8000
+    },
+    {
+      "id": "codex-fork",
+      "files": [
+        "codex-structured.jsonl",
+        "codex-fork.jsonl"
+      ],
+      "canonicalEventAliases": [
+        "cx:c1",
+        "cx:c2",
+        "cx:f1"
+      ],
+      "executionCount": 3,
+      "newForkExecutionCount": 1,
+      "copiedExecutionCount": 0,
+      "metadataSegments": [
+        "synthetic-new",
+        "synthetic-current",
+        "synthetic-new"
+      ],
+      "firstHeaderVersionAppliesToWholeFile": false,
+      "forkOriginStatus": "conditional-explicit-thread-and-validated-copied-range",
+      "copyBoundaryStatus": "fixture-annotated-known-bound;subagent_history_start_ordinal-alone-is-insufficient",
+      "ambiguousRelationshipExpected": "AMBIGUOUS_ORIGIN-no-invented-dedup",
+      "explicitFixtureKnownCopiedOrdinals": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "claude-message",
+      "files": [
+        "claude-message.jsonl"
+      ],
+      "canonicalEventAliases": [
+        "cl:ct1",
+        "cl:ct2",
+        "cl:agent-synthetic:ct3"
+      ],
+      "executionCount": 3,
+      "mainCount": 2,
+      "sidechainCount": 1,
+      "replayAdditionalCount": 0,
+      "observedLatencyMs": {
+        "ct1": 4000,
+        "ct2": 4000,
+        "ct3": 3000
+      },
+      "sourceDurationMs": {
+        "ct3": 2500
+      },
+      "turnDurationOnlyMs": 9000,
+      "activeTimeMs": null,
+      "tokenUsage": {
+        "uncachedInput": 100,
+        "cacheRead": 30,
+        "cacheCreate": 20,
+        "allInput": 150,
+        "output": 10
+      },
+      "usageSnapshotValues": [
+        6,
+        6,
+        10
+      ],
+      "usageSnapshotSelection": "last-complete-source-ordered-snapshot-after-adapter-semantic-verification"
+    },
+    {
+      "id": "claude-fork",
+      "files": [
+        "claude-message.jsonl",
+        "claude-fork.jsonl"
+      ],
+      "canonicalEventAliases": [
+        "cl:ct1",
+        "cl:ct2",
+        "cl:agent-synthetic:ct3",
+        "cl:ct4"
+      ],
+      "executionCount": 4,
+      "newForkExecutionCount": 1,
+      "copiedExecutionCount": 0,
+      "forkOriginStatus": "fixture-annotated-relation-needs-provider-evidence"
+    }
+  ]
+}

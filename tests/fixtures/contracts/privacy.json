@@ -1,0 +1,28 @@
+{
+  "schema": "agentprof.fixture-privacy/v1",
+  "synthetic": true,
+  "sentinels": [
+    "FICTITIOUS_AGENTPROF_PROMPT_SENTINEL",
+    "FICTITIOUS_AGENTPROF_CODE_SENTINEL",
+    "FICTITIOUS_AGENTPROF_ARG_SENTINEL",
+    "FICTITIOUS_AGENTPROF_ENV_SENTINEL",
+    "FICTITIOUS_AGENTPROF_URL_SENTINEL",
+    "FICTITIOUS_AGENTPROF_ERROR_SENTINEL",
+    "FICTITIOUS_AGENTPROF_OUTPUT_SENTINEL",
+    "/FICTITIOUS_AGENTPROF_PROJECT"
+  ],
+  "forbiddenDownstream": [
+    "normalized-events",
+    "diagnostics",
+    "database",
+    "html",
+    "packed-artifact"
+  ],
+  "inputMayContainSentinels": true,
+  "mustNotExecute": [
+    "$(touch FICTITIOUS_AGENTPROF_EXECUTED)",
+    "`touch FICTITIOUS_AGENTPROF_EXECUTED`",
+    "node -e \"FICTITIOUS_AGENTPROF_CODE_SENTINEL\"",
+    "cat <<EOF\nFICTITIOUS_AGENTPROF_CODE_SENTINEL\nEOF"
+  ]
+}

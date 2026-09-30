@@ -1,0 +1,43 @@
+import type { Provider } from "../privacy/paths.js";
+
+export type TimingEvidence = "source_reported" | "paired_timestamps" | "estimated" | "unknown";
+export type DurationScope = "invocation_latency" | "process_runtime" | "item_lifecycle" | "unknown";
+export type EventKind = "model" | "shell" | "file_read" | "file_write" | "file_edit" | "search" | "mcp" | "browser" | "skill" | "subagent" | "other";
+export type ExecutionStatus = "completed" | "failed" | "cancelled" | "pending" | "unknown";
+export type ExecutionOutcome = "success" | "no_match" | "change_detected" | "error" | "unknown";
+
+export type NormalizedEvent = Readonly<{
+  normalizationVersion: 1;
+  keyVersion: 1;
+  keyId: string;
+  id: string;
+  sessionId: string;
+  turnId: string | null;
+  parentEventId: string | null;
+  provider: Provider;
+  kind: EventKind;
+  category: "model" | "test" | "build" | "search" | "read" | "write" | "edit" | "mcp" | "browser" | "skill" | "subagent" | "other";
+  toolName: string | null;
+  commandPattern: string | null;
+  operationKey: string | null;
+  fileFingerprint: string | null;
+  lookupKey: string | null;
+  lookupRange: Readonly<{ startLine: number; endLine: number }> | null;
+  contentFingerprint: string | null;
+  contentState: "complete" | "truncated" | "unknown";
+  changeState: "unchanged" | "changed" | "unknown";
+  validationScope: "full" | "targeted" | "incremental" | "unknown";
+  startAt: string | null;
+  endAt: string | null;
+  intervalTimingEvidence: TimingEvidence;
+  intervalScope: DurationScope;
+  durationMs: number | null;
+  timingEvidence: TimingEvidence;
+  durationScope: DurationScope;
+  status: ExecutionStatus;
+  executionOutcome: ExecutionOutcome;
+  exitCode: number | null;
+  errorFingerprint: string | null;
+  errorClass: "process_exit" | "tool_error" | "timeout" | "other" | null;
+  sourceRef: Readonly<{ fileId: string; byteOffset: number; recordType: "response_item" | "event_msg" | "assistant" | "user" | "system" | "unknown" }>;
+}>;

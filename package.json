@@ -1,0 +1,26 @@
+{
+  "name": "agentprof",
+  "version": "0.1.0-dev.0",
+  "private": true,
+  "description": "Local performance profiling for coding agents (foundation development build)",
+  "license": "UNLICENSED",
+  "type": "module",
+  "bin": { "agentprof": "dist/agentprof.cjs" },
+  "files": ["dist/"],
+  "engines": { "node": ">=24.15.0" },
+  "os": ["darwin", "linux"],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run build && npm test && npm run verify:artifact",
+    "verify:artifact": "node scripts/verify-artifact.mjs",
+    "prepack": "npm run build"
+  },
+  "dependencies": { "commander": "15.0.0" },
+  "devDependencies": {
+    "@types/node": "24.19.0",
+    "typescript": "7.0.2",
+    "vitest": "5.0.2"
+  }
+}

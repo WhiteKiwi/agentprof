@@ -174,3 +174,17 @@ Homebrew formula는 npm artifact를 검증한 뒤 추가할 수 있다. Rust CLI
 - 전체 상세 화면보다 시간·실패·재시도의 작은 CLI/오프라인 HTML 세로 단면을 P5 초기에 검증한다. 성능 예산·workload는 P0에 결정하고 실측은 이후에 기록한다. 현재 성능 수치는 없다.
 
 이 개정은 계획 문서만 변경한다. 연결된 구현 이슈 본문과 마일스톤은 수정하지 않았으므로 새 단계 책임·검증 gate의 반영 여부는 후속 동기화 때 확인한다. 제품 코드·설치·테스트·실로그 파일럿 acceptance는 모두 NOT RUN이다.
+
+## 2026-09-30 P0: bounded 지표 증거와 사전 gate
+
+조사 기준은 사용자가 개정한 main `36bb389262ae44d3f7afe3060401537c41f55c11`이다. 별도 연구 서브세션이 허용된 로컬 Codex·Claude 로그 12개 snapshot을 읽어 4,286개 완전 레코드의 필드·ID/timestamp 관계를 대조했다. 이전 최근 5개 prefix 조사와 다른 목적 표본이며 합쳐 모집단 coverage로 표현하지 않는다. 실제 경로·ID·digest는 로컬 private manifest에만 있고 원문·명령·출력·프롬프트·사용자 코드·비밀값은 공유 문서나 fixture에 넣지 않았다.
+
+- [EVIDENCE.md](EVIDENCE.md): 5개 Codex·2개 Claude runtime-header 층 × 10개 지표의 필요 필드, direct/observed/unsupported, 후보 eligible/inspected/timed 단위, 누락 사유와 독립 합성 fixture 연결을 기록했다. 조사 gate와 실제 파서/지원 승격을 분리한다. fork 원래 실행 버전·canonical wrapper·operation/error identity의 의미는 미검증이다.
+- Codex command/MCP 362개 후보 중 32개는 직접 duration과 item boundary 차이가 1 ms를 넘었다. runtime과 lifecycle을 같다고 강제하거나 위치 없는 duration의 구간을 역산하지 않는다. 별도 interval scope/evidence 계약을 부모가 계획에 반영했다.
+- Claude 표본 280개 tool_use는 결과 ID와 nonnegative 시각 관계로 연결됐지만 직접 duration은 0/280이었다. 관측 latency이며 프로세스 runtime을 증명하지 않는다. `turn_duration` 8개는 직접 합계 후보이며 명시적 턴 구간이 아니다.
+- Claude `2.1.241`의 243개 message IDs 중 108개에서 재저장 usage 값이 달랐다. 첫 값으로 고정하거나 모든 값을 더하지 않는다. source ordering/final snapshot 의미·cache 계약을 파서 대조하고 synthetic updated-usage로 고정한다.
+- Codex fork 표본에는 선두 runtime metadata 뒤에 다른 버전의 metadata가 복사돼 있었다. 완료 항목의 explicit thread는 선두 meta ID와 일치했다. `subagent_history_start_ordinal`이라는 필드명이나 값만으로 copied/new 경계·원래 실행 버전을 확정하지 않는다. 검증된 관계가 없으면 origin 불명을 유지한다.
+- [QUALITY.md](QUALITY.md): 6개 규칙 각각 양성·정상 음성, included/excluded/waste 의미, 목적 표본 선택·TP/FP/판정 불가·제안 적용 가능성과 출시 지원 gate를 사전 결정했다. 검토 주체는 부모 Codex 기술 검토이며 사람 파일럿은 NOT RUN이다.
+- [BENCHMARKS.md](BENCHMARKS.md): 합성 small/large/append/no-change/report/boundary workload, 최소 장비 class와 Node·cold/warm 조건을 정했다. macOS 기준은 부모가 hardware 필드를 확인한 로컬 Apple M4·16 GiB 장비로 선택하고 Linux runner는 미배정으로 남겼다. 64 KiB chunk·LF만 제외한 raw bytes 1 MiB line 계약에 맞춰 full/incremental 시간·512 MiB peak RSS·25 MiB HTML의 초기 예산을 측정 전에 고정했다. 실제 성능·브라우저 응답 예산은 미검증/TBD이며 제품 자원 acceptance는 NOT RUN이다.
+
+실제 로그 대조를 반복 확장하지 않고 이 bounded increment의 미확인 조건을 P2/P3/P7에 넘긴다. 해당 공급자 버전 지원·진단 precision·성능 우위를 확인했다고 주장하지 않는다.

@@ -2,11 +2,11 @@
 
 ## Status
 
-2026-09-30. 문서·초기 조사 단계다. 제품 구현은 미착수이며, 아래 구현 체크는 모두 열린 상태다. [SPEC.md](SPEC.md), [ARCHITECTURE.md](ARCHITECTURE.md), [METRICS.md](METRICS.md), [IMPLEMENTATION.md](IMPLEMENTATION.md)에 따라 진행한다.
+2026-09-30. `36bb389`의 개정 계획으로 P0 조사·계약·합성 fixture 검토를 마쳤고 P1 CLI·개인정보 기반을 구현 중이다. 파서·집계·HTML은 후속 단계다. 공급자 지원과 제품 acceptance를 계약 검사 통과로 간주하지 않는다. [SPEC.md](SPEC.md), [ARCHITECTURE.md](ARCHITECTURE.md), [METRICS.md](METRICS.md), [IMPLEMENTATION.md](IMPLEMENTATION.md)에 따라 진행한다.
 
-기존 GitHub 이슈 본문은 이번 문서 개정에서 수정하지 않았다. 새 검증 기준과 단계 이동은 이 문서를 우선하며 이슈 동기화는 별도 확인한다.
+2026-09-30 개정된 단계·Verify를 GitHub 이슈 #1–#8에 동기화하고 본문 readback을 확인했다. 실제 구현 상태·검증 evidence는 이 문서를 우선한다.
 
-단계마다 구체적인 `Verify`를 수행한 뒤 완료로 표시하고 실제 evidence를 붙인다. 제품 범위·구현 결정이 달라지면 해당 문서를 먼저 갱신한다. 다음 코드 작업은 개발 서브세션에서 맡는다.
+단계마다 구체적인 `Verify`를 수행한 뒤 완료로 표시하고 실제 evidence를 붙인다. 제품 범위·구현 결정이 달라지면 해당 문서를 먼저 갱신한다. 코드 작업은 개발 서브세션에서 맡고 부모가 계획·변경·검증과 게시를 검토한다. P0 evidence와 기대값 검토 후 P1로 진행한다.
 
 ## Planning and Repository Bootstrap
 
@@ -18,15 +18,19 @@
 
 GitHub: [#1](https://github.com/WhiteKiwi/agentprof/issues/1)
 
-- [ ] 허용된 로컬 실로그로 지표·공급자·버전별 필요 필드·의미·커버리지 행렬을 작성한다.
+- [x] 허용된 로컬 실로그로 지표·공급자·버전별 필요 필드·의미·커버리지 행렬을 작성한다.
   **Verify:** METRICS 행렬의 모든 지표에 direct/observed/inferred/unsupported, inspected/eligible/timed 표본 수, 선택 조건·누락 이유·합성 fixture 연결을 기록한다. 원문·명령·출력 업로드가 없다. 접근/검증 부재는 NOT RUN이며 지원 완료로 표시하지 않는다.
-- [ ] 진단 품질 평가와 자원 측정 조건·예산을 정한다.
+  **Evidence:** [EVIDENCE.md](EVIDENCE.md)의 12개 로컬 표본·4,286개 완전 레코드·7개 header 버전 층 × 10개 지표를 부모가 검토했다. 후보 호출·턴·usage 분모와 누락·ambiguous origin을 분리했다. 원문은 저장소 밖에 유지한다. 파서 결과와 제품 지원 승격은 NOT RUN이다.
+- [x] 진단 품질 평가와 자원 측정 조건·예산을 정한다.
   **Verify:** 6개 규칙 각각 양성·정상 음성, 평가 표본 선택·판정, 오탐 검토·구체적 다음 행동의 판단 방법과 출시 pass/fail gate·검토자가 사전 확정되어 있다. workload·장비·Node·cold/warm 조건과 full/incremental 시간·peak RSS·최대 줄·HTML 크기 예산을 기록한다. 미결정은 TBD이고 측정은 NOT RUN이다.
+  **Evidence:** [QUALITY.md](QUALITY.md)의 6개 규칙·기술 검토자·목적 표본·오탐 보류 gate와 [BENCHMARKS.md](BENCHMARKS.md)의 workload·M4 기준 장비·Node·cold/warm·사전 예산을 검토했다. 64 KiB chunk, LF 제외 raw 1 MiB line 제한을 정했다. Linux 기준 장비 배정·제품 성능·사람 파일럿은 NOT RUN이다.
 
-- [ ] 현재·구형 입력과 capability 지원표, provider별 ID 연결을 정의한다.
+- [x] 현재·구형 입력과 capability 지원표, provider별 ID 연결을 정의한다.
   **Verify:** Codex 완료 항목·response, Claude call/result·중복 메시지·sidechain·archive·fork fixture에서 기대 event IDs와 호출 수를 수작업으로 확인한다.
-- [ ] 시간·10 지표·6 진단의 합성 기대값과 개인정보 sentinel을 작성한다.
+  **Evidence:** [FIXTURES.md](FIXTURES.md)와 provider expected JSON의 7개 shape를 검토했다. 7개 JSONL·55개 합성 레코드의 문법·ID 참조·canonical 호출 수·archive byte 동일성을 확인했다. annotation 없는 fork는 origin 불명이다. 실버전 지원 목록과 shape 계약을 구분했다.
+- [x] 시간·10 지표·6 진단의 합성 기대값과 개인정보 sentinel을 작성한다.
   **Verify:** 순차·병렬·retry overlap·unresolved recovery·반복 읽기 변경·토큰 누적·날짜 경계의 계산을 METRICS와 대조한다. 실제 사용자 원문이 fixture에 없다. 규칙별 waste 포함표, 첫 실패 포함/첫 lookup 제외, slow-tool 단독 제외, canonical wrapper·병렬·기간 clipping의 수작업 기대값을 고정한다.
+  **Evidence:** 19개 metric 사례·9개 waste 사례·6개 진단 각각 양성/정상 음성·독립 sentinel을 고정했다. 부모의 독립 계산으로 sum 20초/union 15초, retry 9초·recovery 11초, lookup 6초, rule overlap 총 15초, clipping 7초, nearest-rank와 53/91 비율을 대조했다. 이는 oracle 검토이며 parser/analyzer 실행 통과가 아니다.
 
 ## P1 — CLI Foundation and Privacy Boundary
 
@@ -34,8 +38,10 @@ GitHub: [#2](https://github.com/WhiteKiwi/agentprof/issues/2)
 
 - [ ] 런타임·SQLite driver·package manager·의존성을 고정하고 빌드·도움말·CI를 구성한다.
   **Verify:** macOS arm64·Linux의 Node 24.15.0과 현재 지원 24 버전에서 SQLite import·parameter binding·transaction rollback·migration·close-reopen, clean install·빌드·help/version을 실행한다. 미지원 구형 Node에서 명확한 진단을 확인한다. 설치 스크립트·native addon 요구사항을 기록한다.
-- [ ] 로컬 데이터 경로·입력 override·권한·허용 필드·원문 없는 진단을 구현한다.
+  **Evidence:** 2026-09-30 부모가 macOS arm64의 Node 24.15.0·24.21.0·26.7.0에서 각각 `npm ci --ignore-scripts --no-audit --no-fund`와 `npm run check`를 통과했다. 5개 파일·60개 테스트와 14파일 tarball의 npm exec·격리 전역 설치를 확인했다. Node 22.16.0은 import 전 `UNSUPPORTED_RUNTIME`·exit 2다. Linux CI 확인은 남아 있다. 의존성·설치 경계는 [IMPLEMENTATION.md](IMPLEMENTATION.md)에 기록했다.
+- [x] 로컬 데이터 경로·입력 override·권한·허용 필드·원문 없는 진단을 구현한다.
   **Verify:** 입력 파일 hash가 바뀌지 않는다. secret sentinel이 정규화 결과·진단에 남지 않는다. empty input, 큰 줄과 root 밖 symlink에서 정해진 동작을 확인한다. commandPattern·operationKey·lookup/content/error fingerprint의 허용 필드·null·정규화/키 버전 계약을 확인한다.
+  **Evidence:** 위 3개 macOS 런타임에서 합성 sentinel·입력 hash·1 MiB 경계·BOM/CRLF·partial UTF-8/JSON·append/truncate·symlink·ambiguous provider root·동시 key 초기화·명령 인자/시간 근거 충돌·DB migration/rollback/reopen 검증을 통과했다. [NORMALIZATION.md](NORMALIZATION.md)의 allowlist와 key/normalization version 1을 구현했다. 파서·이벤트 저장·분석·HTML의 전체 개인정보 acceptance는 NOT RUN이다.
 
 ## P2 — Codex Adapter
 
@@ -94,4 +100,3 @@ GitHub: [#8](https://github.com/WhiteKiwi/agentprof/issues/8)
   **Verify:** 두 공급자의 수작업 표본과 수치가 맞는다. clean install → scan → stats → insights → report를 macOS arm64·Linux에서 확인한다. P0 자원 예산 대비 시간·메모리·HTML 크기의 측정 조건과 실패를 ACCEPTANCE에 기록한다. 공급자/버전·지표 지원 행렬과 진단별 오탐·제안 품질을 갱신하고 수동 matched before/after 절차의 조건·표본·효과 없음/비교 불가도 남긴다. 자동 비교 UI는 구현하지 않는다.
 
 Homebrew·Rust·추가 비교 기능은 [BACKLOG.md](BACKLOG.md)에 있다. active TODO로 옮기기 전에 사양·연구·구현 계획을 갱신한다.
-
