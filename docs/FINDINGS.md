@@ -1,0 +1,162 @@
+# AgentProf Research Findings
+
+## 로그 형식 조사
+
+확인일: 2026-09-30. 계획을 위한 로컬 구조 조사이며, 파서 구현·정확도 검증이 완료된 상태는 아니다.
+
+최근 수정된 Codex·Claude Code JSONL을 각각 5개 선택해 파일당 첫 2,500줄까지 조사했다. 출력은 이벤트 종류, 필드 구조, 버전·집계 수치로 제한했다. 원문 프롬프트·명령·도구 출력·사용자 코드와 실제 로그 파일은 이 저장소에 복사하지 않았다. 조사 중 로그가 append될 수 있어 아래 수치는 고정된 평가 corpus가 아니다.
+
+### Codex: 구조화된 완료 이벤트를 우선 활용
+
+관측된 런타임 버전: `0.159.0`, `0.157.0`, `0.153.4`, `0.149.0-alpha.4.3`. 이 버전들의 모든 기능을 지원한다고 보증하는 목록은 아니다.
+
+| 관측 필드·레코드 | 파서에서의 의미 |
+| --- | --- |
+| `session_meta` | `id`, `session_id`, `cwd`, `cli_version`, 공급자·source metadata |
+| `turn_context` | 턴 ID, 모델, 타임존 등 변화 가능 설정 |
+| `response_item` | function/custom call, output, message, reasoning |
+| `event_msg.item_completed` | `item`, `started_at_ms`, `completed_at_ms`, `thread_id`, `turn_id` |
+| `item.type = CommandExecution` | 명령, 프로세스 ID, 상태·종료 코드, `duration: {secs, nanos}` |
+| `item.type = McpToolCall` | 서버·도구, 상태, duration, 구조화된 결과 |
+| `task_started` / `task_complete` | 턴 시작·완료와 duration 후보 |
+| `token_usage_record` / `token_count` | 응답별 사용량과 누적 스냅샷. 중복 집계 방지 필요 |
+| `compacted`, 서브에이전트·통신 관련 항목 | 복사된 이력·관계·관측 범위 처리 필요 |
+
+한 후속 구조 조사에서 `CommandExecution` 1,572개와 `McpToolCall` 77개를 관측했다. 이 표본에는 각각 숫자형 시작·종료 시각과 구조화된 duration이 있었다. 최근 표본에 시간 근거가 존재한다는 뜻이며, 과거 버전·모든 도구·전체 corpus의 커버리지를 뜻하지 않는다.
+
+코드 모드의 최상위 이름이 `exec`로 저장된 호출이 다수 있었다. 하지만 내부 명령·MCP 작업의 완료 항목도 따로 관측됐다. 따라서 wrapper의 입력 코드를 정규식으로 추측하기 전에 구조화된 항목을 확인한다. 두 표현을 함께 합산하지 않도록 실제 ID 연결을 검증해야 한다.
+
+출력은 문자열과 content-block 배열 두 형식이 관측됐다. 텍스트에 나타난 wall time은 버전별 보조 근거이며, 구조화된 시간과 충돌하거나 비동기 프로세스의 일부 응답이면 전체 실행 시간으로 쓰지 않는다.
+
+공식 OpenAI 문서는 thread archive가 저장된 JSONL을 아카이브 디렉터리로 이동한다고 설명한다. fork는 고유 thread ID와 원본 관계를 갖고, `sessionId`는 루트 그룹과 관련될 수 있다. 이는 아카이브 이동과 thread/session 식별을 별도로 다뤄야 하는 근거다. JSONL의 완전한 장기 호환 스키마가 이 문서로 보장된다는 의미는 아니다. [Codex App Server — Threads](https://learn.chatgpt.com/docs/app-server#threads).
+
+### Claude Code: 호출·결과 연결과 시간 누락 처리
+
+관측된 로그 버전: `2.1.241`. 최초 조사에서 1,963개 레코드와 382개의 `tool_use`, 382개의 `tool_result` 블록을 관측했다. 일대일 연결·중복 제거가 검증됐다는 뜻은 아니다.
+
+| 관측 필드·레코드 | 파서에서의 의미 |
+| --- | --- |
+| `user`, `assistant` | `uuid`, `parentUuid`, `sessionId`, timestamp와 message |
+| `tool_use` | 도구 `id`, `name`, input |
+| `tool_result` | `tool_use_id`, `is_error`, content |
+| `toolUseResult` | 도구마다 다른 구조. 상태·duration이 일부에만 존재 |
+| `system` / `turn_duration` | 턴 단위 `durationMs` 후보 |
+| `agentId`, `isSidechain` | 서브에이전트·이력 분기 식별 후보 |
+| message usage | 입력·출력·cache 사용량. 메시지 재저장·중복 여부 검증 필요 |
+
+후속 조사에서 구조화된 `toolUseResult` 367개 중 `durationMs`는 7개, `durationSeconds`는 2개에 존재했다. `turn_duration`도 26개 관측됐다. 따라서 모든 도구의 정확한 실행 시간을 직접 얻을 수 있다고 가정하지 않는다.
+
+호출과 결과의 timestamp 차이는 호출 관측 구간이며 순수 프로세스 실행 시간과 다를 수 있다. 동시 호출, 백그라운드 작업과 결과 지연은 합성 fixture로 검증한다. 직접 duration이 없으면 `paired_timestamps` 또는 검증된 추정으로 표시한다.
+
+공식 Claude 문서는 기본 저장 위치를 `~/.claude/projects/<encoded-cwd>/*.jsonl`로 설명하고 `CLAUDE_CONFIG_DIR` 설정 시 다른 root를 사용한다고 명시한다. fork는 이력을 복사하므로 복사된 과거와 새 실행을 구분해야 한다. [Work with sessions](https://code.claude.com/docs/en/agent-sdk/sessions).
+
+### 로그 계약: P0에서 확정할 질문
+
+- Codex 완료 항목·response call의 실제 ID 연결과 구형 fallback 우선순위는 무엇인가?
+- duration과 시작·종료 시각은 각 소스에서 같은 구간을 의미하는가?
+- 진행 중 호출, process polling과 백그라운드 작업의 완료 근거는 무엇인가?
+- Claude 메시지·usage가 재저장될 때 어떤 ID로 중복을 제거하는가?
+- fork·sidechain·아카이브 이동에서 보존되는 식별자는 무엇인가?
+- 압축·손상·미지원 레코드를 어떤 진단과 커버리지로 나타낼 것인가?
+
+지원표는 실제 fixture와 버전별 검증 결과로 작성한다. 위 관측값을 전체 제품 지원 약속이나 시간 정확도의 근거로 확대하지 않는다.
+
+## 배포와 SQLite 조사
+
+확인일: 2026-09-30. [초기 설계](reference/agenttrace-design.md), [지표·진단 제안](reference/agentprof-metrics-and-insights.md), [SPEC](SPEC.md), [METRICS](METRICS.md), [ARCHITECTURE](ARCHITECTURE.md)를 읽고 공식 1차 자료를 확인했다. 아래 **확인 사실**과 **연구 판단**은 구분한다. 패키지 설치·DB 실행·성능 benchmark는 수행하지 않았다.
+
+### 공식 자료에서 확인한 사실
+
+| 자료·확인 버전 | 확인 사실 | 제품에 적용할 때의 한계 |
+| --- | --- | --- |
+| [npm exec, npm CLI v11 문서](https://docs.npmjs.com/cli/v11/commands/npm-exec/) | `npx`는 `npm exec`를 사용한다. 필요한 패키지가 없으면 npm cache에 설치하고 실행 PATH에 추가한다. 실행 파일은 `package.json`의 `bin`에서 결정한다. | `npx`는 Node 런타임을 없애는 배포 방식이 아니다. 최초 패키지 획득에는 네트워크가 필요하며, 분석의 오프라인 동작과 구분해야 한다. |
+| [npm package.json, npm CLI v11 문서](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/) | Node CLI의 `bin`은 Node shebang을 사용한다. `engines`는 `engine-strict` 설정이 없으면 기본적으로 advisory다. | `engines`만으로 구형 Node의 실행을 확실히 막는다고 가정하지 않는다. SQLite를 import하기 전 런타임 검사와 명확한 진단을 계획한다. |
+| [Node.js v24.21.0 SQLite](https://nodejs.org/docs/v24.21.0/api/sqlite.html), [공식 Markdown](https://nodejs.org/docs/v24.21.0/api/sqlite.md) | `node:sqlite`는 내장 모듈이다. v24.15.0부터 **Stability 1.2 — Release candidate**다. v22.13.0·v23.4.0에서 실험 플래그가 제거된 것과 Stable 전환은 다른 사건이다. `DatabaseSync` API는 동기 실행이다. | Stable API로 표현하면 틀린다. 내장 모듈 사용은 별도 SQLite native addon 배포를 줄이지만 Node 버전 요구와 RC 호환성 검증을 남긴다. |
+| [Node.js v24.21.0 Stability index](https://nodejs.org/docs/v24.21.0/api/documentation.html#stability-index) | 1.2는 Experimental의 하위 단계다. 추가 breaking change가 예상되지는 않지만 사용자 피드백이나 underlying specification 변경에 따라 발생할 수 있다고 명시한다. | Node 24 LTS라는 사실이 SQLite API의 Stable 지위를 뜻하지 않는다. 최신 문서의 API가 최소 지원 patch에도 존재하는지 따로 확인해야 한다. |
+| [better-sqlite3 v13.0.0 release](https://github.com/WiseLibs/better-sqlite3/releases/tag/v13.0.0) | v13은 N-API로 전환했다. `prebuild-install`을 제거하고 prebuilt 바이너리를 패키지 자체에 포함한다. 유지관리자는 여러 Node·Electron 버전 간 호환을 기대한다고 설명한다. | 구형 v12의 설치 시 바이너리 다운로드 방식을 v13의 현재 동작으로 설명하지 않는다. N-API도 모든 OS·architecture·libc 조합의 동작을 보장하지 않는다. |
+| [better-sqlite3 v13.0.3 release](https://github.com/WiseLibs/better-sqlite3/releases/tag/v13.0.3), [해당 tag의 package.json](https://github.com/WiseLibs/better-sqlite3/blob/v13.0.3/package.json) | 확인 당시 latest release는 v13.0.3이다. manifest는 Node `>=22`, `prebuilds/**` 포함, `node-addon-api` 의존성을 명시한다. `install`·`postinstall` 스크립트는 해당 manifest에 없다. | release 안내의 미지원 플랫폼 source build 설명만으로 설치 단계의 실제 fallback을 보증하지 않는다. 선택 시 published tarball·loader·플랫폼별 경로와 clean install을 P1에서 확인한다. |
+| [Homebrew Language-Specific Formulae — Node.js](https://docs.brew.sh/Language-Specific-Formulae#nodejs) | 완전한 npm release tarball의 URL·SHA-256, 명시적 Node dependency, `std_npm_args`를 이용한 `libexec` 설치와 bin symlink 경로를 제공한다. 설치 lifecycle scripts는 기본적으로 무시한다. | Homebrew 사용에 Rust가 필수는 아니다. formula의 실제 source·runtime·native dependency와 기능 검증은 필요하다. 이 가이드는 `homebrew/core` 수용이나 agentprof tap 출시를 보장하지 않는다. |
+
+Node 문서는 웹 도구 접근 실패 후 동일 공식 `nodejs.org`의 Markdown을 `curl`로 읽었다. `latest-v24.x` index의 표제는 v24.21.0이었으며 재현 가능한 인용은 그 버전 URL로 고정했다. 현재 설치된 사용자 런타임을 지원표로 삼거나 패키지를 설치하지 않았다.
+
+### 연구 판단과 권고
+
+초기 기본 계획은 **TypeScript + Node.js 24.15.0 이상 + `node:sqlite`**, 첫 사용은 `npx`, 반복 사용은 npm 전역 설치다. JSONL 정규화·규칙과 HTML 개발을 한 저장소에서 진행하고 별도 SQLite addon 설치 경로를 줄이는 데 우선순위를 둔다. 이는 구현 전 선택이며 설치 성공·성능 우위를 이미 입증했다는 뜻이 아니다.
+
+Node 24의 최소 patch와 현재 patch를 검증 대상으로 삼는다. `>=24.15.0`을 선언하더라도 이후 모든 major를 검증했다고 표현하지 않는다. 정확한 npm 패키지명과 게시 권한은 P7에서 확인하며 출시 전 실행 예시는 예정 기능으로 표시한다.
+
+P1에서 다음을 검증하고 결과를 `IMPLEMENTATION`·`TODO`·`ACCEPTANCE`에 반영한다.
+
+- SQLite import와 실제 필요한 API가 최소 지원 버전과 현재 지원 버전에 모두 존재한다.
+- parameter binding, transaction commit·rollback, migration, close·reopen과 정수·`null` 처리가 기대값과 맞는다.
+- 잠금·busy timeout, journal mode, 중단 복구와 로컬 파일 권한이 CLI 사용 조건을 충족한다.
+- 빌드된 CLI·HTML assets만 담은 tarball이 새 macOS arm64·Linux 환경에서 npm exec·global install로 실행된다. 런타임 부족을 SQLite import 오류 전에 설명한다.
+
+RC API의 호환성이나 필요한 DB 기능이 이 조건을 충족하지 않으면 **제품 코드를 구현하기 전에** 계획을 `better-sqlite3`로 변경한다. v13 기준으로 정확한 버전과 published artifact를 고정하고 prebuilt 지원 대상·fallback·Node 호환성을 검증한다. 구형 설치 위험을 근거로 무조건 제외하지 않는다.
+
+Homebrew formula는 npm artifact를 검증한 뒤 추가할 수 있다. Rust CLI나 Rust scanner는 대용량 스캔의 시간·메모리 또는 Node 설치 부담을 실제로 측정한 후 별도 판단한다. 현재는 Rust가 더 빠르다는 가정이나 Homebrew 선호만으로 언어를 확정하지 않는다. 내장 SQLite의 동기 API가 배치 CLI에 적합한지도 P1의 작은 실험과 P7의 자원 측정으로 확인한다.
+
+## 10개 지표와 6개 진단의 의미 검토
+
+검토일: 2026-09-30. 이 절은 두 제안서의 예시를 [METRICS](METRICS.md)의 관측 계약과 대조한 **연구 판단**이다. 예시 수치나 기본 임계값은 실제 데이터에서 검증된 통계가 아니다. 현재 로그 구조 조사도 지표 정확도·진단 precision 검증을 대신하지 않는다.
+
+### 10개 MVP 지표
+
+| 지표 | 의미가 달라질 위험 | 계획에 필요한 계약 |
+| --- | --- | --- |
+| Active Time | session의 첫·마지막 timestamp 차이에 며칠의 공백이나 대기가 포함됨 | 명시적 턴 구간의 합집합과 observed span을 구분한다. 턴 경과 시간은 CPU 실행·순수 모델 사고 시간으로 표시하지 않는다. |
+| Tool / Command / Category Time | 병렬 호출 합계와 wrapper·내부 작업의 중복으로 경과 시간 초과 | 실행 정체성을 먼저 정리하고 호출 합·구간 합집합·`concurrent`를 구분한다. 표시 패턴과 작업 정체성도 분리한다. |
+| p50 / p95 Latency | runtime·항목 lifecycle·관측 latency를 섞거나 작은 표본으로 꼬리를 확정 | 같은 scope·evidence의 terminal 표본, nearest-rank와 `n`을 유지한다. `n < 20` 경고는 제품 판단이다. |
+| Failed Executions | `rg` exit 1의 결과 없음, 취소·pending을 실행 실패에 포함 | 명령 의미에 따른 terminal status와 성공·실패·취소·unknown 분모를 각각 드러낸다. |
+| Retry Overhead | 체인 경과 시간에서 성공 duration을 뺀 값을 불필요한 재시도로 오해 | 실패 시도의 알려진 시간과 체인 경과 시간을 분리한다. 같은 작업·오류 연결 근거가 있어야 한다. |
+| Repeated Error Time | 같은 error와 retry의 시간을 이중 합산하거나 첫 오류 이후 전체를 손실로 계산 | 알려진 실패 구간만 포함하고 global Detected Waste는 합집합으로 만든다. fingerprint 충돌·불명도 남긴다. |
+| Recovery Time | 다른 작업의 성공을 복구로 연결하거나 미해결을 0으로 채움 | 같은 작업의 첫 실패 결과부터 확인된 성공 결과까지 연결한다. 해결된 체인의 분포와 미해결 수를 함께 표시한다. |
+| Repeated Read / Search Ratio | 같은 파일의 재방문을 불필요한 동일 내용 읽기로 판단 | 비율은 재방문의 기술이다. 진단은 읽기 범위·내용 식별·변경·결과 잘림을 추가로 확인한다. 검색 fingerprint는 별도로 둔다. |
+| Edit → Validation Cycles | command 이름만으로 full build, 편집 도구만으로 전체 파일 변경을 확정 | 관측한 편집만 연결하고 검증 scope 근거와 terminal 분모를 유지한다. unknown은 계산에서 드러낸다. |
+| Token Attribution | 응답 사용량·누적 snapshot·cache를 중복 합산하고 주변 도구에 귀속 | 공급자 필드 의미와 고유 응답을 검증한다. 턴 사용량 우선, 단계·도구 귀속은 근거가 없으면 `unattributed`다. |
+
+### 핵심 의미 위험
+
+**겹침은 두 단계에서 처리한다.** 동일 실행의 wrapper·내부 표현을 제거하는 작업과 실제 독립 호출의 병렬 구간을 합치는 작업은 다르다. 실행 ID를 먼저 정리한 뒤 구간 합집합을 구한다. retry 12초와 repeated error 8초가 5초 겹치면 총계는 15초다. 내역 20초를 경과 시간으로 표시하지 않는다. 위치를 모르는 duration은 별도의 호출 합에만 포함한다.
+
+**복구 통계에는 관측 종료를 남긴다.** [NIST Censoring](https://www.itl.nist.gov/div898/handbook/apr/section1/apr131.htm)은 관측 기간 이후의 완료 시점을 모르는 데이터를 right censored로 설명한다. 이를 AgentProf에 적용하는 것은 연구 판단이다. 복구가 없었다는 충분한 관측 근거가 있을 때 미해결 체인의 관측 기간은 하한 정보가 될 수 있다. 단순 로그 누락·관측 단절은 동일한 정보가 아니므로 분리한다. 해결된 체인만의 median은 **해결된 체인에서 관측한 median**으로 표시하고 전체 복구 시간 분포를 추정했다고 하지 않는다. v0.1에 survival model 구현을 추가하는 제안은 아니다.
+
+**명령 패턴은 작업 ID가 아니다.** `npm test foo`와 `npm test bar`가 `npm test <target>`으로 표시되어도 서로 복구시키지 않는다. `operationKey`에는 provider가 확인한 프로젝트·실행 문맥과 정규화된 대상·중요 플래그의 keyed fingerprint를 보존한다. 원문 인자를 저장하지 않고도 구별할 수 있어야 한다. 임의 셸 문자열은 치환·실행하지 않는다. 복합 명령의 작업 분리가 불명확하면 체인 진단 신뢰도를 낮추거나 미분류로 둔다.
+
+**읽기 후 변경은 검증 가능한 범위에 한정한다.** 같은 파일을 편집 뒤 다시 읽거나 다른 줄 범위를 읽는 것은 정상 검증일 수 있다. CLI는 현재 파일 내용을 다시 열어 과거의 동일성을 만들지 않는다. 입력 로그에서 내용 식별·변경 여부를 확인하지 못하면 `unknown`이다. 외부 변경을 관측하지 못한 것도 파일이 그대로였다는 증거가 아니다. 원문 내용 대신 로컬 fingerprint와 범위·관측 관계를 사용한다.
+
+**토큰 근처의 활동은 토큰 소비 주체를 증명하지 않는다.** model response usage는 해당 도구의 실제 입력 크기나 작업 단계별 비용이 아니다. cumulative snapshot, 재저장 응답과 fork의 복사된 이력을 함께 합산하지 않는다. cache 포함 관계는 공급자별로 확인하며 한 공급자의 필드 의미를 다른 공급자에 적용하지 않는다. 단계 추정이 가능해도 measured turn usage와 별도 evidence로 표시한다.
+
+### 6개 초기 진단
+
+| 진단 | 검토 판단·경계 |
+| --- | --- |
+| Slow Tool | 같은 duration scope·evidence의 관측 비중과 표본을 근거로 우선순위를 제안한다. 로그만으로 네트워크·서버·모델 원인을 확정하지 않는다. |
+| Retry Loop | 같은 `operationKey`·오류·턴의 반복 실패를 연결한다. 표시 패턴만 같은 대상·플래그 변경을 다른 작업으로 남긴다. |
+| Repeated Error | 세션 간 오류의 재발이다. setup·문서 개선은 가설이며 keyed fingerprint만으로 root cause를 확정하지 않는다. |
+| Exploration Thrashing | 읽기·검색의 높은 빈도와 적은 관측 편집은 휴리스틱이다. 조사·리뷰에는 정상일 수 있으므로 “진행 없음”이나 절감 시간을 단정하지 않는다. |
+| Validation Thrashing | 반복 검증과 편집·scope 근거를 연결한다. full scope 근거가 없으면 expensive full build로 설명하지 않는다. |
+| Context Churn | 같은 lookup·범위·관측된 내용과 변경 상태를 비교한다. 편집 뒤 재읽기·범위 차이·불명확한 내용 동일성은 제외하거나 신뢰도를 낮춘다. |
+
+규칙의 횟수·10분·15분 기준과 Slow Tool 비중은 초기 튜닝 후보다. 외부 표준이나 실제 성능 개선 효과에서 유도한 수치가 아니다. 합성 양성·음성 사례와 로컬 파일럿에서 근거·rule version·false positive를 확인한 뒤 조정한다. 조언과 실제 개선 효과는 분리하며 Detected Waste는 **관측 패턴에 연결된 시간**이라는 설명을 유지한다.
+
+### 구현 전에 남은 질문
+
+- P0: 소스별 턴·항목·프로세스 시간의 scope, clock 차이·충돌·누락에 대한 우선순위는 무엇인가?
+- P0: wrapper와 child의 같은 실행 여부를 입증할 ID가 없을 때 어떤 표본과 커버리지를 제외할 것인가?
+- P0: operation identity에 필요한 대상·플래그를 어디까지 관측할 수 있으며 복합 명령·대상 변경은 어떻게 분리할 것인가?
+- P0: 결과 없음·실행 실패·취소의 provider별 의미, 서로 다른 오류와 새로운 시도의 체인 분리 조건은 무엇인가?
+- P0: 관측 단절·미해결·뒤늦은 성공과 기간 경계를 recovery cohort에 어떻게 포함할 것인가? 기본 동일 턴 연결의 한계도 지원표에 남겨야 한다.
+- P0: 읽기 범위·내용 fingerprint·변경 증거가 공급자별로 어느 정도 존재하는가? 없으면 진단의 어떤 부분을 미지원으로 표시할 것인가?
+- P0: 고유 응답과 턴별 usage, cumulative snapshot, cache input 포함 관계를 각 공급자에서 어떻게 검증할 것인가?
+- P1: Node 최소·현재 버전에서 RC SQLite의 필요한 API와 DB 복구 검증이 통과하는가? 실패 시 `better-sqlite3` 계획 변경을 먼저 반영해야 한다.
+- P7: 규칙별 표본·시간 커버리지·false positive와 자원 측정은 어떤 로컬 파일럿 조건에서 보고할 것인가? 임계값을 검증했다고 주장할 기준을 정해야 한다.
+
+이 질문들은 구현 계약·검증 작업이다. FINDINGS의 연구 권고가 SPEC의 범위를 자동 확장하거나 acceptance를 통과시킨다는 뜻은 아니다. 실제 사용자 로그·프롬프트·코드·출력은 이 추가 조사에서 열거나 복사·업로드하지 않았다.
+
+## 최신 제품 결정
+
+기록일: 2026-09-30. 다음은 공식 자료에서 추론한 사항이 아니라 부모 계획 세션이 전달한 **사용자 결정**이다.
+
+- 마스코트는 **Salamander / 도롱뇽**으로 확정한다. Downloads의 `salamander1.png`, `salamander2.png`, `salamander3.png`는 README·리포트 디자인용 참고 자료다. 이는 최종 로고·배포 이미지가 완성됐다는 뜻은 아니다.
+- v0.1은 **일회성 HTML 생성과 열기**를 제공한다. 실시간 로컬 대시보드는 후속 확장 아이디어로 아키텍처에서 고려하며 현재 구현 범위에 넣지 않는다. 자동 watcher·대시보드 서버·상주 작업은 추가하지 않는다.
