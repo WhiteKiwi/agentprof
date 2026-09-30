@@ -3,6 +3,10 @@
 </p>
 
 <p align="center">
+  <img src="assets/brand/salamander-trace-reference.png" alt="AgentProf 마스코트: 어두운 바탕에 따뜻한 주황색 빛의 흔적을 가진 도롱뇽. Follow the slow." width="160">
+</p>
+
+<p align="center">
   <strong>AI 코딩 에이전트가 어디에 시간을 쓰는지.<br>무엇을 먼저 개선할 수 있는지.</strong>
 </p>
 
