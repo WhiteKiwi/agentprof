@@ -14,6 +14,29 @@ Draft, 2026-09-30. 사용자 제공 [metrics 제안](reference/agentprof-metrics
 - 값이 없으면 `null`이다. 분모가 0인 비율과 데이터가 없는 통계도 `null`이며, 정상적으로 관측한 0과 구분한다.
 - 시간 집계는 원칙적으로 구간 합집합이다. 호출 duration 합계는 별도 지표다. wrapper·내부 항목의 동일 실행 표현은 먼저 중복 제거한다.
 
+## Metric Evidence Matrix
+
+P0에서 아래 필요 필드를 공급자·로그 버전별로 대조하고, P2/P3에서 실제 정규화 출력과 수작업 표본을 검증한다. 실제 원문은 허용된 로컬에서만 읽고 커밋·업로드하지 않는다. 공개/공유 evidence는 원문 없는 집계·검증 조건과 독립적으로 만든 합성 fixture만 사용한다.
+
+| 지표 | 필요한 관측 필드·관계 |
+| --- | --- |
+| Active Time | turn ID, 명시적 시작/종료, duration scope |
+| Tool / Command / Category Time | canonical execution ID, 도구·안전한 commandPattern, 구간·duration scope |
+| p50 / p95 | terminal 상태, 같은 scope·timing evidence의 duration |
+| Failed Executions | terminal 상태·exit code와 명령별 실패 의미 |
+| Retry Overhead | project/turn, operationKey, errorFingerprint, 시도 관계·실패 구간 |
+| Repeated Error Time | errorFingerprint, session/project, 확인된 실패 구간 |
+| Recovery Time | 같은 operationKey의 실패·성공 결과 시각과 연결 근거 |
+| Repeated Read / Search Ratio | 기본 파일 재방문 비율: 파일 식별자; 기본 검색 비율: query·범위·옵션 fingerprint. 내용·변경 관측은 기본 비율의 필수 조건이 아니라 Context Churn 고신뢰 진단의 추가 요건 |
+| Edit → Validation Cycles | 관측된 편집 관계, 검증 상태·시각·scope 근거 |
+| Token Attribution | 고유 response/turn ID, usage 종류, 누적/증분·cache 의미 |
+
+각 행을 공급자·정확한 로그 버전별로 확장한 검증 기록은 다음 열을 필수로 가진다. `metric | provider/version | required fields present/missing | direct/observed/inferred/unsupported | eligible n / inspected n | timing-covered n / eligible n (scope별) | semantic check + synthetic fixture ID | status/reason`.
+
+`direct`는 검증된 직접 값, `observed`는 검증된 관측 관계로 계산, `inferred`는 별도 추정, `unsupported`는 필요한 근거 없음이다. 시간 evidence의 `source_reported/paired_timestamps/estimated/unknown`과 각각 대응하지만 비시간 지표에도 적용한다. 혼합 근거는 따로 나눠 기록한다. 0 분모의 coverage는 `null`이다. 버전·표본 선택·관측 기간과 누락 사유를 남겨 선택된 표본을 전체 모집단의 지원율로 확대하지 않는다.
+
+현재 이 행렬의 실측 결과는 **NOT RUN**, 표본 수·커버리지는 **TBD**다. 기존 필드 구조 관측은 의미 검증 통과가 아니다. 지원 승격은 해당 버전·지표의 합성 기대값과 로컬 대조가 통과한 범위에 한정한다. 원본을 읽을 권한/환경이 없으면 검증을 보류하고 지원 주장을 낮춘다.
+
 ## 1. Active Time
 
 `activeTimeMs = |union(지원되는 명시적 턴 구간)|`.
@@ -104,13 +127,30 @@ v0.1은 근거가 있는 턴별 사용량을 제공한다. 탐색·구현·디�
 
 ## Detected Waste Aggregation
 
-규칙이 근거로 지정한 정규화 이벤트 구간의 합집합을 총계로 계산한다. 같은 이벤트·구간이 여러 규칙에 해당해도 한 번만 센다. 내역별 값은 겹칠 수 있으므로 합계와 overlap을 함께 설명한다.
+아래 포함표를 통과한 규칙이 지정한 정규화 이벤트 구간의 합집합을 총계로 계산한다. 같은 이벤트·구간이 여러 규칙에 해당해도 한 번만 센다. 내역별 값은 겹칠 수 있으므로 합계와 overlap을 함께 설명한다.
 
 부모 wrapper와 내부 작업의 중복 표현은 이벤트 단계에서 제거한다. coarse heuristic만 있는 탐색·검증 패턴은 Top Insights에 제안할 수 있지만, 고신뢰 Detected Waste 시간에 자동 합산하지 않는다. 정확한 구간이 없는 duration은 패턴별 호출 시간 합계로 별도 제공한다.
 
 예를 들어 retry 후보 12초와 repeated-error 후보 8초가 5초 겹치면 총계는 15초다. overlap은 5초다. 미지원 source 때문에 전체 패턴을 확인할 수 없으면 알려진 하한과 커버리지를 표시하며 전체를 0으로 판정하지 않는다.
 
 **Verify:** 다중 규칙 overlap, wrapper 중복, 일부 timing 없음과 근거 없는 반복 검색에서 총계와 내역이 보존된다.
+
+### Rule-to-Waste Inclusion (v0.1)
+
+| Rule ID | 총계에 포함할 이벤트 | 제외·한계 |
+| --- | --- | --- |
+| `slow-tool` | 없음 | 비중·latency는 병목 신호이며 그 자체로 낭비가 아님 |
+| `retry-loop` | 임계값을 충족한 체인의 확인된 실패 시도 전부, 첫 실패 포함 | 성공 시도·시도 사이 대기·편집·chain elapsed 제외 |
+| `repeated-error` | 임계값을 충족한 오류 그룹의 확인된 실패 전부, 첫 발생 포함 | 오류 사이 간격·복구 성공 제외; retry와 중복 제거 |
+| `exploration-thrashing` | 없음 | 빈도·적은 편집만으로 정상 조사/리뷰와 구별 불가; insight만 제공 |
+| `validation-thrashing` | 이 규칙 단독으로는 없음 | 정상 반복 검증 가능; retry/error 자격이 있는 실패만 해당 규칙으로 포함 |
+| `context-churn` | 같은 lookup·범위·관측 내용 및 변경 상태가 검증된 그룹의 두 번째 이후 적격 반복 호출 | 첫 lookup·편집 후 읽기·다른 범위·잘린 결과·외부 변경 불명 제외; 필요한 근거 없으면 insight만 제공 |
+
+그룹/체인의 임계값은 명시된 observation window에서 판정하고 `evidenceEventIds`와 시간에 기여한 `includedEventIds`를 분리한다. 기간 필터로 그룹이 달라질 수 있으므로 window·query period를 저장한다. `repeated-error`처럼 별도 시간 한도가 없는 규칙의 window는 선택한 query period다. 실패 그룹은 첫 실패를 포함하지만 lookup 반복은 최초 호출을 제외하는 차이를 fixture로 고정한다.
+
+시간 총계는 canonical execution ID로 wrapper/child의 동일 실행 표현을 제거한 뒤, 적격 이벤트의 검증된 `[startAt, endAt)`를 query period에 잘라 합집합한다. 실제 독립 병렬 실행은 ID를 합치지 않고 시간 겹침만 한 번 센다. 동일 실행 관계가 불명이면 해당 기여를 확정 총계에서 제외하고 coverage에 남긴다. 직접 duration만 있고 위치가 없으면 구간을 역산하지 않는다. `source_reported`, `paired_timestamps`, `estimated`의 내역과 시간 의미를 유지하며 추정은 확정 관측 총계와 분리한다. 동일 canonical 실행에 여러 evidence가 있으면 공급자 계약으로 하나를 선택해 이중 계상하지 않는다.
+
+**Verify:** slow-tool 단독 20초는 waste에 기여하지 않는다. 적격 retry 실패 2·3·4초와 성공 1초는 실패 합 9초이며 첫 실패를 포함한다. 적격 동일 lookup 4회가 각 2초면 최초 제외 6초다. 변경/내용 불명이면 그 반복은 제외한다. retry 12초와 repeated error 8초의 overlap 5초는 총계 15초다. 각 사례에 독립 병렬·wrapper 중복·경계 clipping·duration-only·unknown 변형을 추가한다.
 
 ## Six Initial Diagnostics
 
@@ -127,4 +167,7 @@ v0.1은 근거가 있는 턴별 사용량을 제공한다. 탐색·구현·디�
 
 severity는 `INFO`, `NOTICE`, `WARNING`, `HOTSPOT`이다. 우선순위는 근거가 있는 관측 시간 영향, 반복 수와 신뢰도로 정한다. 취향이나 원문 프롬프트의 표현에 따라 severity를 결정하지 않는다.
 
-각 결과는 rule ID·version, severity, evidence event IDs, observation window, sample·coverage, measured impact, confidence, suggestion을 가진다. root cause는 가설임을 표시하고 조언과 실제 효과를 구분한다. 후기 before/after 기능은 같은 조건의 비교이며 인과 효과 검증으로 표현하지 않는다.
+각 결과는 rule ID·version, severity, evidence event IDs, observation window, sample·coverage, measured impact, confidence, suggestion을 가진다. root cause는 가설임을 표시하고 조언과 실제 효과를 구분한다. v0.1의 수동 파일럿과 v0.2의 자동 before/after 기능은 같은 조건의 비교이며 인과 효과 검증으로 표현하지 않는다.
+
+각 규칙은 최소 하나의 양성 및 정상 음성 합성 사례, 기대 included/excluded event IDs, 오탐이 될 수 있는 정상 작업, 구체적 다음 행동과 그 행동을 확인할 지표를 갖춰야 한다. Slow Tool의 정상 음성은 비중 기준 미달 또는 scope가 다른 표본이며, 느리지만 필요한 작업을 낭비로 해석하는지도 별도로 검토한다. 실제 파일럿에서는 검토 표본·오탐 수·판단 불가 수·제안의 적용 가능 여부와 rule version을 기록한다. precision 목표나 개선률을 미리 발명하지 않고 P0에서 평가 절차를 정한 뒤 P5/P7의 근거로 임계값을 보정한다.
+

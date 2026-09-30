@@ -6,7 +6,7 @@
 
 - 프로젝트 필터·MCP 서버·메서드 상세와 Session Explorer 확장.
 - 명시적 Skill 호출, 문서 읽기, 지침 적용 증거를 구분한 Skill 분석.
-- 설정 변경 지점, 동일 조건·표본 수·미분류를 드러내는 before/after 비교.
+- 설정 변경 지점, 자동 조건 매칭, 동일 조건·표본 수·미분류를 드러내는 before/after 비교 UI. v0.1의 수동 파일럿 검증 절차는 active 범위이며 [ACCEPTANCE](ACCEPTANCE.md)를 따른다.
 - regression·Missing Persistent Knowledge 복합 진단.
 - 개인정보 필터를 유지하는 JSON·CSV export.
 
@@ -37,3 +37,4 @@ active 작업으로 옮길 때 loopback 서버의 접근·수명·동시 스캔,
 사용자가 **Salamander / 도롱뇽**을 확정하고 3개 참고 PNG를 제공했다. 결정과 실제 자료는 [DESIGN.md](DESIGN.md)에 있다. 마스코트 후보 선정은 열린 작업이 아니다.
 
 최종 로고 형태, favicon·벡터 자산, README 배치와 리포트 테마는 후속 시각 작업이다. 제공 참고를 우선하고 작은 아이콘·다크·라이트 대비를 실제 렌더링으로 검증한다.
+
