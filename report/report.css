@@ -1,0 +1,9 @@
+.ap-report-context { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--ap-space-4); }
+.ap-report-context dt { color: var(--ap-text-muted); font-size: .875rem; }
+.ap-report-context dd { margin: 0; overflow-wrap: anywhere; }
+.ap-report-lede { max-width: 70ch; }
+.ap-report-table { overflow-wrap: anywhere; }
+.ap-report-table table { min-width: 0; }
+.ap-report-table th,.ap-report-table td { vertical-align: top; }
+@media(max-width:640px) { .ap-report-context { grid-template-columns:1fr; } .ap-report-table th,.ap-report-table td { padding: .5rem .25rem; font-size: .75rem; } }
+@media print { details > .ap-details-body { display: block !important; } }
