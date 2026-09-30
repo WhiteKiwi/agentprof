@@ -2,7 +2,7 @@
 
 ## Status
 
-2026-09-30. 아래는 **제품 흐름의 예정된 검증**이다. P0의 조사·계약·독립 합성 기대값을 검토했고 P1 실행 기반을 구현 중이다. 파서·분석·HTML·출시 파일럿은 아직 `NOT RUN`이다. 기반 코드의 부분 검증과 전체 제품 acceptance를 구분해 기록한다.
+2026-09-30. 아래는 **제품 흐름의 예정된 검증**이다. P0의 조사·계약·독립 합성 기대값 검토와 P1 실행 기반의 macOS/Linux 검증을 마쳤다. 파서·분석·HTML·출시 파일럿은 아직 `NOT RUN`이다. 기반 코드의 부분 검증과 전체 제품 acceptance를 구분해 기록한다.
 
 | ID | 기대 동작 | 검증 방식 | 상태 |
 | --- | --- | --- | --- |
@@ -59,7 +59,7 @@
 
 ## P1 Foundation Verification — 2026-09-30
 
-개정 계획 `36bb389` 기반 `codex/initial-foundation`의 부모 검토 상태다. package `0.1.0-dev.0`, normalization/key version 1, DB schema version 1을 사용했다. 아래 PASS는 기반 helper·help/version 범위이며 A01–A22의 전체 제품 acceptance를 대신하지 않는다.
+개정 계획 `36bb389` 기반 `codex/initial-foundation`의 코드 revision `4f030c69a6a046d9c13e0028adb8f346722f5856`을 부모가 검토했다. package `0.1.0-dev.0`, normalization/key version 1, DB schema version 1을 사용했다. [draft PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)와 [Linux CI run](https://github.com/WhiteKiwi/agentprof/actions/runs/36712410194)에 게시·실행 evidence가 있다. 아래 PASS는 기반 helper·help/version 범위이며 A01–A22의 전체 제품 acceptance를 대신하지 않는다.
 
 | 환경 | 실행 | 실제 결과 |
 | --- | --- | --- |
@@ -67,8 +67,8 @@
 | macOS arm64, Node 24.21.0 | 같은 실행 | PASS: 동일 검사·60개 테스트·tarball 설치 |
 | macOS arm64, Node 26.7.0 | 같은 실행 | PASS: 동일 검사·60개 테스트·tarball 설치 |
 | macOS arm64, Node 22.16.0 | built entry `--json --version` | PASS: CLI·SQLite import 전 `UNSUPPORTED_RUNTIME`, stderr JSON, stdout 없음, exit 2 |
-| Linux, Node 24.15.0·24.21.0·26.7.0 | Ubuntu 24.04 CI matrix의 동일 check | NOT RUN: push 이후 실제 결과 기록 |
-| Linux, Node 22.16.0 | bootstrap만 복사한 CI guard | NOT RUN: compiled CLI 없는 상태에서 runtime 거부 확인 예정 |
+| Linux x64, Node 24.15.0·24.21.0·26.7.0 | Ubuntu 24.04 CI matrix의 동일 clean install + check | PASS: 각 60개 테스트와 14파일 tarball 설치. CI 3개 job 모두 success |
+| Linux x64, Node 22.16.0 | bootstrap만 복사한 CI guard | PASS: compiled CLI가 없는 상태에서 import 전 거부·stdout 없음·exit 2·JSON code 확인 |
 
 부모가 각 지원 macOS 런타임에서 `npm ci --ignore-scripts --no-audit --no-fund` 후 check를 수행했다. `verify:artifact`는 npm cache·prefix를 새 임시 경로로 격리해 local tarball의 npm exec·global install help/version을 실행하고 삭제했다. install scripts는 비활성화했다. artifact는 compiled JS·package metadata·README만 포함하며 fixture·TS source·source map·참고 PNG·DB와 sentinel을 제외했다. 실제 공개 npm 이름과 게시 후 npx는 NOT RUN이다.
 

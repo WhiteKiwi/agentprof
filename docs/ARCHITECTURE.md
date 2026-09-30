@@ -1,6 +1,6 @@
 # AgentProf Architecture
 
-상태: P0 계약 검토 완료, P1 실행 기반 구현 중. [SPEC.md](SPEC.md), [METRICS.md](METRICS.md), [FINDINGS.md](FINDINGS.md)를 반영한다. 파서·집계·리포트는 후속 단계이며, 단계별 접근은 [IMPLEMENTATION.md](IMPLEMENTATION.md)에 있다.
+상태: P0 계약 검토와 P1 실행 기반 검증 완료. [SPEC.md](SPEC.md), [METRICS.md](METRICS.md), [FINDINGS.md](FINDINGS.md)를 반영한다. 파서·집계·이벤트/checkpoint 저장·리포트는 후속 단계이며, 단계별 접근은 [IMPLEMENTATION.md](IMPLEMENTATION.md)에 있다.
 
 ## 데이터 흐름
 

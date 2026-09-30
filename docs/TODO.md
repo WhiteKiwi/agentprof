@@ -2,7 +2,7 @@
 
 ## Status
 
-2026-09-30. `36bb389`의 개정 계획으로 P0 조사·계약·합성 fixture 검토를 마쳤고 P1 CLI·개인정보 기반을 구현 중이다. 파서·집계·HTML은 후속 단계다. 공급자 지원과 제품 acceptance를 계약 검사 통과로 간주하지 않는다. [SPEC.md](SPEC.md), [ARCHITECTURE.md](ARCHITECTURE.md), [METRICS.md](METRICS.md), [IMPLEMENTATION.md](IMPLEMENTATION.md)에 따라 진행한다.
+2026-09-30. `36bb389`의 개정 계획으로 P0 조사·계약·합성 fixture 검토와 P1 CLI·개인정보·SQLite 기반 검증을 마쳤다. 변경은 [draft PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)에 있으며 main 병합 전이다. 다음은 P2 Codex 어댑터다. 파서·집계·HTML은 후속 단계이며 공급자 지원과 제품 acceptance를 기반 검사 통과로 간주하지 않는다. [SPEC.md](SPEC.md), [ARCHITECTURE.md](ARCHITECTURE.md), [METRICS.md](METRICS.md), [IMPLEMENTATION.md](IMPLEMENTATION.md)에 따라 진행한다.
 
 2026-09-30 개정된 단계·Verify를 GitHub 이슈 #1–#8에 동기화하고 본문 readback을 확인했다. 실제 구현 상태·검증 evidence는 이 문서를 우선한다.
 
@@ -36,12 +36,12 @@ GitHub: [#1](https://github.com/WhiteKiwi/agentprof/issues/1)
 
 GitHub: [#2](https://github.com/WhiteKiwi/agentprof/issues/2)
 
-- [ ] 런타임·SQLite driver·package manager·의존성을 고정하고 빌드·도움말·CI를 구성한다.
+- [x] 런타임·SQLite driver·package manager·의존성을 고정하고 빌드·도움말·CI를 구성한다.
   **Verify:** macOS arm64·Linux의 Node 24.15.0과 현재 지원 24 버전에서 SQLite import·parameter binding·transaction rollback·migration·close-reopen, clean install·빌드·help/version을 실행한다. 미지원 구형 Node에서 명확한 진단을 확인한다. 설치 스크립트·native addon 요구사항을 기록한다.
-  **Evidence:** 2026-09-30 부모가 macOS arm64의 Node 24.15.0·24.21.0·26.7.0에서 각각 `npm ci --ignore-scripts --no-audit --no-fund`와 `npm run check`를 통과했다. 5개 파일·60개 테스트와 14파일 tarball의 npm exec·격리 전역 설치를 확인했다. Node 22.16.0은 import 전 `UNSUPPORTED_RUNTIME`·exit 2다. Linux CI 확인은 남아 있다. 의존성·설치 경계는 [IMPLEMENTATION.md](IMPLEMENTATION.md)에 기록했다.
+  **Evidence:** 2026-09-30 부모가 macOS arm64의 Node 24.15.0·24.21.0·26.7.0에서 각각 `npm ci --ignore-scripts --no-audit --no-fund`와 `npm run check`를 통과했다. 동일 버전의 Ubuntu 24.04 x64 [CI run](https://github.com/WhiteKiwi/agentprof/actions/runs/36712410194)도 3개 check와 runtime guard 모두 PASS다. 환경마다 5개 파일·60개 테스트와 14파일 tarball의 npm exec·격리 전역 설치를 확인했다. Node 22.16.0은 import 전 `UNSUPPORTED_RUNTIME`·exit 2다. 의존성·설치 경계는 [IMPLEMENTATION.md](IMPLEMENTATION.md)에 기록했다.
 - [x] 로컬 데이터 경로·입력 override·권한·허용 필드·원문 없는 진단을 구현한다.
   **Verify:** 입력 파일 hash가 바뀌지 않는다. secret sentinel이 정규화 결과·진단에 남지 않는다. empty input, 큰 줄과 root 밖 symlink에서 정해진 동작을 확인한다. commandPattern·operationKey·lookup/content/error fingerprint의 허용 필드·null·정규화/키 버전 계약을 확인한다.
-  **Evidence:** 위 3개 macOS 런타임에서 합성 sentinel·입력 hash·1 MiB 경계·BOM/CRLF·partial UTF-8/JSON·append/truncate·symlink·ambiguous provider root·동시 key 초기화·명령 인자/시간 근거 충돌·DB migration/rollback/reopen 검증을 통과했다. [NORMALIZATION.md](NORMALIZATION.md)의 allowlist와 key/normalization version 1을 구현했다. 파서·이벤트 저장·분석·HTML의 전체 개인정보 acceptance는 NOT RUN이다.
+  **Evidence:** 위 macOS/Linux 런타임에서 합성 sentinel·입력 hash·1 MiB 경계·BOM/CRLF·partial UTF-8/JSON·append/truncate·symlink·ambiguous provider root·동시 key 초기화·명령 인자/시간 근거 충돌·DB migration/rollback/reopen 검증을 통과했다. [NORMALIZATION.md](NORMALIZATION.md)의 allowlist와 key/normalization version 1을 구현했다. 파서·이벤트 저장·분석·HTML의 전체 개인정보 acceptance는 NOT RUN이다.
 
 ## P2 — Codex Adapter
 

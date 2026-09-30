@@ -188,3 +188,11 @@ Homebrew formula는 npm artifact를 검증한 뒤 추가할 수 있다. Rust CLI
 - [BENCHMARKS.md](BENCHMARKS.md): 합성 small/large/append/no-change/report/boundary workload, 최소 장비 class와 Node·cold/warm 조건을 정했다. macOS 기준은 부모가 hardware 필드를 확인한 로컬 Apple M4·16 GiB 장비로 선택하고 Linux runner는 미배정으로 남겼다. 64 KiB chunk·LF만 제외한 raw bytes 1 MiB line 계약에 맞춰 full/incremental 시간·512 MiB peak RSS·25 MiB HTML의 초기 예산을 측정 전에 고정했다. 실제 성능·브라우저 응답 예산은 미검증/TBD이며 제품 자원 acceptance는 NOT RUN이다.
 
 실제 로그 대조를 반복 확장하지 않고 이 bounded increment의 미확인 조건을 P2/P3/P7에 넘긴다. 해당 공급자 버전 지원·진단 precision·성능 우위를 확인했다고 주장하지 않는다.
+
+## 2026-09-30 P1: runtime·privacy foundation 검증
+
+코드 `4f030c69a6a046d9c13e0028adb8f346722f5856`에서 TypeScript/npm·Commander·내장 `node:sqlite` 기반을 구현했다. macOS arm64와 Ubuntu 24.04 x64의 Node 24.15.0·24.21.0·26.7.0에서 clean install, build/typecheck, 60개 행동 테스트, 14파일 tarball의 npm exec·격리 전역 설치 help/version을 통과했다. Node 22.16.0은 compiled CLI·SQLite import 전에 거부했다. 세부 실행과 제한은 [ACCEPTANCE.md](ACCEPTANCE.md), Linux 결과는 [CI run](https://github.com/WhiteKiwi/agentprof/actions/runs/36712410194)에 있다.
+
+P1에 필요한 prepared binding·migration·동기 transaction·rollback·reopen은 검증한 런타임에서 통과했으므로 SQLite driver를 변경할 근거가 없다. 이는 RC API의 Stable 전환이나 모든 OS/Node 지원을 의미하지 않는다. 실행 의존성은 Commander만이며 dev compiler/tool의 platform binary를 사용자 artifact에 넣지 않는다. public npm 이름·license·게시 후 npx는 미확정이다.
+
+검토에서 같은 scope의 duration/interval 정밀도와 동등 근거 충돌, shell quote·git 옵션 값, discovery provider 중첩, opening size 고정, caller-owned transaction/async callback, 진단 runtime allowlist를 보완하고 회귀 테스트로 확인했다. 실제 provider adapter·이벤트/checkpoint 저장·지표/HTML·성능·사람 파일럿은 아직 NOT RUN이다. 디자인 가이드와 UI/README 꾸미기는 사용자가 별도 세션에 맡겼으며 이 증분은 시스템 기반을 담당한다.
