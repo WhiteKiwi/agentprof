@@ -10,7 +10,7 @@
   <a href="docs/SPEC.md">Product spec</a> ·
   <a href="docs/DESIGN-GUIDELINES.md">Design guidelines</a> ·
   <a href="design/README.md">Component system</a> ·
-  <a href="docs/TODO.md">Roadmap</a>
+  <a href="https://github.com/users/WhiteKiwi/projects/2">Roadmap</a>
 </p>
 
 ## Follow the slow.
@@ -76,7 +76,7 @@ The v0.1 target is 10 metrics, 6 diagnostic rules, and a manual [quality-preserv
 2. **P4–P5 · Can we trust it?** Build incremental storage, a minimal time/failure/retry CLI and HTML path, metrics, and diagnostics with false-positive checks
 3. **P6–P7 · Can we use it?** Add offline evidence navigation, installation and resource-budget verification, and a local pilot
 
-The [implementation priorities](docs/IMPLEMENTATION.md#efficiency-review-priorities) put freshness and coverage before hotspots, actionable suggestions, and matched verification. The [implementation issues](https://github.com/WhiteKiwi/agentprof/issues) and [v0.1-alpha](https://github.com/WhiteKiwi/agentprof/milestone/1) / [v0.1](https://github.com/WhiteKiwi/agentprof/milestone/2) milestones track the broader work.
+The [implementation priorities](docs/IMPLEMENTATION.md#efficiency-review-priorities) put freshness and coverage before hotspots, actionable suggestions, and matched verification. The [GitHub Project](https://github.com/users/WhiteKiwi/projects/2) and linked [implementation issues](https://github.com/WhiteKiwi/agentprof/issues) and [v0.1-alpha](https://github.com/WhiteKiwi/agentprof/milestone/1) / [v0.1](https://github.com/WhiteKiwi/agentprof/milestone/2) milestones track the broader work.
 
 Maintained planning documents define the detailed scope and verification criteria. Existing issue text may need separate synchronization. Completing the design showcase does not complete P5/P6 product implementation.
 
@@ -91,7 +91,8 @@ The README is in English. Detailed planning and research documents are currently
 | [ARCHITECTURE](docs/ARCHITECTURE.md) | Data flow, storage, identity, and privacy boundaries |
 | [METRICS](docs/METRICS.md) | Metrics, diagnostic rules, aggregation, and improvement cards |
 | [IMPLEMENTATION](docs/IMPLEMENTATION.md) | Implementation order, trade-offs, and verification |
-| [TODO](docs/TODO.md) · [ACCEPTANCE](docs/ACCEPTANCE.md) | Progress and recorded execution evidence |
+| [GitHub Project](https://github.com/users/WhiteKiwi/projects/2) · [Tracking rules](docs/TODO.md) | Progress, issue checklists, and Verify entries |
+| [ACCEPTANCE](docs/ACCEPTANCE.md) | Recorded product and foundation verification evidence |
 | [DESIGN](DESIGN.md) · [Guidelines](docs/DESIGN-GUIDELINES.md) | Concise execution rules and design rationale |
 | [Brand references](docs/DESIGN.md) · [BACKLOG](docs/BACKLOG.md) | Supplied artwork and deferred ideas |
 | [AGENTS](AGENTS.md) | Documentation-first workflow and repository conventions |

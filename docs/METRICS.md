@@ -9,6 +9,7 @@ Draft, 2026-09-30. 사용자 제공 [metrics 제안](reference/agentprof-metrics
 - 각 값은 단위, 범위, 분모, 유효 표본 수, 누락 표본 수와 timing evidence를 갖는다.
 - `source_reported`는 소스가 직접 기록한 값, `paired_timestamps`는 검증된 호출·결과 관측 구간, `estimated`는 별도 추정, `unknown`은 근거 부족이다.
 - 호출 latency, 프로세스 runtime, 항목 lifecycle은 서로 다른 시간 의미다. 의미가 다른 표본을 같은 latency 분포에 섞지 않는다.
+- duration 값의 `durationScope`·`timingEvidence`와 경계 구간의 `intervalScope`·`intervalTimingEvidence`를 별도로 보존한다. 서로 다른 scope는 값이 달라도 모순으로 처리하지 않는다. runtime duration을 lifecycle 구간으로 역산하지 않고 합계·분포·합집합 각각의 scope를 표시한다.
 - 관측 범위와 active time을 구분한다. Active Time은 **관측된 턴 경과 시간**이라는 한계를 표시한다. 사용자 승인 대기 등이 포함될 수 있고 CPU 작업 시간은 아니다.
 - 기간 경계의 시간은 구간을 잘라 계산한다. 호출 수·분포의 표본은 시작 시각 기준으로 선택한다. 타임존을 명시한다.
 - 값이 없으면 `null`이다. 분모가 0인 비율과 데이터가 없는 통계도 `null`이며, 정상적으로 관측한 0과 구분한다.
@@ -35,7 +36,7 @@ P0에서 아래 필요 필드를 공급자·로그 버전별로 대조하고, P2
 
 `direct`는 검증된 직접 값, `observed`는 검증된 관측 관계로 계산, `inferred`는 별도 추정, `unsupported`는 필요한 근거 없음이다. 시간 evidence의 `source_reported/paired_timestamps/estimated/unknown`과 각각 대응하지만 비시간 지표에도 적용한다. 혼합 근거는 따로 나눠 기록한다. 0 분모의 coverage는 `null`이다. 버전·표본 선택·관측 기간과 누락 사유를 남겨 선택된 표본을 전체 모집단의 지원율로 확대하지 않는다.
 
-`main`에는 아직 이 행렬의 구현 결과가 없다. 별도 [PR #9의 P0 evidence](https://github.com/WhiteKiwi/agentprof/blob/6f614727dced9df2693ac008aa3f3e4be559386c/docs/EVIDENCE.md)에 bounded 표본·필드·coverage와 의미 확인 과제가 기록되어 있다. 이는 미실시 조사가 아니지만 파서/분석기 acceptance 통과도 아니다. 지원 승격은 해당 버전·지표의 합성 기대값과 로컬 대조가 통과한 범위에 한정한다. 원본을 읽을 권한/환경이 없으면 검증을 보류하고 지원 주장을 낮춘다.
+P0의 bounded 로컬 필드·ID/timestamp 대조와 누락 사유는 [EVIDENCE.md](EVIDENCE.md)에 기록했다. 12개 snapshot·7개 runtime-header 버전 층에서 10개 지표의 후보 분모·시간 필드 coverage를 조사했다. wrapper/fork canonical 동일성, 원래 실행 버전·operation/error/usage 의미와 실제 파서 출력의 동등성은 아직 **NOT RUN**이다. 후보 필드 coverage는 제품 지원율이 아니다. 지원 승격은 해당 버전·지표의 합성 기대값과 로컬 대조가 통과한 범위에 한정한다. 원본을 읽을 권한/환경이 없으면 검증을 보류하고 지원 주장을 낮춘다.
 
 ## 1. Active Time
 
@@ -236,3 +237,5 @@ severity는 `INFO`, `NOTICE`, `WARNING`, `HOTSPOT`이다. 우선순위는 근거
 각 결과는 rule ID·version, severity, evidence event IDs, observation window, sample·coverage, measured impact, confidence, suggestion을 가진다. root cause는 가설임을 표시하고 조언과 실제 효과를 구분한다. v0.1의 수동 파일럿과 v0.2의 자동 before/after 기능은 같은 조건의 비교이며 인과 효과 검증으로 표현하지 않는다.
 
 각 규칙은 최소 하나의 양성 및 정상 음성 합성 사례, 기대 included/excluded event IDs, 오탐이 될 수 있는 정상 작업, 구체적 다음 행동과 그 행동을 확인할 지표를 갖춰야 한다. Slow Tool의 정상 음성은 비중 기준 미달 또는 scope가 다른 표본이며, 느리지만 필요한 작업을 낭비로 해석하는지도 별도로 검토한다. 실제 파일럿에서는 검토 표본·오탐 수·판단 불가 수·제안의 적용 가능 여부와 rule version을 기록한다. precision 목표나 개선률을 미리 발명하지 않고 P0에서 평가 절차를 정한 뒤 P5/P7의 근거로 임계값을 보정한다.
+
+P0에 정한 표본 선택·TP/FP/indeterminate·제안 적용 가능성과 통과/지원 보류 기준은 [QUALITY.md](QUALITY.md)에 있다. 부모 Codex 기술 검토와 사람 파일럿을 구분하며, 실표본 없는 규칙을 검증된 유용성으로 표시하지 않는다.

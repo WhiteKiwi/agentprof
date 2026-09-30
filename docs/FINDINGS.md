@@ -1,5 +1,11 @@
 # AgentProf Research Findings
 
+## 실행 추적을 GitHub Projects로 이동 — 2026-09-30
+
+사용자 요청에 따라 [AgentProf Project](https://github.com/users/WhiteKiwi/projects/2)를 private로 유지하고 저장소에 연결했다. 기존 P0–P7 이슈의 작업·Verify를 보존하고 이슈·Project를 실행 상태의 원본으로 삼는다. [TODO.md](TODO.md)는 탐색과 운영 규칙만 남긴다. 제품 계약·구현 결정·실제 검증 evidence는 유지 관리 문서에 남긴다.
+
+main `c33f137`의 디자인 guideline·재사용 컴포넌트·README 초안을 기반 작업 브랜치에 통합했다. 이후 최신 main `514ee77`의 도롱뇽 README hero와 참고 자산도 통합했다. 디자인 소스와 시스템 구현의 역할을 유지하며, 디자인 브라우저 검증의 `NOT RUN` gate를 별도 이슈로 추적한다. 조사·계약 검토 완료와 코드 PR 리뷰·병합 대기를 구분한다.
+
 ## 로그 형식 조사
 
 확인일: 2026-09-30. 계획을 위한 로컬 구조 조사이며, 파서 구현·정확도 검증이 완료된 상태는 아니다.
@@ -175,6 +181,28 @@ Homebrew formula는 npm artifact를 검증한 뒤 추가할 수 있다. Rust CLI
 
 이 개정은 계획 문서만 변경한다. 연결된 구현 이슈 본문과 마일스톤은 수정하지 않았으므로 새 단계 책임·검증 gate의 반영 여부는 후속 동기화 때 확인한다. 제품 코드·설치·테스트·실로그 파일럿 acceptance는 모두 NOT RUN이다.
 
+## 2026-09-30 P0: bounded 지표 증거와 사전 gate
+
+조사 기준은 사용자가 개정한 main `36bb389262ae44d3f7afe3060401537c41f55c11`이다. 별도 연구 서브세션이 허용된 로컬 Codex·Claude 로그 12개 snapshot을 읽어 4,286개 완전 레코드의 필드·ID/timestamp 관계를 대조했다. 이전 최근 5개 prefix 조사와 다른 목적 표본이며 합쳐 모집단 coverage로 표현하지 않는다. 실제 경로·ID·digest는 로컬 private manifest에만 있고 원문·명령·출력·프롬프트·사용자 코드·비밀값은 공유 문서나 fixture에 넣지 않았다.
+
+- [EVIDENCE.md](EVIDENCE.md): 5개 Codex·2개 Claude runtime-header 층 × 10개 지표의 필요 필드, direct/observed/unsupported, 후보 eligible/inspected/timed 단위, 누락 사유와 독립 합성 fixture 연결을 기록했다. 조사 gate와 실제 파서/지원 승격을 분리한다. fork 원래 실행 버전·canonical wrapper·operation/error identity의 의미는 미검증이다.
+- Codex command/MCP 362개 후보 중 32개는 직접 duration과 item boundary 차이가 1 ms를 넘었다. runtime과 lifecycle을 같다고 강제하거나 위치 없는 duration의 구간을 역산하지 않는다. 별도 interval scope/evidence 계약을 부모가 계획에 반영했다.
+- Claude 표본 280개 tool_use는 결과 ID와 nonnegative 시각 관계로 연결됐지만 직접 duration은 0/280이었다. 관측 latency이며 프로세스 runtime을 증명하지 않는다. `turn_duration` 8개는 직접 합계 후보이며 명시적 턴 구간이 아니다.
+- Claude `2.1.241`의 243개 message IDs 중 108개에서 재저장 usage 값이 달랐다. 첫 값으로 고정하거나 모든 값을 더하지 않는다. source ordering/final snapshot 의미·cache 계약을 파서 대조하고 synthetic updated-usage로 고정한다.
+- Codex fork 표본에는 선두 runtime metadata 뒤에 다른 버전의 metadata가 복사돼 있었다. 완료 항목의 explicit thread는 선두 meta ID와 일치했다. `subagent_history_start_ordinal`이라는 필드명이나 값만으로 copied/new 경계·원래 실행 버전을 확정하지 않는다. 검증된 관계가 없으면 origin 불명을 유지한다.
+- [QUALITY.md](QUALITY.md): 6개 규칙 각각 양성·정상 음성, included/excluded/waste 의미, 목적 표본 선택·TP/FP/판정 불가·제안 적용 가능성과 출시 지원 gate를 사전 결정했다. 검토 주체는 부모 Codex 기술 검토이며 사람 파일럿은 NOT RUN이다.
+- [BENCHMARKS.md](BENCHMARKS.md): 합성 small/large/append/no-change/report/boundary workload, 최소 장비 class와 Node·cold/warm 조건을 정했다. macOS 기준은 부모가 hardware 필드를 확인한 로컬 Apple M4·16 GiB 장비로 선택하고 Linux runner는 미배정으로 남겼다. 64 KiB chunk·LF만 제외한 raw bytes 1 MiB line 계약에 맞춰 full/incremental 시간·512 MiB peak RSS·25 MiB HTML의 초기 예산을 측정 전에 고정했다. 실제 성능·브라우저 응답 예산은 미검증/TBD이며 제품 자원 acceptance는 NOT RUN이다.
+
+실제 로그 대조를 반복 확장하지 않고 이 bounded increment의 미확인 조건을 P2/P3/P7에 넘긴다. 해당 공급자 버전 지원·진단 precision·성능 우위를 확인했다고 주장하지 않는다.
+
+## 2026-09-30 P1: runtime·privacy foundation 검증
+
+코드 `4f030c69a6a046d9c13e0028adb8f346722f5856`에서 TypeScript/npm·Commander·내장 `node:sqlite` 기반을 구현했다. macOS arm64와 Ubuntu 24.04 x64의 Node 24.15.0·24.21.0·26.7.0에서 clean install, build/typecheck, 60개 행동 테스트, 14파일 tarball의 npm exec·격리 전역 설치 help/version을 통과했다. Node 22.16.0은 compiled CLI·SQLite import 전에 거부했다. 세부 실행과 제한은 [ACCEPTANCE.md](ACCEPTANCE.md), Linux 결과는 [CI run](https://github.com/WhiteKiwi/agentprof/actions/runs/36712410194)에 있다.
+
+P1에 필요한 prepared binding·migration·동기 transaction·rollback·reopen은 검증한 런타임에서 통과했으므로 SQLite driver를 변경할 근거가 없다. 이는 RC API의 Stable 전환이나 모든 OS/Node 지원을 의미하지 않는다. 실행 의존성은 Commander만이며 dev compiler/tool의 platform binary를 사용자 artifact에 넣지 않는다. public npm 이름·license·게시 후 npx는 미확정이다.
+
+검토에서 같은 scope의 duration/interval 정밀도와 동등 근거 충돌, shell quote·git 옵션 값, discovery provider 중첩, opening size 고정, caller-owned transaction/async callback, 진단 runtime allowlist를 보완하고 회귀 테스트로 확인했다. 실제 provider adapter·이벤트/checkpoint 저장·지표/HTML·성능·사람 파일럿은 아직 NOT RUN이다. 디자인 가이드와 UI/README 꾸미기는 사용자가 별도 세션에 맡겼으며 이 증분은 시스템 기반을 담당한다.
+
 ## 2026-09-30 디자인 기반 연구
 
 사용자 요청의 [design-guidelines skill](https://github.com/WhiteKiwi/skills/tree/main/skills/design-guidelines), [Design Index](https://github.com/WhiteKiwi/design-index)와 시스템/제품 영감 문서를 읽었다. [Recent](https://recent.design/)의 정확한 사이트와 화면을 cloud browser에서 확인했다. 중립적인 탐색 chrome 안에 표현적인 작품을 분리하는 구성을 관측했다. 이를 데이터 화면 전체의 효과·애니메이션으로 복제하지 않고 하나의 brand scene과 조용한 분석 영역의 분리로 적용한다.
@@ -232,4 +260,3 @@ Homebrew formula는 npm artifact를 검증한 뒤 추가할 수 있다. Rust CLI
 5. **효과 없음도 결과다.** 실패/미완료를 제외하거나 coverage가 낮아진 실행을 빨라졌다고 해석하지 않는다. 품질 gate·parent/child usage·준비/요약/재조회 비용과 변동성을 함께 기록한다.
 
 공식 자료를 AgentProf에 적용한 부분은 **설계 판단**이다. 계산은 [METRICS](METRICS.md#aggregation-and-token-accounting), [행동 카드](METRICS.md#efficiency-opportunity-cards), 순서는 [IMPLEMENTATION](IMPLEMENTATION.md#efficiency-review-priorities), 검증은 [ACCEPTANCE](ACCEPTANCE.md#quality-preserving-improvement-pilot)에 반영한다. 후속 후보는 [BACKLOG](BACKLOG.md#efficiency-candidate-gates)에 남긴다. 원본 제안과 병행 PR의 코드는 변경하지 않는다.
-

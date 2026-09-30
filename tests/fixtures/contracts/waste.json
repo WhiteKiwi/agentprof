@@ -1,0 +1,263 @@
+{
+  "schema": "agentprof.fixture-waste/v1",
+  "synthetic": true,
+  "oracle": "hand-calculated-before-implementation",
+  "cases": [
+    {
+      "id": "first-failure-included",
+      "input": {
+        "qualifiedRule": "retry-loop",
+        "failed": [
+          {
+            "id": "f1",
+            "startMs": 0,
+            "endMs": 2000
+          },
+          {
+            "id": "f2",
+            "startMs": 3000,
+            "endMs": 6000
+          },
+          {
+            "id": "f3",
+            "startMs": 7000,
+            "endMs": 11000
+          }
+        ],
+        "success": [
+          {
+            "id": "s1",
+            "startMs": 12000,
+            "endMs": 13000
+          }
+        ]
+      },
+      "expected": {
+        "includedEventIds": [
+          "f1",
+          "f2",
+          "f3"
+        ],
+        "excludedEventIds": [
+          "s1"
+        ],
+        "durationSumMs": 9000,
+        "unionMs": 9000
+      }
+    },
+    {
+      "id": "first-lookup-excluded",
+      "input": {
+        "qualifiedRule": "context-churn",
+        "lookups": [
+          {
+            "id": "l1",
+            "startMs": 0,
+            "endMs": 2000
+          },
+          {
+            "id": "l2",
+            "startMs": 3000,
+            "endMs": 5000
+          },
+          {
+            "id": "l3",
+            "startMs": 6000,
+            "endMs": 8000
+          },
+          {
+            "id": "l4",
+            "startMs": 9000,
+            "endMs": 11000
+          }
+        ],
+        "sameCompleteContentAndScope": true,
+        "changeState": "unchanged"
+      },
+      "expected": {
+        "includedEventIds": [
+          "l2",
+          "l3",
+          "l4"
+        ],
+        "excludedEventIds": [
+          "l1"
+        ],
+        "unionMs": 6000
+      }
+    },
+    {
+      "id": "slow-only",
+      "input": {
+        "qualifiedRule": "slow-tool",
+        "events": [
+          {
+            "id": "slow",
+            "startMs": 0,
+            "endMs": 20000
+          }
+        ]
+      },
+      "expected": {
+        "includedEventIds": [],
+        "excludedEventIds": [
+          "slow"
+        ],
+        "unionMs": 0
+      }
+    },
+    {
+      "id": "rule-overlap",
+      "input": {
+        "qualifiedIntervalsByRule": {
+          "retry-loop": [
+            [
+              0,
+              12000
+            ]
+          ],
+          "repeated-error": [
+            [
+              7000,
+              15000
+            ]
+          ]
+        },
+        "note": "interval sets of already qualifying groups; group-threshold tests are separate"
+      },
+      "expected": {
+        "retryMs": 12000,
+        "errorMs": 8000,
+        "overlapMs": 5000,
+        "unionMs": 15000
+      }
+    },
+    {
+      "id": "canonical-wrapper",
+      "input": {
+        "representations": [
+          {
+            "id": "wrapper",
+            "startMs": 0,
+            "endMs": 10000,
+            "canonical": "execution1"
+          },
+          {
+            "id": "child",
+            "startMs": 0,
+            "endMs": 10000,
+            "canonical": "execution1"
+          },
+          {
+            "id": "independent",
+            "startMs": 5000,
+            "endMs": 15000,
+            "canonical": "execution2"
+          }
+        ],
+        "qualifiedRule": "retry-loop"
+      },
+      "expected": {
+        "canonicalCount": 2,
+        "includedCanonicalIds": [
+          "execution1",
+          "execution2"
+        ],
+        "durationSumMs": 20000,
+        "unionMs": 15000
+      }
+    },
+    {
+      "id": "waste-period-clipping",
+      "input": {
+        "period": [
+          5000,
+          12000
+        ],
+        "eligible": [
+          {
+            "id": "left",
+            "startMs": 0,
+            "endMs": 10000
+          },
+          {
+            "id": "right",
+            "startMs": 10000,
+            "endMs": 15000
+          }
+        ]
+      },
+      "expected": {
+        "clippedIntervals": [
+          [
+            5000,
+            10000
+          ],
+          [
+            10000,
+            12000
+          ]
+        ],
+        "unionMs": 7000
+      }
+    },
+    {
+      "id": "waste-duration-only",
+      "input": {
+        "eligible": [
+          {
+            "id": "only",
+            "startMs": null,
+            "endMs": null,
+            "durationMs": 2000
+          }
+        ]
+      },
+      "expected": {
+        "patternDurationSumMs": 2000,
+        "unionMs": null,
+        "inferredIntervalCount": 0
+      }
+    },
+    {
+      "id": "waste-unknown",
+      "input": {
+        "eligible": [
+          {
+            "id": "unknown",
+            "startMs": null,
+            "endMs": null,
+            "durationMs": null
+          }
+        ]
+      },
+      "expected": {
+        "patternDurationSumMs": null,
+        "unionMs": null,
+        "timedCoverageNumerator": 0,
+        "timedCoverageDenominator": 1
+      }
+    },
+    {
+      "id": "coarse-only",
+      "input": {
+        "qualifiedRules": [
+          "exploration-thrashing",
+          "validation-thrashing"
+        ],
+        "events": [
+          {
+            "id": "coarse",
+            "startMs": 0,
+            "endMs": 12000
+          }
+        ]
+      },
+      "expected": {
+        "includedEventIds": [],
+        "unionMs": 0,
+        "coverage": "fixture contains fully observed ineligible heuristic only"
+      }
+    }
+  ]
+}

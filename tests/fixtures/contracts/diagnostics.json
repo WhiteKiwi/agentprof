@@ -1,0 +1,500 @@
+{
+  "schema": "agentprof.fixture-diagnostics/v1",
+  "synthetic": true,
+  "oracle": "hand-calculated-before-implementation",
+  "rules": [
+    {
+      "ruleId": "slow-tool",
+      "ruleVersion": 1,
+      "positive": {
+        "ids": [
+          "sl1",
+          "sl2",
+          "sl3",
+          "sl4",
+          "sl5"
+        ],
+        "scope": "invocation_latency",
+        "evidence": "paired_timestamps",
+        "durationsMs": [
+          4000,
+          4000,
+          4000,
+          4000,
+          4000
+        ],
+        "allComparableToolMs": 50000,
+        "expectedMatch": true,
+        "includedEventIds": [],
+        "excludedEventIds": [
+          "sl1",
+          "sl2",
+          "sl3",
+          "sl4",
+          "sl5"
+        ],
+        "wasteMs": 0,
+        "interpretation": "may-be-necessary-work"
+      },
+      "normalNegative": {
+        "ids": [
+          "sn1",
+          "sn2",
+          "sn3",
+          "sn4",
+          "sn5"
+        ],
+        "durationsMs": [
+          1000,
+          1000,
+          1000,
+          1000,
+          1000
+        ],
+        "allComparableToolMs": 50000,
+        "expectedMatch": false,
+        "includedEventIds": [],
+        "reason": "10percent share below20percent"
+      },
+      "suggestion": {
+        "nextAction": "조건을 맞춘 작은 도구 범위와 전체 범위를 각각 실행한다.",
+        "verifyMetric": "같은scope 호출duration/n/coverage",
+        "rootCauseStatus": "hypothesis"
+      }
+    },
+    {
+      "ruleId": "retry-loop",
+      "ruleVersion": 1,
+      "positive": {
+        "ids": [
+          "rf1",
+          "rf2",
+          "rf3",
+          "rs1"
+        ],
+        "operation": "alpha",
+        "error": "E1",
+        "project": "p1",
+        "turn": "t1",
+        "durationsMs": [
+          2000,
+          3000,
+          4000,
+          1000
+        ],
+        "statuses": [
+          "failed",
+          "failed",
+          "failed",
+          "completed"
+        ],
+        "windowMs": 600000,
+        "expectedMatch": true,
+        "includedEventIds": [
+          "rf1",
+          "rf2",
+          "rf3"
+        ],
+        "excludedEventIds": [
+          "rs1"
+        ],
+        "wasteMs": 9000
+      },
+      "normalNegative": {
+        "ids": [
+          "rn1",
+          "rn2",
+          "rn3"
+        ],
+        "operations": [
+          "alpha",
+          "beta",
+          "gamma"
+        ],
+        "error": "E1",
+        "display": "npm test <target>",
+        "expectedMatch": false,
+        "includedEventIds": [],
+        "reason": "different operation targets"
+      },
+      "suggestion": {
+        "nextAction": "첫 실패의 환경/전제 조건을 확인하고 가장 작은 검증 명령으로 재현한다.",
+        "verifyMetric": "동일operation 실패시도수/failed union/resolved",
+        "rootCauseStatus": "hypothesis"
+      }
+    },
+    {
+      "ruleId": "repeated-error",
+      "ruleVersion": 1,
+      "positive": {
+        "ids": [
+          "ef1",
+          "ef2",
+          "ef3"
+        ],
+        "sessions": [
+          "s1",
+          "s2",
+          "s2"
+        ],
+        "errors": [
+          "E1",
+          "E1",
+          "E1"
+        ],
+        "durationsMs": [
+          2000,
+          3000,
+          4000
+        ],
+        "expectedMatch": true,
+        "includedEventIds": [
+          "ef1",
+          "ef2",
+          "ef3"
+        ],
+        "excludedEventIds": [],
+        "wasteMs": 9000
+      },
+      "normalNegative": {
+        "ids": [
+          "en1",
+          "en2",
+          "en3"
+        ],
+        "sessions": [
+          "s1",
+          "s2",
+          "s2"
+        ],
+        "errors": [
+          "E1",
+          "E2",
+          "E3"
+        ],
+        "expectedMatch": false,
+        "includedEventIds": [],
+        "reason": "different confirmed error identities"
+      },
+      "suggestion": {
+        "nextAction": "같은 오류의 setup 문서/초기화 단계 하나를 확인한다.",
+        "verifyMetric": "다음동일조건 세션의오류occurrences/coverage",
+        "rootCauseStatus": "hypothesis"
+      }
+    },
+    {
+      "ruleId": "exploration-thrashing",
+      "ruleVersion": 1,
+      "positive": {
+        "ids": [
+          "xp1",
+          "xp2",
+          "xp3",
+          "xp4",
+          "xp5",
+          "xp6",
+          "xp7",
+          "xp8",
+          "xp9",
+          "xp10",
+          "xp11",
+          "xp12",
+          "xp13",
+          "xp14",
+          "xp15",
+          "xp16",
+          "xp17",
+          "xp18",
+          "xp19",
+          "xp20"
+        ],
+        "lookupKeys": [
+          "same",
+          "same",
+          "same",
+          "same",
+          "same",
+          "distinct0",
+          "distinct1",
+          "distinct2",
+          "distinct3",
+          "distinct4",
+          "distinct5",
+          "distinct6",
+          "distinct7",
+          "distinct8",
+          "distinct9",
+          "distinct10",
+          "distinct11",
+          "distinct12",
+          "distinct13",
+          "distinct14"
+        ],
+        "editCount": 1,
+        "windowMs": 600000,
+        "expectedMatch": true,
+        "confidence": "heuristic",
+        "includedEventIds": [],
+        "excludedEventIds": [
+          "xp1",
+          "xp2",
+          "xp3",
+          "xp4",
+          "xp5",
+          "xp6",
+          "xp7",
+          "xp8",
+          "xp9",
+          "xp10",
+          "xp11",
+          "xp12",
+          "xp13",
+          "xp14",
+          "xp15",
+          "xp16",
+          "xp17",
+          "xp18",
+          "xp19",
+          "xp20"
+        ],
+        "wasteMs": 0,
+        "normalWorkCaveat": "review/research may require this pattern"
+      },
+      "normalNegative": {
+        "ids": [
+          "xn1",
+          "xn2",
+          "xn3",
+          "xn4",
+          "xn5",
+          "xn6",
+          "xn7",
+          "xn8",
+          "xn9",
+          "xn10",
+          "xn11",
+          "xn12",
+          "xn13",
+          "xn14",
+          "xn15",
+          "xn16",
+          "xn17",
+          "xn18",
+          "xn19",
+          "xn20"
+        ],
+        "lookupKeys": [
+          "different0",
+          "different1",
+          "different2",
+          "different3",
+          "different4",
+          "different5",
+          "different6",
+          "different7",
+          "different8",
+          "different9",
+          "different10",
+          "different11",
+          "different12",
+          "different13",
+          "different14",
+          "different15",
+          "different16",
+          "different17",
+          "different18",
+          "different19"
+        ],
+        "editCount": 0,
+        "expectedMatch": false,
+        "includedEventIds": [],
+        "reason": "no same lookup5times"
+      },
+      "suggestion": {
+        "nextAction": "탐색 목적과 repository map을 확인해 다음 조사 범위를 좁힌다.",
+        "verifyMetric": "lookup수/반복비율과완료된작업량",
+        "rootCauseStatus": "hypothesis"
+      }
+    },
+    {
+      "ruleId": "validation-thrashing",
+      "ruleVersion": 1,
+      "positive": {
+        "ids": [
+          "vp1",
+          "vp2",
+          "vp3"
+        ],
+        "editCycleIds": [
+          "edit1",
+          "edit2",
+          "edit3"
+        ],
+        "scopes": [
+          "full",
+          "full",
+          "full"
+        ],
+        "statuses": [
+          "completed",
+          "completed",
+          "completed"
+        ],
+        "windowMs": 900000,
+        "expectedMatch": true,
+        "confidence": "heuristic",
+        "includedEventIds": [],
+        "excludedEventIds": [
+          "vp1",
+          "vp2",
+          "vp3"
+        ],
+        "wasteMs": 0,
+        "normalWorkCaveat": "successful full validation may be necessary"
+      },
+      "normalNegative": {
+        "ids": [
+          "vn1",
+          "vn2",
+          "vn3"
+        ],
+        "editCycleIds": [
+          null,
+          null,
+          null
+        ],
+        "scopes": [
+          "unknown",
+          "unknown",
+          "unknown"
+        ],
+        "expectedMatch": false,
+        "includedEventIds": [],
+        "reason": "no observed edit cycle/scope"
+      },
+      "suggestion": {
+        "nextAction": "관측된 변경을 다루는 targeted validation 경로를 확인한다.",
+        "verifyMetric": "knownscope별검증시간/firstpass/coverage",
+        "rootCauseStatus": "hypothesis"
+      }
+    },
+    {
+      "ruleId": "context-churn",
+      "ruleVersion": 1,
+      "positive": {
+        "ids": [
+          "cp1",
+          "cp2",
+          "cp3",
+          "cp4"
+        ],
+        "lookupKeys": [
+          "same",
+          "same",
+          "same",
+          "same"
+        ],
+        "ranges": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ]
+        ],
+        "contents": [
+          "complete-v1",
+          "complete-v1",
+          "complete-v1",
+          "complete-v1"
+        ],
+        "changeStates": [
+          "unchanged",
+          "unchanged",
+          "unchanged",
+          "unchanged"
+        ],
+        "durationsMs": [
+          2000,
+          2000,
+          2000,
+          2000
+        ],
+        "windowMs": 600000,
+        "expectedMatch": true,
+        "confidence": "confirmed-pattern",
+        "includedEventIds": [
+          "cp2",
+          "cp3",
+          "cp4"
+        ],
+        "excludedEventIds": [
+          "cp1"
+        ],
+        "wasteMs": 6000
+      },
+      "normalNegative": {
+        "ids": [
+          "cn1",
+          "cn2",
+          "cn3",
+          "cn4"
+        ],
+        "lookupKeys": [
+          "same",
+          "same",
+          "same",
+          "same"
+        ],
+        "ranges": [
+          [
+            1,
+            10
+          ],
+          [
+            1,
+            10
+          ],
+          [
+            11,
+            20
+          ],
+          [
+            1,
+            10
+          ]
+        ],
+        "contents": [
+          "v1",
+          "v2",
+          "v2",
+          null
+        ],
+        "changeStates": [
+          "unknown",
+          "changed",
+          "unknown",
+          "unknown"
+        ],
+        "expectedMatch": false,
+        "includedEventIds": [],
+        "reason": "changed/range differs/content absent/external change unknown"
+      },
+      "suggestion": {
+        "nextAction": "반복 조회한 모듈의 설명과 지속 지식이 부족한지 확인한다.",
+        "verifyMetric": "verified unchanged lookup의반복수/적격시간",
+        "rootCauseStatus": "hypothesis"
+      }
+    }
+  ]
+}
