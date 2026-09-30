@@ -1,6 +1,6 @@
 # Codex Adapter — P2 Implementation Contract
 
-2026-09-30. [P2 issue #3](https://github.com/WhiteKiwi/agentprof/issues/3)의 구현·검증 계획이다. 검토된 P0 계약과 P1 기반을 사용한다. P1 PR #9가 병합 전이므로 `codex/codex-adapter`를 `codex/initial-foundation` 위에 쌓는다. 실행 상태·체크리스트는 이슈와 Project에서 관리한다.
+2026-09-30. [P2 issue #3](https://github.com/WhiteKiwi/agentprof/issues/3)의 구현·검증 계획이다. 검토된 P0 계약과 P1 기반을 사용한다. [PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)는 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 병합되었으며 `codex/codex-adapter`의 PR 기준은 main이다. 실행 상태·체크리스트는 이슈와 Project에서 관리한다.
 
 ## Scope and source authority
 
@@ -17,7 +17,7 @@ P2는 reader의 완전한 JSONL 레코드를 소비하는 Codex 어댑터와 개
 - adapter의 pairing·replay·provenance 상태와 diagnostics는 상한을 둔다. 상한 초과는 안전한 진단·partial coverage로 드러내며 조용히 동일성을 잃거나 전체 파일을 buffer하지 않는다. P4 durable state/checkpoint 저장은 여기서 구현하지 않는다.
 - 입력은 inert parsed JSON이다. unknown 필드와 schema drift는 whitelist 경계에서 버린다. diagnostics는 고정 code·source alias·offset만 갖는다. 오류 메시지나 원문 record type을 출력하지 않는다.
 
-P2의 기본 상태 한도는 events/turns/usage 각 4,096개, sources/streams 각 256개, process/poll links 각 1,024개, observations/metadata/diagnostics 각 8,192개다. 호출자가 명시적으로 조정할 수 있지만 각 한도는 유한한 양의 정수여야 한다. 한도 초과를 partial coverage와 고정 진단으로 알린다. 조용한 eviction이나 새 ID 생성으로 동일성·pending 연결을 잃지 않는다. 이 bounded in-memory API는 P4의 대규모 durable 저장·성능 검증을 대신하지 않는다.
+P2의 기본 상태 한도는 events/turns/usage 각 4,096개, sources/streams 각 256개, process/poll links 각 1,024개, observations/metadata/diagnostics 각 8,192개다. wrappers/pendingResults/unsupported-call markers는 각각 events 한도, result replay markers는 observations 한도, usage ordering/snapshot series는 각각 usage 한도를 따른다. wrapper의 전체 child links도 별도의 links budget 1,024개에 묶으며 같은 wrapper replay는 이를 늘리지 않는다. 한도를 넘는 관계는 partial coverage·STATE_LIMIT와 unknown 관계로 남긴다. 호출자가 명시적으로 조정할 수 있지만 각 한도는 유한한 양의 정수여야 한다. 한도 초과를 partial coverage와 고정 진단으로 알린다. 조용한 eviction이나 새 ID 생성으로 동일성·pending 연결을 잃지 않는다. 이 bounded in-memory API는 P4의 대규모 durable 저장·성능 검증을 대신하지 않는다.
 
 ## Structured and fallback executions
 
@@ -34,7 +34,7 @@ MCP duration은 source로 확인한 승인 후 호출 준비·RPC·결과 처리
 
 ## Pending, polling, archive and fork
 
-호출의 pending 이벤트는 결과를 받으면 동일 ID로 갱신한다. 결과가 먼저 오거나 중복 결과의 값이 충돌하면 연결 가능성·근거를 검사해 진단하고 완료 값을 임의 선택하지 않는다.
+호출의 pending 이벤트는 결과를 받으면 동일 ID로 갱신한다. 결과가 먼저 오거나 중복 결과의 값이 충돌하면 연결 가능성·근거를 검사해 진단하고 완료 값을 임의 선택하지 않는다. 이미 관측한 미지원 호출의 같은-ID 결과는 미지원 관계이며 source 순서 뒤바뀜이 아니다. 원문 없는 bounded opaque 호출 관측으로 구분하고 불필요한 orphan pending을 만들지 않는다.
 
 검증된 exec_command process/session 관계와 write_stdin polling을 연결한다. polling은 추가 프로세스 실행이 아니며 여러 응답의 wall time을 합산해 runtime을 만들지 않는다. 호출 시작부터 terminal result까지는 관측 invocation latency다. process runtime이 없으면 null이다. 연결이 없는 polling은 미지원 관계로 기록한다.
 
@@ -48,9 +48,9 @@ MCP duration은 source로 확인한 승인 후 호출 준비·RPC·결과 처리
 
 실제 `token_usage_record`는 top-level record이며 합성 fixture의 event_msg 형태도 조건부 shape로 검증한다. [PR #11](https://github.com/WhiteKiwi/agentprof/pull/11)의 최종 usage 계약을 따른다. 검증한 `0.153.4`, `0.157.0`, `0.159.0`, `0.159.2` source tag의 native record는 response terminal 경로에서 생성된다. origin·source version·관계가 확인된 범위만 terminal finality로 처리하며, 이는 turn 성공·완료를 뜻하지 않는다. 그 밖 shape·합성 event_msg·복사 출처 불명은 final을 임의 추정하지 않는다. fixture의 final/partial·source ordering 근거는 신뢰된 별도 context로만 제공한다.
 
-같은 response ID의 partial → final 갱신은 검증된 source ordering과 final 근거가 함께 있을 때 마지막 완성 값으로 upsert한다. 첫 값 고정·component별 최대값·snapshot 합산은 금지다. 순서·final·origin 불명은 provisional/unknown과 제외 이유를 남긴다. 이미 final인 값의 모순이나 서로 비교할 수 없는 source의 충돌은 임의 마지막 값으로 덮어쓰지 않는다. `usage`, `turn_token_usage`, `thread_token_usage`, `token_count.info.total_token_usage`는 각각 response/turn/cumulative 관측이며 서로 합산하지 않는다.
+같은 response ID의 partial → final 갱신은 검증된 source ordering과 final 근거가 함께 있을 때 마지막 완성 값으로 upsert한다. 같은 trusted ordering group의 partial 6 → partial 8 → final 10은 provisional 진행을 보존한 뒤 final 10으로 수렴한다. final 뒤에 재입력된 더 이른 trusted partial은 최종값을 낮추지 않는다. 첫 값 고정·component별 최대값·snapshot 합산은 금지다. 순서·final·origin 불명은 provisional/unknown과 제외 이유를 남긴다. 이미 final인 값의 모순이나 서로 비교할 수 없는 source의 충돌은 임의 마지막 값으로 덮어쓰지 않는다. `usage`, `turn_token_usage`, `thread_token_usage`, `token_count.info.total_token_usage`는 각각 response/turn/cumulative 관측이며 서로 합산하지 않는다.
 
-입력·출력·cached/reasoning token 값은 안전한 비음수 정수와 검증된 포함 관계만 사용한다. OpenAI Responses로 확인된 매핑은 input에 cache read/write를 이미 포함하며 `cached + cacheWrite <= input`, `reasoning <= output`, `total = input + output`을 검증한다. cache를 total에 다시 더하지 않는다. 누락 component·미검증 포함 관계는 total/차감값을 null로 두고 확인한 component와 partial/invalid 근거를 보존한다. source가 기본값 0을 출력했다면 실제 0과 누락을 구별할 수 없다는 한계도 남긴다. positive cache-write의 실제 표본 대조는 미실행이며 source와 독립 합성 oracle 검증을 구분한다. response/turn/tool 귀속 근거가 없으면 null/unknown으로 둔다. token_count의 snapshot을 정확한 response 값처럼 대체하거나 임의 차분해 새 토큰을 만들지 않는다. 일치하지 않는 snapshot도 source 종류·scope를 보존한다.
+입력·출력·cached/reasoning token 값은 안전한 비음수 정수와 검증된 포함 관계만 사용한다. OpenAI Responses로 확인된 매핑은 input에 cache read/write를 이미 포함하며 `cached + cacheWrite <= input`, `reasoning <= output`, `total = input + output`을 검증한다. cache를 total에 다시 더하지 않는다. 필수 input/output component·미검증 포함 관계는 total을 null로 두고 확인한 component와 partial/invalid 근거를 보존한다. optional cache/reasoning 누락은 해당 component를 null로 두며, 확인된 input/output total은 보존할 수 있다. 차감에 필요한 cache component가 없으면 차감값은 null이다. source가 기본값 0을 출력했다면 실제 0과 누락을 구별할 수 없다는 한계도 남긴다. positive cache-write의 실제 표본 대조는 미실행이며 source와 독립 합성 oracle 검증을 구분한다. response/turn/tool 귀속 근거가 없으면 null/unknown으로 둔다. token_count의 snapshot을 정확한 response 값처럼 대체하거나 임의 차분해 새 토큰을 만들지 않는다. 일치하지 않는 snapshot도 source 종류·scope를 보존한다.
 
 ## Implementation order and verification
 
@@ -62,5 +62,5 @@ MCP duration은 source로 확인한 승인 후 호출 준비·RPC·결과 처리
    **Verify:** 3개 legacy 실행·poll 추가 0·runtime null·5초 observed latency, append 후 pending 0·8초 latency, archive canonical 2, 검증된 copied range의 fork 새 실행 1, annotation 없는 ambiguity, usage replay와 cumulative 분리를 확인한다.
 4. P0 bounded 로컬 표본을 수작업 기준과 adapter 출력으로 대조한다.
    **Verify:** 원문·실제 명령·출력·경로·stable IDs를 저장소/메모리로 내보내지 않는다. 표본 revision·선택·수치·의미·대조 결과·한계를 기록하고 shape-only와 검증한 버전/필드 범위를 구분한다.
-5. 부모 검토·runtime/build/artifact 검증과 stacked PR 게시를 마친다.
+5. 부모 검토·runtime/build/artifact 검증과 main 기준 PR 게시를 마친다.
    **Verify:** 변경에 맞는 행동 테스트, 지원 Node 24 최소/현재와 macOS/Linux CI, production pack·help/version, 원문 없는 parser 결과·상태, 문서 링크와 diff를 확인한다. P3–P7 제품 acceptance는 완료 처리하지 않는다.

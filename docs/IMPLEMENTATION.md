@@ -2,7 +2,7 @@
 
 ## Status and Authority
 
-Draft, 2026-09-30. [SPEC.md](SPEC.md)의 사용자 동작, [ARCHITECTURE.md](ARCHITECTURE.md)의 불변 조건, [METRICS.md](METRICS.md)의 계산 계약을 구현하는 계획이다. `36bb389`의 개정 계획에 따른 P0 계약 검토와 P1 실행 기반 검증을 완료했으며 [draft PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)에 게시했다. 다음은 P2/P3 공급자 어댑터다. [FINDINGS.md](FINDINGS.md)는 조사 근거이며 사양을 덮어쓰지 않는다. 디자인 기반은 아래 별도 트랙으로 유지하고 데이터 파서·분석기 구현과 구분한다.
+Draft, 2026-10-01 KST. [SPEC.md](SPEC.md)의 사용자 동작, [ARCHITECTURE.md](ARCHITECTURE.md)의 불변 조건, [METRICS.md](METRICS.md)의 계산 계약을 구현하는 계획이다. `36bb389`의 개정 계획에 따른 P0 계약 검토와 P1 실행 기반 검증을 완료했으며 [PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)는 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 병합되었다. P2 Codex 계약·bounded 검증은 [CODEX-PARSER.md](CODEX-PARSER.md)·[CODEX-EVIDENCE.md](CODEX-EVIDENCE.md)·[ACCEPTANCE.md](ACCEPTANCE.md)에 있고 P3 Claude 어댑터가 다음 단계다. [FINDINGS.md](FINDINGS.md)는 조사 근거이며 사양을 덮어쓰지 않는다. 디자인 기반은 아래 별도 트랙으로 유지하고 데이터 파서·분석기 구현과 구분한다.
 
 새 지표 제안을 반영해 v0.1에 10개 지표와 6개 자동 진단을 포함했다. 이 계획을 검토한 뒤 개발 서브세션이 구현한다. 제품 범위를 바꾸면 SPEC, 구조·불변 조건은 ARCHITECTURE, 계산 의미는 METRICS, 접근·선행 조건은 이 문서를 먼저 갱신한다. 실행 작업·Verify·상태는 해당 GitHub issue와 [Project](https://github.com/users/WhiteKiwi/projects/2)에 반영한다.
 
@@ -82,7 +82,7 @@ P1 구현 경계는 [NORMALIZATION.md](NORMALIZATION.md)다. CLI help/version과
 
 ### P2 / P3 — Provider Adapters
 
-P2 Codex의 실제 shape·API·pairing·privacy·검증 세부는 [CODEX-PARSER.md](CODEX-PARSER.md)에 둔다. 이슈 #3의 작업과 Verify를 먼저 확정한 뒤 개발 서브세션이 구현한다. P1 PR #9가 열려 있는 동안 P2는 기반 브랜치 위의 별도 PR로 검토한다.
+P2 Codex의 실제 shape·API·pairing·privacy·검증 세부는 [CODEX-PARSER.md](CODEX-PARSER.md)에 둔다. 이슈 #3의 작업과 Verify를 먼저 확정한 뒤 개발 서브세션이 구현한다. P1 PR #9 병합 후 P2 PR은 main을 기준으로 검토한다.
 
 Codex는 검증된 구조화 `item_completed`를 우선하고 같은 response를 중복 세지 않는다. namespace·call ID·content-block output과 직접 duration을 처리한다. Claude는 UUID·parent·tool IDs를 연결하고 직접 duration과 관측 latency를 구분한다.
 
@@ -139,7 +139,7 @@ Homebrew tap·formula 게시, npm 공개와 license 선택은 이 계획의 구�
 
 ### 문서 PR과 병행 구현의 경계
 
-이 개정은 `main 514ee77`에서 분기한 문서 변경이다. PR #9의 코드·합성 fixture·테스트 결과·완료 체크를 복사하거나 수정하지 않는다. 두 PR 병합 순서에 따라 충돌이 생기면 P0 실측과 P1 실행 기록을 보존한 채 이 측정/개선 계약을 적용한다. Project·이슈의 진행 상태 변경, 코드 구현·패키지 공개·병합은 별도 작업이다.
+이 측정·개선 개정은 `main 514ee77`에서 분기한 문서 PR #11이었다. main `90998a5`로 병합한 뒤 P0 실측과 P1 실행 기록을 보존하며 기반 브랜치에 통합했다. 이후 PR #9도 main `c3856249`에 병합되었다. 문서 계약 적용과 Project 상태 변경·코드 검증·패키지 공개는 각각의 실행 근거로 판단한다.
 
 ## Verification and Handoff
 

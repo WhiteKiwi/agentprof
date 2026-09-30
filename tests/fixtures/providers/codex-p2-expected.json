@@ -1,0 +1,27 @@
+{
+  "schema": "agentprof.fixture-codex-p2/v1",
+  "synthetic": true,
+  "supportStatus": "SHAPE_ONLY_NOT_PROVIDER_VERSION_SUPPORT",
+  "independentHandCalculated": true,
+  "file": "codex-real-shapes.jsonl",
+  "executions": 2,
+  "wrappers": 1,
+  "pollExecutions": 0,
+  "unsupportedDynamicItems": 1,
+  "command": {
+    "durationMs": 2250,
+    "durationScope": "process_runtime",
+    "lifecycleMs": 3000,
+    "intervalScope": "item_lifecycle",
+    "status": "completed",
+    "outcome": "no_match"
+  },
+  "mcp": {"durationMs": 1400, "lifecycleMs": 1500, "status": "completed"},
+  "turn": {"durationMs": 7900, "wallMs": 8000, "startAt": "2026-09-02T00:00:00.000Z", "endAt": "2026-09-02T00:00:08.000Z"},
+  "responseUsage": {"input": 80, "output": 12, "cachedInput": 20, "cacheWriteInput": 5, "reasoningOutput": 4, "total": 92},
+  "separateSnapshots": {"turnTotal": 92, "threadTotal": 212},
+  "wrapperOutputExitMustNotApplyToCommand": 91,
+  "wrapperOutputProcessMustNotCreateLink": 314,
+  "lookupScope": "unknown_without_validated_options_and_range",
+  "fileContentScope": "stdout_is_not_verified_read_content"
+}

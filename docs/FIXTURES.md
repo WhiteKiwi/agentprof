@@ -63,3 +63,11 @@ Codex `subagent_history_start_ordinal`은 관측한 필드 이름이지만 이�
 provider raw fixture에 prompt, 코드, raw argv, env값, URL query, error/output sentinel을 각각 넣어 downstream에서 없어야 할 목록을 `contracts/privacy.json`에 고정한다. 이 문자열은 합성 입력에만 의도적으로 존재한다. 원문을 없애야 하는 대상은 normalized events/diagnostics/DB/report/packed artifact이며 fixture 자체의 sentinel 부재를 요구하지 않는다.
 
 P0 검사는 JSON/JSONL 문법, 입력 ID/기대 ID 참조, fixture 목록, 모든 지표/6규칙의 양성/정상 음성/waste 포함표를 대조한다. P1은 privacy API/reader 테스트를 실행하며 provider expected를 파서 실행으로 통과시켰다고 하지 않는다. P2/P3와 P5가 각 parser/metric oracle을 실제 구현에 연결한다.
+
+## P2 Codex Additions
+
+`providers/codex-real-shapes.jsonl`과 `providers/codex-p2-expected.json`은 실제 관측 shape를 바탕으로 독립적으로 만든 합성 입력·기대값이다. 실제 로그를 변환하거나 복사하지 않았다. shell `-lc` argv, top-level native usage, `input_text` 결과, 서로 다른 item/call IDs와 unsupported DynamicToolCall을 다룬다. command runtime 2,250ms/lifecycle 3,000ms, MCP invocation latency 1,400ms/lifecycle 1,500ms, turn elapsed 7,900ms/wall 8,000ms를 각각 보존한다. response input80/output12/cache-read20/cache-write5/reasoning4/total92와 별도 turn92/thread212 snapshot을 합산하지 않는다. positive cache-write는 합성·source 검증이며 실제 positive 표본의 통과가 아니다.
+
+`codex-oracles.test.ts`는 기존 `expected.json`과 P0 Codex 입력을 수정하지 않고 structured/legacy/pending append/archive/fork 기대값에 연결한다. wrapper 관계·copied ordinal은 외부 trusted fixture context만 제공한다. `codex-behavior.test.ts`와 usage 행동 테스트는 상태·순서·상한·privacy·finality의 회귀를 검증한다. 합성 파서 통과를 Claude 파서나 P5의 19 metric/9 waste oracle 실행 통과로 확장하지 않는다.
+
+`providers/codex-usage-replay.jsonl`·`codex-usage-expected.json`은 같은 response의 partial output6→8→final10을 독립 기대값으로 검증한다. ordering/finality는 별도 trusted fixture context로만 제공하며 실제 provider 필드가 아니다. cache read40/write60은 input100 안에 포함되고 output10과 total110을 만든다. 더 이른 partial replay·untrusted source의 충돌·필수 input 누락·optional cache/reasoning 누락·last snapshot의 정상 감소를 따로 대조한다.

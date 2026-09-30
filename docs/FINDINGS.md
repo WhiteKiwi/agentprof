@@ -4,7 +4,7 @@
 
 사용자 요청에 따라 [AgentProf Project](https://github.com/users/WhiteKiwi/projects/2)를 private로 유지하고 저장소에 연결했다. 기존 P0–P7 이슈의 작업·Verify를 보존하고 이슈·Project를 실행 상태의 원본으로 삼는다. [TODO.md](TODO.md)는 탐색과 운영 규칙만 남긴다. 제품 계약·구현 결정·실제 검증 evidence는 유지 관리 문서에 남긴다.
 
-main `c33f137`의 디자인 guideline·재사용 컴포넌트·README 초안을 기반 작업 브랜치에 통합했다. 이후 최신 main `514ee77`의 도롱뇽 README hero와 참고 자산도 통합했다. 디자인 소스와 시스템 구현의 역할을 유지하며, 디자인 브라우저 검증의 `NOT RUN` gate를 별도 이슈로 추적한다. 조사·계약 검토 완료와 코드 PR 리뷰·병합 대기를 구분한다.
+main `c33f137`의 디자인 guideline·재사용 컴포넌트·README 초안을 기반 작업 브랜치에 통합했다. 이후 main `514ee77`의 도롱뇽 README hero와 참고 자산, PR #11의 측정·개선 계약을 보존해 통합했다. P0/P1 검토·검증 후 PR #9는 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 병합되었다. 디자인 소스와 시스템 구현의 역할을 유지하며, 디자인 브라우저 검증의 `NOT RUN` gate를 별도 이슈 #10으로 추적한다. P2 Codex 파서의 범위·출처·대조 근거는 [CODEX-EVIDENCE.md](CODEX-EVIDENCE.md)에서 이어 간다.
 
 ## 로그 형식 조사
 
@@ -218,6 +218,8 @@ P1에 필요한 prepared binding·migration·동기 transaction·rollback·reope
 검토 목표는 **결과 품질을 유지하면서 토큰과 작업 경과 시간을 줄이는 의사결정**이다. 이번 작업은 저장소 코드·기존 공개 evidence·공식 자료를 읽은 문서 검토다. 새로운 사용자 로그를 읽거나 업로드하지 않았고 제품 파서·분석기·파일럿을 실행하지 않았다. 조회일과 저장소 revision을 구분한다.
 
 ### 현재 가능한 것과 계획된 것
+
+다음 표는 PR #11의 검토 당시 고정 revision 기록이다. 이후 문서 PR #11과 기반 PR #9는 main `c3856249`에 병합되었다. 파서·제품 검증의 현재 범위는 [ACCEPTANCE.md](ACCEPTANCE.md)와 공급자별 evidence를 따른다.
 
 | 기준 | 확인한 상태 | 해석 한계 |
 | --- | --- | --- |
