@@ -2,7 +2,7 @@
 
 ## Status
 
-2026-09-30. 아래는 **예정된 검증**이다. 제품 코드·test suite·배포 artifact가 없어 실행 검증은 모두 `NOT RUN`이다. 구현 후 실제 명령·환경·revision·결과로 갱신한다.
+2026-09-30. 아래는 **예정된 검증**이다. 프로파일러 코드·제품 test suite·배포 artifact가 없어 아래 제품 실행 검증은 모두 `NOT RUN`이다. 별도 디자인 scaffold 검증은 [DESIGN-QA.md](DESIGN-QA.md)에 기록하며 아래 acceptance 통과를 뜻하지 않는다. 구현 후 실제 명령·환경·revision·결과로 갱신한다.
 
 | ID | 기대 동작 | 검증 방식 | 상태 |
 | --- | --- | --- | --- |

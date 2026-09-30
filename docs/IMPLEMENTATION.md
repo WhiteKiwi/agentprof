@@ -2,7 +2,7 @@
 
 ## Status and Authority
 
-Draft, 2026-09-30. [SPEC.md](SPEC.md)의 사용자 동작, [ARCHITECTURE.md](ARCHITECTURE.md)의 불변 조건, [METRICS.md](METRICS.md)의 계산 계약을 구현하는 계획이다. 코드 구현은 아직 시작하지 않았다. [FINDINGS.md](FINDINGS.md)는 조사 근거이며 사양을 덮어쓰지 않는다.
+Draft, 2026-09-30. [SPEC.md](SPEC.md)의 사용자 동작, [ARCHITECTURE.md](ARCHITECTURE.md)의 불변 조건, [METRICS.md](METRICS.md)의 계산 계약을 구현하는 계획이다. 프로파일러 코드는 아직 구현하지 않았다. 사용자 요청에 따른 디자인 기반은 아래 별도 트랙에서 준비하며 데이터 파서·분석기 구현과 구분한다. [FINDINGS.md](FINDINGS.md)는 조사 근거이며 사양을 덮어쓰지 않는다.
 
 새 지표 제안을 반영해 v0.1에 10개 지표와 6개 자동 진단을 포함했다. 이 계획을 검토한 뒤 개발 서브세션이 구현한다. 제품 범위를 바꾸면 SPEC, 구조·불변 조건은 ARCHITECTURE, 계산 의미는 METRICS, 접근·순서는 이 문서와 TODO를 먼저 갱신한다.
 
@@ -120,3 +120,13 @@ Homebrew tap·formula 게시, npm 공개와 license 선택은 이 계획의 구�
 
 개발 서브세션에는 완료된 SPEC·FINDINGS·ARCHITECTURE·METRICS·IMPLEMENTATION·TODO와 첫 단계 P0를 전달한다. 구현 결정 변경은 해당 문서부터 반영하고 parent에 변경·검증·한계를 보고한다. parent는 계획·변경·검증 증거를 검토하고 저장소 수준 게시를 맡는다.
 
+
+## Design Foundation Track (2026-09-30)
+
+이 트랙은 사용자가 요청한 디자인 가이드라인·재사용 컴포넌트·README 초안이다. P0–P7의 의미·검증 순서를 바꾸거나 로컬 대시보드를 앞당기지 않는다.
+
+1. 제공 이미지·design-guidelines skill·Design Index·Recent를 검토하고 [canonical guideline](DESIGN-GUIDELINES.md)과 [간결한 실행 계약](../DESIGN.md)을 작성한다.
+2. 별도 구현 세션에서 framework-free `design/`의 semantic CSS tokens·native HTML primitives·최소 vanilla 동작과 합성 오프라인 single-file showcase를 만든다. 재사용 소스와 생성 결과를 함께 둔다.
+3. dark/light·320px/phone/desktop·keyboard·reduced-motion·privacy·contrast·print를 검증하고 [DESIGN-QA](DESIGN-QA.md)에 실제 결과와 제한을 기록한다. README는 배포/측정된 제품인 것처럼 표시하지 않는다.
+
+제품 적용은 P5 최소 report부터 시작한다. 실제 snapshot 연결·파서·injection 방어의 제품 acceptance는 그대로 미실행이다. 전역 framework/package 구성을 만들거나 watcher·server·배포를 추가하지 않는다.

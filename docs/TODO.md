@@ -2,7 +2,7 @@
 
 ## Status
 
-2026-09-30. 문서·초기 조사 단계다. 제품 구현은 미착수이며, 아래 구현 체크는 모두 열린 상태다. [SPEC.md](SPEC.md), [ARCHITECTURE.md](ARCHITECTURE.md), [METRICS.md](METRICS.md), [IMPLEMENTATION.md](IMPLEMENTATION.md)에 따라 진행한다.
+2026-09-30. 문서·초기 조사 단계다. 프로파일러 구현은 미착수이며, P0–P7 구현 체크는 모두 열린 상태다. 디자인 기반 트랙은 별도로 기록한다. [SPEC.md](SPEC.md), [ARCHITECTURE.md](ARCHITECTURE.md), [METRICS.md](METRICS.md), [IMPLEMENTATION.md](IMPLEMENTATION.md)에 따라 진행한다.
 
 기존 GitHub 이슈 본문은 이번 문서 개정에서 수정하지 않았다. 새 검증 기준과 단계 이동은 이 문서를 우선하며 이슈 동기화는 별도 확인한다.
 
@@ -95,3 +95,14 @@ GitHub: [#8](https://github.com/WhiteKiwi/agentprof/issues/8)
 
 Homebrew·Rust·추가 비교 기능은 [BACKLOG.md](BACKLOG.md)에 있다. active TODO로 옮기기 전에 사양·연구·구현 계획을 갱신한다.
 
+
+## Design Foundation — separate from profiler implementation
+
+- [x] 제공 자료·요청한 참고를 확인하고 canonical guideline과 root DESIGN.md를 작성한다.
+  **Verify:** 연구 근거·제안/구현/검증 상태, 두 테마 semantic role·컴포넌트 상태·모바일/오프라인 원칙이 연결된다.
+- [x] 재사용 token·CSS·native primitive와 합성 single-file showcase를 만든다.
+  **Verify:** 의존성 없는 build와 테스트가 통과하고 결과에 외부 자산/네트워크·raw log가 없다. unknown과 0이 구별된다.
+- [ ] 렌더링·접근성 관련 점검 후 README 초안과 QA 기록을 게시한다.
+  **Verify:** dark/light·320px/phone/desktop·키보드·reduced motion·contrast·print의 실제 검사 결과/한계를 DESIGN-QA에 기록한다. 프로파일러/CLI와 dashboard는 미구현으로 표시한다.
+
+**Evidence (2026-09-30):** 빌드·정적 계약·72개 색상 대비 pair를 검증했다. README SVG는 실제 rasterize 후 확인했다. 브라우저 렌더링·상호작용은 환경 제한으로 NOT RUN이므로 마지막 gate는 열린 상태다. 상세: [DESIGN-QA](DESIGN-QA.md).

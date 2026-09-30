@@ -1,24 +1,32 @@
-# AgentProf Design References
+# AgentProf Brand Assets and References
 
-## Status
+2026-09-30 · Mascot inherited; compact mark selection provisional
 
-2026-09-30. 사용자가 마스코트를 **Salamander / 도롱뇽**으로 확정했다. 아래 세 이미지는 README와 HTML 리포트 디자인을 위한 제공 자료다. 특정 이미지가 최종 로고로 선택되거나 전체 테마·색상 토큰이 확정된 상태는 아니다.
+## Current design system
 
-원본은 Downloads에서 수정 없이 복사했다. 제품 시각 작업에서 이 자료를 먼저 확인한다. 원문 metrics 문서의 마스코트 후보·모노크롬 제안보다 사용자 확정과 실제 제공 이미지가 우선한다.
+Canonical decisions: [DESIGN-GUIDELINES.md](DESIGN-GUIDELINES.md). Concise implementation contract: [root DESIGN.md](../DESIGN.md). Reusable specimen: [design/README.md](../design/README.md). Verification: [DESIGN-QA.md](DESIGN-QA.md).
 
-## Reference Gallery
+The mascot is **Salamander / 도롱뇽**, as selected by the user. The new reference shows a dark technical atmosphere, glowing orange trace, white/orange AgentProf wordmark and “FOLLOW THE SLOW.” The report carries the warmth in a restrained brand accent; its data does not glow or inherit orange as an error color.
 
-| 참고 1 | 참고 2 | 참고 3 |
+The four new attachments were pixel-inspected locally as references. Their duplicate binary uploads are not part of this commit. The existing dark-field orange salamander, `assets/reference/salamander2.png`, is reused unchanged as the provisional compact mark and PNG favicon. It has a white outer margin and is not a newly cropped or vectorized logo. Small-size browser legibility remains NOT RUN, not an approval.
+
+The supplied trace-style reference informs the charcoal/orange atmosphere and tagline. The separate README cover is original native vector layout/type and a trace motif; it does not redraw the mascot.
+
+## Earlier repository references — preserved
+
+The initial reference files remain unchanged. The existing `salamander2.png` was retrieved and pixel-inspected during this pass; its visual composition matches the newly supplied dark/orange direction, but its bytes differ, so the new attachments do not overwrite it.
+
+| Reference 1 | Reference 2 | Reference 3 |
 | --- | --- | --- |
 | ![밝은 배경과 검은 도롱뇽](../assets/reference/salamander1.png) | ![어두운 배경과 주황색 도롱뇽](../assets/reference/salamander2.png) | ![주황색 배경과 검은 도롱뇽](../assets/reference/salamander3.png) |
 
-공통 특징은 단순한 옆모습, 큰 원형 눈, 둥근 몸과 꼬리, 강한 명암 대비다. 두 색상 참고에는 따뜻한 주황색과 짙은 배경·실루엣을 반전한 구성이 있다. 이 관측을 최종 hex·상태 색상·다크모드 계약으로 확대하지 않는다.
+Earlier originals came from Downloads and were preserved without modification. Their presence never established a final logo, exact palette or release-ready favicon.
 
-## Use in README and Report
+## Asset rules
 
-- README의 마스코트·시각 자산 안내, 리포트의 제목 영역과 작은 식별 마크에서 참고한다.
-- 마스코트는 시간·진단·근거를 읽는 데 방해되지 않도록 사용한다. v0.1 첫 화면 우선순위는 Time Breakdown·Detected Waste·Top Insights다.
-- 작은 아이콘·다크·라이트 배경·명암 대비는 실제 UI 제작 때 검증한다. 제공 PNG를 최종 favicon이라고 가정하지 않는다.
-- HTML에 사용할 자산은 로컬 번들에 포함한다. 원격 이미지 요청을 추가하지 않는다.
-
-새 그림·벡터화·배경 제거·변형 제작과 테마 확정은 후속 디자인 작업이다. 현재는 제공 자료 보존과 마스코트 결정 기록까지 완료했다.
+- Keep supplied original pixels and filenames traceable; never replace the originals with an edit.
+- Use modest branding in the report header. Time Breakdown, Detected Waste and Top Insights retain priority.
+- Include report assets locally/inlined; no remote image request.
+- The brand reference is not a background for critical text or a data encoding.
+- Logo finalization, vector master and custom small-size optical variants remain future decisions. This scaffold does not invent their approval.
+- Source checksum and available render/measurement evidence are in [DESIGN-QA.md](DESIGN-QA.md).

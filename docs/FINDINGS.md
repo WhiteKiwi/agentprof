@@ -174,3 +174,13 @@ Homebrew formula는 npm artifact를 검증한 뒤 추가할 수 있다. Rust CLI
 - 전체 상세 화면보다 시간·실패·재시도의 작은 CLI/오프라인 HTML 세로 단면을 P5 초기에 검증한다. 성능 예산·workload는 P0에 결정하고 실측은 이후에 기록한다. 현재 성능 수치는 없다.
 
 이 개정은 계획 문서만 변경한다. 연결된 구현 이슈 본문과 마일스톤은 수정하지 않았으므로 새 단계 책임·검증 gate의 반영 여부는 후속 동기화 때 확인한다. 제품 코드·설치·테스트·실로그 파일럿 acceptance는 모두 NOT RUN이다.
+
+## 2026-09-30 디자인 기반 연구
+
+사용자 요청의 [design-guidelines skill](https://github.com/WhiteKiwi/skills/tree/main/skills/design-guidelines), [Design Index](https://github.com/WhiteKiwi/design-index)와 시스템/제품 영감 문서를 읽었다. [Recent](https://recent.design/)의 정확한 사이트와 화면을 cloud browser에서 확인했다. 중립적인 탐색 chrome 안에 표현적인 작품을 분리하는 구성을 관측했다. 이를 데이터 화면 전체의 효과·애니메이션으로 복제하지 않고 하나의 brand scene과 조용한 분석 영역의 분리로 적용한다.
+
+제공된 네 이미지 모두 로컬에서 실제 픽셀을 확인했다. 어두운 기술적 trace 분위기와 평면 주황 도롱뇽을 구분하고, 신규 원본은 첨부로 유지하고 저장소의 기존 이미지를 수정 없이 재사용하며 compact mark는 임시 선택으로 둔다. 기존 저장소의 dark/orange 참고 PNG도 별도로 읽어 확인했다. 새로운 로고 생성·벡터화·외부 디자인 자산 복사는 하지 않았다.
+
+[Radix의 역할별 색상 구조](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale)와 [WCAG text contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)를 확인했다. 색상 측정은 특정 pair의 근거이고 전체 접근성 인증은 아니다. 상세 판단은 [DESIGN-GUIDELINES](DESIGN-GUIDELINES.md), 실제 실행/렌더링 증거는 [DESIGN-QA](DESIGN-QA.md)에 분리한다. 제품 로그·지표 검증 상태는 변하지 않는다.
+
+후속 확인: 최신 `create-design-guideline` skill과 두 reference를 `aeb0d118784de28aa616db2066a89c94eff4d850`에서 읽고 primitive/semantic·state·측정 pair·governance 표를 보완했다. 브라우저 QA는 환경 제한으로 NOT RUN이며 정적·색상 측정과 구분한다.
