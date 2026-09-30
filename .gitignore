@@ -23,3 +23,5 @@ raw-fixtures/
 *.jsonl.gz
 *.jsonl.zst
 !tests/fixtures/**/*.jsonl
+# Rebuild locally with node design/build.mjs
+design/showcase.html

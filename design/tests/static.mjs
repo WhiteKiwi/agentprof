@@ -1,0 +1,51 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { buildShowcase, injectionExample } from '../build.mjs';
+import { escapeHtml, formatDuration, evidenceBadge, badge, chartRow, metric, insight } from '../components.mjs';
+import { fixture } from '../fixtures.mjs';
+const html = await buildShowcase();
+assert.equal(formatDuration(null), 'Unknown');
+assert.equal(formatDuration(undefined), 'Unknown');
+assert.equal(formatDuration(0), '0s');
+assert.equal(formatDuration(95), '1m 35s');
+assert.equal(formatDuration(840), '14m');
+for (const bad of [-1, NaN, Infinity, '0']) assert.throws(() => formatDuration(bad));
+assert.match(metric({ label: 'Count', value: 0, note: '' }), />0<\/p>/);
+assert.match(metric({ label: 'Count', value: null, note: '' }), />Unknown<\/p>/);
+assert.equal(escapeHtml(`<script>"&'</script>`), '&lt;script&gt;&quot;&amp;&#39;&lt;/script&gt;');
+assert(html.includes(escapeHtml(injectionExample)));
+assert(!html.includes(injectionExample));
+assert.throws(() => evidenceBadge('guessed'));
+assert.throws(() => badge('x', 'x" onclick="bad'));
+assert.throws(() => chartRow({ label: 'bad', total: 1, seconds: 2, evidence: 'direct' }));
+for (const bad of [null, '0', NaN, Infinity, undefined, false]) {
+  assert.throws(() => chartRow({ label: 'bad', total: 10, seconds: bad, evidence: 'direct' }));
+  assert.throws(() => chartRow({ label: 'bad', total: bad, seconds: 0, evidence: 'direct' }));
+}
+for (const value of [null, undefined]) {
+  const unknown = metric({ label: 'Time', value, unit: 'seconds', note: 'missing' });
+  assert(!unknown.includes('seconds')); assert(unknown.includes('Unknown'));
+}
+assert.throws(() => insight({ id: '" onclick="bad' }));
+assert.equal(fixture.breakdown.reduce((n, item) => n + item.seconds, 0), 1800);
+assert.equal((840 + 600) / 1800, .8);
+assert.equal(12 + 8 - 5, 15);
+assert.equal(fixture.insights.filter(x => x.seconds === null).length, 1);
+assert(!/@@[A-Z_]+@@/.test(html));
+assert(!/<(?:script|link|img)[^>]+(?:src|href)="https?:/i.test(html));
+assert(!/@import|url\(\s*['"]?https?:/i.test(html));
+const js = await readFile(new URL('../showcase.mjs', import.meta.url), 'utf8');
+assert(!/\b(?:fetch|XMLHttpRequest|WebSocket|localStorage|sessionStorage|eval)\s*[.(]/.test(js));
+assert(!/\.innerHTML\s*=|insertAdjacentHTML/.test(js));
+const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+const style = html.match(/<style>([\s\S]*?)<\/style>/)[1];
+for (const content of [script, style]) assert(html.includes(`sha256-${createHash('sha256').update(content).digest('base64')}`));
+assert.match(html, /default-src 'none'/);
+assert.match(html, /connect-src 'none'/);
+assert.match(html, /<html lang="en"/);
+const embeddedPng = html.match(/id="brand-mark" src="data:image\/png;base64,([^"]+)"/)[1];
+assert.deepEqual(Buffer.from(embeddedPng, 'base64'), await readFile(new URL('../../assets/reference/salamander2.png', import.meta.url)));
+assert.equal((html.match(/data:image\/png;base64,/g) || []).length, 1);
+assert.match(html, /Synthetic, normalized evidence/);
+console.log('PASS: static contracts (formatting, null/zero, escaping, allowed roles, fixture arithmetic, CSP, no network/storage, single-file build).');

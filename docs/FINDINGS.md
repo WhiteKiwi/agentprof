@@ -1,5 +1,11 @@
 # AgentProf Research Findings
 
+## 실행 추적을 GitHub Projects로 이동 — 2026-09-30
+
+사용자 요청에 따라 [AgentProf Project](https://github.com/users/WhiteKiwi/projects/2)를 private로 유지하고 저장소에 연결했다. 기존 P0–P7 이슈의 작업·Verify를 보존하고 이슈·Project를 실행 상태의 원본으로 삼는다. [TODO.md](TODO.md)는 탐색과 운영 규칙만 남긴다. 제품 계약·구현 결정·실제 검증 evidence는 유지 관리 문서에 남긴다.
+
+최신 main `c33f137`의 디자인 guideline·재사용 컴포넌트·README 초안을 기반 작업 브랜치에 통합했다. 디자인 소스와 시스템 구현의 역할을 유지하며, 디자인 브라우저 검증의 `NOT RUN` gate를 별도 이슈로 추적한다. 조사·계약 검토 완료와 코드 PR 리뷰·병합 대기를 구분한다.
+
 ## 로그 형식 조사
 
 확인일: 2026-09-30. 계획을 위한 로컬 구조 조사이며, 파서 구현·정확도 검증이 완료된 상태는 아니다.
@@ -196,3 +202,13 @@ Homebrew formula는 npm artifact를 검증한 뒤 추가할 수 있다. Rust CLI
 P1에 필요한 prepared binding·migration·동기 transaction·rollback·reopen은 검증한 런타임에서 통과했으므로 SQLite driver를 변경할 근거가 없다. 이는 RC API의 Stable 전환이나 모든 OS/Node 지원을 의미하지 않는다. 실행 의존성은 Commander만이며 dev compiler/tool의 platform binary를 사용자 artifact에 넣지 않는다. public npm 이름·license·게시 후 npx는 미확정이다.
 
 검토에서 같은 scope의 duration/interval 정밀도와 동등 근거 충돌, shell quote·git 옵션 값, discovery provider 중첩, opening size 고정, caller-owned transaction/async callback, 진단 runtime allowlist를 보완하고 회귀 테스트로 확인했다. 실제 provider adapter·이벤트/checkpoint 저장·지표/HTML·성능·사람 파일럿은 아직 NOT RUN이다. 디자인 가이드와 UI/README 꾸미기는 사용자가 별도 세션에 맡겼으며 이 증분은 시스템 기반을 담당한다.
+
+## 2026-09-30 디자인 기반 연구
+
+사용자 요청의 [design-guidelines skill](https://github.com/WhiteKiwi/skills/tree/main/skills/design-guidelines), [Design Index](https://github.com/WhiteKiwi/design-index)와 시스템/제품 영감 문서를 읽었다. [Recent](https://recent.design/)의 정확한 사이트와 화면을 cloud browser에서 확인했다. 중립적인 탐색 chrome 안에 표현적인 작품을 분리하는 구성을 관측했다. 이를 데이터 화면 전체의 효과·애니메이션으로 복제하지 않고 하나의 brand scene과 조용한 분석 영역의 분리로 적용한다.
+
+제공된 네 이미지 모두 로컬에서 실제 픽셀을 확인했다. 어두운 기술적 trace 분위기와 평면 주황 도롱뇽을 구분하고, 신규 원본은 첨부로 유지하고 저장소의 기존 이미지를 수정 없이 재사용하며 compact mark는 임시 선택으로 둔다. 기존 저장소의 dark/orange 참고 PNG도 별도로 읽어 확인했다. 새로운 로고 생성·벡터화·외부 디자인 자산 복사는 하지 않았다.
+
+[Radix의 역할별 색상 구조](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale)와 [WCAG text contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)를 확인했다. 색상 측정은 특정 pair의 근거이고 전체 접근성 인증은 아니다. 상세 판단은 [DESIGN-GUIDELINES](DESIGN-GUIDELINES.md), 실제 실행/렌더링 증거는 [DESIGN-QA](DESIGN-QA.md)에 분리한다. 제품 로그·지표 검증 상태는 변하지 않는다.
+
+후속 확인: 최신 `create-design-guideline` skill과 두 reference를 `aeb0d118784de28aa616db2066a89c94eff4d850`에서 읽고 primitive/semantic·state·측정 pair·governance 표를 보완했다. 브라우저 QA는 환경 제한으로 NOT RUN이며 정적·색상 측정과 구분한다.

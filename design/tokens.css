@@ -1,0 +1,86 @@
+/* AgentProf design candidate 0.1. Canonical rationale: docs/DESIGN-GUIDELINES.md.
+   Primitive intent uses OKLCH; sRGB fallbacks below are the measured runtime
+   authority. Components consume semantic roles, never the primitive layer. */
+:root {
+  --ap-neutral-ink-intent: oklch(0.22 0.01 255);
+  --ap-neutral-paper-intent: oklch(0.97 0.002 255);
+  --ap-ember-intent: oklch(0.75 0.16 52);
+  --ap-ink: #171a1e;
+  --ap-paper: #f5f6f7;
+  --ap-ember: #ff8a3d;
+  --ap-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+  --ap-mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --ap-space-1: 4px;
+  --ap-space-2: 8px;
+  --ap-space-3: 12px;
+  --ap-space-4: 16px;
+  --ap-space-6: 24px;
+  --ap-space-8: 32px;
+  --ap-space-12: 48px;
+  --ap-space-16: 64px;
+  --ap-radius-control: 6px;
+  --ap-radius-panel: 10px;
+  --ap-radius-badge: 999px;
+  --ap-container: 1240px;
+  --ap-target: 44px;
+  --ap-motion: 120ms;
+  --ap-brand-field: var(--ap-ember);
+  --ap-brand-hover: #ffa05f;
+  --ap-brand-active: #f87929;
+  --ap-on-brand: var(--ap-ink);
+}
+/* Dark is an intentional default for the static specimen. Consumers may set
+   data-theme="light" or use the optional theme selector/system preference. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --ap-canvas: #111315;
+  --ap-surface: #191c20;
+  --ap-surface-raised: #23272d;
+  --ap-text: var(--ap-paper);
+  --ap-text-muted: #b2b8c2;
+  --ap-border: #424b57;
+  --ap-control-border: #7b8796;
+  --ap-brand-text: #ffab73;
+  --ap-brand-soft: #38281f;
+  --ap-focus: #ffab73;
+  --ap-success: #79d6a3;
+  --ap-success-soft: #183027;
+  --ap-warning: #edc46b;
+  --ap-warning-soft: #342b18;
+  --ap-danger: #ff9993;
+  --ap-danger-soft: #382221;
+  --ap-info: #9ac4ff;
+  --ap-info-soft: #202d40;
+  --ap-unknown: #b2b8c2;
+  --ap-unknown-soft: #23272d;
+  --ap-observed: #c3acf2;
+  --ap-observed-soft: #302738;
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --ap-canvas: #f5f6f7;
+  --ap-surface: #ffffff;
+  --ap-surface-raised: #eaedf0;
+  --ap-text: var(--ap-ink);
+  --ap-text-muted: #545e6b;
+  --ap-border: #b4bdc8;
+  --ap-control-border: #697583;
+  --ap-brand-text: #944200;
+  --ap-brand-soft: #fff0e5;
+  --ap-focus: #944200;
+  --ap-success: #14633a;
+  --ap-success-soft: #e5f4eb;
+  --ap-warning: #765100;
+  --ap-warning-soft: #fff2d4;
+  --ap-danger: #a32723;
+  --ap-danger-soft: #ffedeb;
+  --ap-info: #245b9b;
+  --ap-info-soft: #e9f1ff;
+  --ap-unknown: #545e6b;
+  --ap-unknown-soft: #eaedf0;
+  --ap-observed: #654194;
+  --ap-observed-soft: #f2ebfa;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --ap-motion: 0ms; }
+}

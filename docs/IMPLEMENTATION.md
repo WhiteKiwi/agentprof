@@ -2,9 +2,9 @@
 
 ## Status and Authority
 
-Draft, 2026-09-30. [SPEC.md](SPEC.md)의 사용자 동작, [ARCHITECTURE.md](ARCHITECTURE.md)의 불변 조건, [METRICS.md](METRICS.md)의 계산 계약을 구현하는 계획이다. `36bb389`의 개정 계획에 따른 P0 계약 검토와 P1 실행 기반 검증을 완료했으며 [draft PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)에 게시했다. 다음은 P2/P3 공급자 어댑터다. [FINDINGS.md](FINDINGS.md)는 조사 근거이며 사양을 덮어쓰지 않는다.
+Draft, 2026-09-30. [SPEC.md](SPEC.md)의 사용자 동작, [ARCHITECTURE.md](ARCHITECTURE.md)의 불변 조건, [METRICS.md](METRICS.md)의 계산 계약을 구현하는 계획이다. `36bb389`의 개정 계획에 따른 P0 계약 검토와 P1 실행 기반 검증을 완료했으며 [draft PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)에 게시했다. 다음은 P2/P3 공급자 어댑터다. [FINDINGS.md](FINDINGS.md)는 조사 근거이며 사양을 덮어쓰지 않는다. 디자인 기반은 아래 별도 트랙으로 유지하고 데이터 파서·분석기 구현과 구분한다.
 
-새 지표 제안을 반영해 v0.1에 10개 지표와 6개 자동 진단을 포함했다. 이 계획을 검토한 뒤 개발 서브세션이 구현한다. 제품 범위를 바꾸면 SPEC, 구조·불변 조건은 ARCHITECTURE, 계산 의미는 METRICS, 접근·순서는 이 문서와 TODO를 먼저 갱신한다.
+새 지표 제안을 반영해 v0.1에 10개 지표와 6개 자동 진단을 포함했다. 이 계획을 검토한 뒤 개발 서브세션이 구현한다. 제품 범위를 바꾸면 SPEC, 구조·불변 조건은 ARCHITECTURE, 계산 의미는 METRICS, 접근·선행 조건은 이 문서를 먼저 갱신한다. 실행 작업·Verify·상태는 해당 GitHub issue와 [Project](https://github.com/users/WhiteKiwi/projects/2)에 반영한다.
 
 ## Selected Approach
 
@@ -58,7 +58,7 @@ docs/          specification, evidence, plans and acceptance
 | [P6](https://github.com/WhiteKiwi/agentprof/issues/7) | single HTML·타임라인·open | P5 | v0.1 | 2–4 작업일 |
 | [P7](https://github.com/WhiteKiwi/agentprof/issues/8) | packed artifact·파일럿·출시 준비 | P6 | v0.1 | 1–2 작업일 |
 
-한 명의 순차 작업 기준 11–21 작업일의 초기 추정이다. 출시일 약속이 아니며 P0에서 지원 버전·시간 의미를 확정한 뒤 다시 산정한다. TODO의 각 단계에 구체적인 Verify를 둔다. 실로그 대조·품질 gate를 포함한 추정을 P0에서 다시 산정한다. 2026-09-30 개정된 단계·Verify를 이슈 #1–#8에 동기화하고 본문 readback을 확인했다. 세부 순서·검증은 본 계획을 우선한다.
+한 명의 순차 작업 기준 11–21 작업일의 초기 추정이다. 출시일 약속이 아니며 공급자·시간 의미 대조 결과로 다시 산정한다. 각 issue의 구현 단계에 구체적인 Verify를 둔다. 2026-09-30 개정된 단계·Verify를 이슈 #1–#8에 동기화하고 본문 readback을 확인했다. 진행 상태는 [Project](https://github.com/users/WhiteKiwi/projects/2), 설계상 선행 조건은 본 계획, 실제 실행 증거는 ACCEPTANCE를 따른다.
 
 ### P0 — Empirical Contracts Before Parsers
 
@@ -122,6 +122,17 @@ Homebrew tap·formula 게시, npm 공개와 license 선택은 이 계획의 구�
 
 ## Verification and Handoff
 
-[TODO.md](TODO.md)의 모든 구현 체크에는 Verify가 있다. [ACCEPTANCE.md](ACCEPTANCE.md)는 실행 전 NOT RUN이고, 실행 후 revision·환경·명령·기대값·실제 결과를 기록한다. fixture·개인정보·DB 복구·지표 일치·offline UI·설치 시험을 변경 범위에 맞게 수행한다.
+[GitHub Project](https://github.com/users/WhiteKiwi/projects/2)의 연결 issue마다 구현 체크와 Verify가 있다. [TODO.md](TODO.md)는 보드 운영 규칙을 안내하며 상태를 복제하지 않는다. [ACCEPTANCE.md](ACCEPTANCE.md)는 실행 전 NOT RUN이고, 실행 후 revision·환경·명령·기대값·실제 결과를 기록한다. fixture·개인정보·DB 복구·지표 일치·offline UI·설치 시험을 변경 범위에 맞게 수행한다.
 
-개발 서브세션에는 완료된 SPEC·FINDINGS·ARCHITECTURE·METRICS·IMPLEMENTATION·TODO와 첫 단계 P0를 전달한다. 구현 결정 변경은 해당 문서부터 반영하고 parent에 변경·검증·한계를 보고한다. parent는 계획·변경·검증 증거를 검토하고 저장소 수준 게시를 맡는다.
+개발 서브세션에는 SPEC·FINDINGS·ARCHITECTURE·METRICS·IMPLEMENTATION, Project의 해당 issue·Verify·선행 조건을 전달한다. 구현 결정 변경은 해당 문서와 issue부터 반영하고 parent에 변경·검증·한계를 보고한다. parent는 계획·변경·검증 증거를 검토하고 저장소 수준 게시를 맡는다.
+
+
+## Design Foundation Track (2026-09-30)
+
+이 트랙은 사용자가 요청한 디자인 가이드라인·재사용 컴포넌트·README 초안이다. P0–P7의 의미·검증 순서를 바꾸거나 로컬 대시보드를 앞당기지 않는다.
+
+1. 제공 이미지·design-guidelines skill·Design Index·Recent를 검토하고 [canonical guideline](DESIGN-GUIDELINES.md)과 [간결한 실행 계약](../DESIGN.md)을 작성한다.
+2. 별도 구현 세션에서 framework-free `design/`의 semantic CSS tokens·native HTML primitives·최소 vanilla 동작과 합성 오프라인 single-file showcase를 만든다. 재사용 소스를 커밋하고 생성 HTML은 로컬에만 둔다.
+3. dark/light·320px/phone/desktop·keyboard·reduced-motion·privacy·contrast·print를 검증하고 [DESIGN-QA](DESIGN-QA.md)에 실제 결과와 제한을 기록한다. README는 배포/측정된 제품인 것처럼 표시하지 않는다. 남은 브라우저·README 검증은 [#10](https://github.com/WhiteKiwi/agentprof/issues/10)에서 추적한다.
+
+제품 적용은 P5 최소 report부터 시작한다. 실제 snapshot 연결·파서·injection 방어의 제품 acceptance는 그대로 미실행이다. 전역 framework/package 구성을 만들거나 watcher·server·배포를 추가하지 않는다.

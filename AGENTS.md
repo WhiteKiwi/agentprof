@@ -2,14 +2,14 @@
 
 ## Core Workflow
 
-Documentation is the source of truth. Read `docs/SPEC.md`, `docs/IMPLEMENTATION.md`, and `docs/TODO.md` before changing code. For new or materially changed work, update planning documents before implementation.
+Documentation is the source of truth for product contracts and verification evidence. The [AgentProf GitHub Project](https://github.com/users/WhiteKiwi/projects/2) and its linked issues own execution checklists and progress. Read `docs/SPEC.md`, `docs/IMPLEMENTATION.md`, `docs/TODO.md` (tracking rules), and the relevant project issue before changing code. For new or materially changed work, update the applicable plan and issue before implementation.
 
 Follow this order, adapted from `WhiteKiwi/locron`:
 
 1. Draft or update `docs/SPEC.md`.
 2. Resolve open questions through research and record evidence in `docs/FINDINGS.md`.
 3. Complete or update `docs/IMPLEMENTATION.md`.
-4. Complete or update `docs/TODO.md`; every implementation step in a plan with three or more steps needs a concrete `Verify` entry.
+4. Create or update the relevant GitHub issue and add it to the AgentProf Project. Every implementation step in a plan with three or more steps needs a concrete `Verify` entry in the issue. Do not mirror mutable checklists or statuses in `docs/TODO.md`.
 5. Review the completed plan before implementation.
 6. Hand code implementation to a separate development sub-session. The parent planning session owns planning, review, and repository publication; it does not implement code after drafting the specification.
 
@@ -21,7 +21,8 @@ Update the applicable planning document first when a decision changes. Do not im
 
 - `docs/SPEC.md`: what and why; goals, observable behavior, completion criteria, scope and product questions. Keep modules, classes, tables and implementation steps elsewhere. Draft is not a frozen or user-approved specification.
 - `docs/IMPLEMENTATION.md`: how and why; approach, trade-offs, change order, edge cases and verification. Keep the plan limited to this repository.
-- `docs/TODO.md`: phased progress checklists with `Verify` for every step. Mark complete only after verification succeeds.
+- GitHub Project and issues: execution order, current status, task checklists and concrete `Verify` entries. Close a completed issue only after its verification succeeds; code work also needs its PR merged. Put actual evidence in the relevant maintained document and link it from the issue.
+- `docs/TODO.md`: navigation and tracking rules for the GitHub Project; no parallel progress checklist.
 - `docs/ARCHITECTURE.md`: durable component boundaries, data flow and invariants.
 - `docs/METRICS.md`: metric definitions, timing evidence, denominators, diagnostic evidence and overlap rules.
 - `docs/FINDINGS.md`: dated source evidence, research conclusions and uncertainty; it does not override the specification.

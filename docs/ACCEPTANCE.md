@@ -2,7 +2,7 @@
 
 ## Status
 
-2026-09-30. 아래는 **제품 흐름의 예정된 검증**이다. P0의 조사·계약·독립 합성 기대값 검토와 P1 실행 기반의 macOS/Linux 검증을 마쳤다. 파서·분석·HTML·출시 파일럿은 아직 `NOT RUN`이다. 기반 코드의 부분 검증과 전체 제품 acceptance를 구분해 기록한다.
+2026-09-30. 아래는 **제품 흐름의 예정된 검증**이다. P0의 조사·계약·독립 합성 기대값 검토와 P1 실행 기반의 macOS/Linux 검증을 마쳤다. 파서·분석·HTML·출시 파일럿은 아직 `NOT RUN`이다. 기반 코드의 부분 검증과 전체 제품 acceptance를 구분해 기록한다. 별도 디자인 scaffold 검증은 [DESIGN-QA.md](DESIGN-QA.md)에 기록하며 제품 acceptance 통과로 취급하지 않는다.
 
 | ID | 기대 동작 | 검증 방식 | 상태 |
 | --- | --- | --- | --- |
@@ -51,6 +51,8 @@
 
 두 source 문서를 읽고 최근 로컬 로그의 필드 구조를 조사했다. 이는 구현 acceptance 통과가 아니다. 현재 확인한 사실과 한계는 [FINDINGS.md](FINDINGS.md)에 있다.
 
+2026-09-30 초기 bootstrap 검토에서는 Downloads 원문 2개·참고 PNG 3개의 SHA-256 동일성, 로컬 문서 링크 49개, 당시 TODO 18개 항목의 Verify와 staged diff whitespace를 확인했다. 계획 서브세션·부모 검토를 마쳤고 `00000ed89054180014db5a89ede7d4fa8bda3fc2`의 로컬 HEAD와 private GitHub main이 같았다. 이 기록은 초기 문서 게시 근거이며 현재 구현 상태는 Project·이슈와 아래 실행 evidence로 확인한다.
+
 ## P0 Contract Review — 2026-09-30
 
 기준은 개정 계획 `36bb389`다. [EVIDENCE.md](EVIDENCE.md)의 7개 header 버전 층 × 10개 지표, [QUALITY.md](QUALITY.md)의 6개 규칙 gate, [BENCHMARKS.md](BENCHMARKS.md)의 사전 예산, [FIXTURES.md](FIXTURES.md)·[NORMALIZATION.md](NORMALIZATION.md)의 입력·개인정보 계약을 부모 Codex가 검토했다.
@@ -75,3 +77,9 @@
 행동 검증은 원문 없는 allowlist·진단, HMAC domain/key 분리, 0700/0600 권한, 동시 key 생성, 명령의 quote/옵션/대상 구분, `rg` exit 1과 보수적 git diff 의미, duration/interval scope·1ms 정밀도·동등 근거 충돌, execution stream/parent 경계를 포함했다. reader에서 입력 hash 보존, BOM/CRLF byteOffset, 정확히 1 MiB/초과, 부분 UTF-8·JSON, opening size 고정, append/truncate와 symlink·discovery limit을 확인했다. SQLite import·prepared binding·migration·commit/rollback·caller transaction 보존·async callback 실행 전 거부·손상 DB/미래 schema·close/reopen을 확인했다.
 
 CLI는 help/version만 구현했다. `scan`, `stats`, `insights`, `report`, `open`은 원문 없는 `NOT_IMPLEMENTED`·exit 2이며 파일을 생성하지 않는다. 실제 provider parsing·10 지표·6 진단·원자적 이벤트/checkpoint 저장·offline HTML·성능·사람 파일럿은 NOT RUN이다. 합성 테스트 실행 시간은 제품 성능 측정값이 아니다.
+
+## Main Integration and Tracking Verification — 2026-09-30
+
+[PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)의 통합 작업 트리에서 main `c33f137`의 디자인 소스·brand 자산·canonical 디자인 문서 16개가 byte 단위로 동일함을 확인했다. macOS arm64 Node 26.7.0에서 `npm run check`를 다시 수행해 60개 테스트·14파일 artifact의 격리 npm exec/global install을 통과했다. `node design/build.mjs`, `node design/tests/static.mjs`, `node design/tests/contrast.mjs`도 통과했다. 디자인 브라우저 gate는 계속 NOT RUN이다.
+
+충돌 marker 없음, 로컬 문서 링크 124개와 whitespace를 확인했다. Project의 private·저장소 연결·9개 이슈 항목을 확인하고 기존 #1–#8 체크리스트·Verify가 그대로 보존되었음을 본문 readback으로 대조했다. 별도 디자인 QA는 #10으로 이관했으며 TODO의 병행 진행 체크리스트를 제거했다.

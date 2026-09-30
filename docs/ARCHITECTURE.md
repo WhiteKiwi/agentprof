@@ -134,3 +134,8 @@ P1에서 commandPattern·operationKey·lookup/content/error fingerprint의 허�
 HTML에는 JS·CSS·SVG·분석 데이터를 모두 포함한다. CDN, 외부 폰트, 원격 이미지와 fetch를 사용하지 않는다. 데이터 삽입 시 `</script>`, HTML 태그와 제어 문자를 안전하게 처리하며 문자열은 텍스트로 렌더링한다. 원문 로그는 리포트의 실행 코드가 될 수 없다.
 
 전체 파일을 메모리에 올리지 않는다. P0에서 최대 줄 크기·전체/증분 scan 시간·peak RSS·HTML 크기의 측정 workload와 합격 예산을 정하고 초과 입력·파싱 오류는 원문 없는 진단으로 남긴다. DB와 설정·로컬 키 파일의 접근 권한도 설치 테스트에서 확인한다.
+
+
+## Design foundation boundary
+
+재사용 CSS tokens·semantic HTML primitives·합성 single-file showcase는 `design/`에 별도로 둔다. [가이드라인](DESIGN-GUIDELINES.md)과 [root DESIGN.md](../DESIGN.md)를 따르며 실제 normalized event·snapshot을 생성하지 않는다. 향후 P5/P6 renderer가 이 디자인 계층을 소비하되 합성 데이터·demo filter를 제품 분석 계약으로 사용하지 않는다. 서버·watcher·live dashboard는 이 트랙에 포함하지 않는다.
