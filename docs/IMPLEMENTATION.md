@@ -120,6 +120,25 @@ macOS arm64·Linux에서 clean install → scan → stats → insights → repor
 
 Homebrew tap·formula 게시, npm 공개와 license 선택은 이 계획의 구현 artifact 준비와 별개인 게시 단계다. 현재 저장소 초기화 요청은 패키지 공개를 의미하지 않는다.
 
+## Efficiency Review Priorities
+
+2026-09-30 검토는 P0–P7을 대체하지 않고 기존 순서의 통과 기준을 구체화한다. 목표는 품질 보존형 토큰·task elapsed 개선이다. 문서만으로 구현 완료를 표시하지 않으며, PR #9의 실행 결과·Project 진행 상태를 이 문서 개정으로 재작성하지 않는다. 다음 구현에서는 해당 PR의 최신 계약과 병합 후 상태를 먼저 대조한다.
+
+| 순서 / 기존 단계 | 결과물·설계 선택 | Verify / 수용 기준 |
+| --- | --- | --- |
+| 1 / P2·P3·P4 | 수집 freshness·provider/version capability와 canonical identity를 먼저 표시. direct duration·paired interval·lifecycle과 final usage 후보를 별도 보존 | PR #9의 P0 evidence를 시작점으로 실제 adapter 출력을 대조. unknown≠0, missing/pending·same-ID update·replay/fork·scope conflict를 합성 oracle로 재현. 원문/secret 비노출, 재스캔 동일값 |
+| 2 / P5 최소 세로 단면 | coverage → 같은 scope의 hotspot(count/sum/p50/p95) → 확인된 실패 → 검증된 retry 한 종류 → 작은 행동 카드. 두 공급자의 최소 CLI/HTML 연결 | 10초 두 호출/5초 overlap이20초/15초. global union/session-minutes30/60분. 상태 불명·identity 불명을 제외 사유와 함께 표시. CLI/HTML이 같은 snapshot·값·근거를 소비 |
+| 3 / P5 기존 지표 완성 | 고유 최종 token usage·cache/weighted denominator, validation/recovery/lookup evidence를 추가. token 전체 합보다 응답/턴·실패/lookup 맥락을 탐색 | response6→10을10 한 번, cache 포함/별도 의미 각각 기대값. `1/2 + 9/98 = 10/100`, pooled quantile 일치. resolved만의 recovery 분포와 unresolved 수를 분리. tool별 token 귀속 근거 없으면 미분류 |
+| 4 / P5·P6 카드/리포트 | 근거 → 조치 하나 → 실험 → 품질 보호 조건을 모든 insight에 연결. 기간·필터·coverage·사용량·한계를 함께 표시 | 양성/정상 음성·evidence/included/excluded IDs, observation window vs clipping, duration-only·권한/데이터 부족 검증. 느린 정상 작업·필수 테스트·정상 탐색을 확정 낭비로 말하면 실패 |
+| 5 / P7 품질 보존 파일럿 | 같은 조건에서 한 가지 변경의 토큰·task elapsed·품질을 수동 비교. 효과 없음/품질 악화/비교 불가도 보존 | [ACCEPTANCE 파일럿](ACCEPTANCE.md#quality-preserving-improvement-pilot)의 작업/버전/분모/품질 gate·반복 실행·교란 조건을 사전 고정. 품질 미검증 상태에서 절감 성공 주장 금지. 인과 효과·일반화 주장은 별도 실험 필요 |
+| 후속 / 범위 결정 이후 | 큰 출력·context 성장·병렬 중복, private tool 별칭과 관계 분석 | [BACKLOG gate](BACKLOG.md#efficiency-candidate-gates)를 통과한 뒤 SPEC·정규화·fixture·Verify를 갱신. 새로운 수집·자동 규칙·instrumentation은 이번 문서 PR에서 구현하지 않음 |
+
+첫 두 단계는 대시보드 장식이나 모든 고급 추정에 앞선다. 이후에도 기존 v0.1 10개 지표·6개 진단의 완료 기준은 유지한다. 필수 근거가 부족한 항목은 명시적으로 보류하며 전부 unknown을 반환하는 것으로 지표 구현을 완료하지 않는다. 특정 기간/모델/공급자 순위를 생산성 점수로 만들지 않는다.
+
+### 문서 PR과 병행 구현의 경계
+
+이 개정은 `main 514ee77`에서 분기한 문서 변경이다. PR #9의 코드·합성 fixture·테스트 결과·완료 체크를 복사하거나 수정하지 않는다. 두 PR 병합 순서에 따라 충돌이 생기면 P0 실측과 P1 실행 기록을 보존한 채 이 측정/개선 계약을 적용한다. Project·이슈의 진행 상태 변경, 코드 구현·패키지 공개·병합은 별도 작업이다.
+
 ## Verification and Handoff
 
 [GitHub Project](https://github.com/users/WhiteKiwi/projects/2)의 연결 issue마다 구현 체크와 Verify가 있다. [TODO.md](TODO.md)는 보드 운영 규칙을 안내하며 상태를 복제하지 않는다. [ACCEPTANCE.md](ACCEPTANCE.md)는 실행 전 NOT RUN이고, 실행 후 revision·환경·명령·기대값·실제 결과를 기록한다. fixture·개인정보·DB 복구·지표 일치·offline UI·설치 시험을 변경 범위에 맞게 수행한다.
