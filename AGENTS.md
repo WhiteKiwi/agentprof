@@ -17,6 +17,10 @@ Immediately after the initial specification draft, continue needed research in a
 
 Update the applicable planning document first when a decision changes. Do not implement first and reconcile documents afterward. This workflow does not require repeated user approval for decisions already within the authorized scope.
 
+## Parallel Work and Ownership
+
+Follow the [claim and parallel-work rules](docs/TODO.md#담당-세션과-병렬-작업) before starting or handing off an issue. Read existing claims, register the actual coordinator session ID and development agent ID, branch, scope, dependencies and next verification in the issue, then move its Project item to In Progress. Each session owns one active issue at a time; research/development/review contributors for that issue are listed separately. Do not dispatch additional tickets merely because parallel work is possible. Other sessions can claim independent work in isolated worktrees after agreeing interfaces and shared-file ownership; dependent integration stays behind its verification gate. Keep live ownership in issues, not a second Markdown roster. The parent coordinates plans, review and publication.
+
 ## Planning Documents
 
 - `docs/SPEC.md`: what and why; goals, observable behavior, completion criteria, scope and product questions. Keep modules, classes, tables and implementation steps elsewhere. Draft is not a frozen or user-approved specification.
