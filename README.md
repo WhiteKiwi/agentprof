@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>AI 코딩 에이전트가 어디에 시간을 쓰는지.<br>무엇을 먼저 개선할 수 있는지.</strong>
+  <strong>See where your coding agent spends its time.<br>Find what to improve next.</strong>
 </p>
 
 <p align="center">
@@ -15,30 +15,38 @@
 
 ## Follow the slow.
 
-AgentProf는 Claude Code·Codex 로그의 **시간 병목, 반복 실패, 탐색·검증 패턴**을 분석하는 로컬 성능 프로파일러를 목표로 합니다. 결과에서 근거를 확인하고, 작은 개선을 고른 뒤, 같은 조건의 전후 결과를 살펴봅니다.
+AgentProf is a planned local-first performance profiler for Claude Code and Codex logs. It connects **time hotspots, repeated failures, and exploration and validation patterns** to evidence you can inspect and small changes you can test.
 
-**현재 상태: 계획 + 디자인 기반.** 가이드라인과 재사용 컴포넌트 견본이 있으며, 파서·분석기·CLI 패키지는 아직 구현/배포되지 않았습니다. 견본의 모든 데이터는 합성 예시입니다. 아래 제품 기능과 명령은 구현 목표입니다.
+The goal is to **reduce tokens and task elapsed time while preserving output quality**. Start with trustworthy measurements, choose one improvement, and compare the same kind of work under matched conditions.
 
-| 먼저 볼 것 | 다음에 확인할 것 |
+**Current status: planning and design foundations on main.** The repository includes guidelines and reusable component examples. Provider parsers, the analyzer, and the CLI package are not implemented or released on main. All design-preview data is synthetic. The features and commands below describe the intended product.
+
+As of September 30, 2026, [draft PR #9](https://github.com/WhiteKiwi/agentprof/pull/9) separately contains P0 research and P1 CLI, privacy, bounded-reader, and SQLite foundations. It is not merged. Its analysis commands still return `NOT_IMPLEMENTED`; foundation tests do not establish working profiling or verified savings. See the [measurement review](docs/FINDINGS.md) for revision-specific evidence.
+
+| Start here | Then inspect |
 | --- | --- |
-| **Time Breakdown** — 시간이 간 곳 | 관측 범위, 시간 의미, 병렬 구간과 커버리지 |
-| **Detected Waste** — 반복 패턴에 연결된 시간 | 규칙·근거 구간·겹침; 실제 절감 가능한 시간과 구분 |
-| **Top Insights** — 먼저 살펴볼 개선 후보 | 반복 실패·재시도와 실행 가능한 다음 행동 |
+| **Time Breakdown** — where time went | Observation boundaries, timing meaning, parallel intervals, and coverage |
+| **Detected Waste** — time associated with repeated patterns | Rules, evidence intervals, and overlap; this is not proven avoidable time |
+| **Top Insights** — what to investigate next | A concrete action, a validation experiment, and quality guardrails |
+
+The [measurement contract](docs/METRICS.md#aggregation-and-token-accounting) separates task elapsed time, observed turn time, accumulated session-minutes, and tool-duration sums. It also defines unique final token usage, provider-specific cache accounting, and coverage. Missing data stays unknown.
+
+The [six improvement candidates](docs/METRICS.md#efficiency-opportunity-cards) cover large outputs, repeated searches, overly broad validation, repeated failures, context growth, and duplicated parallel work. These are candidate categories, not six newly implemented rules. New automatic detection for large outputs, context growth, and parallel duplication remains future scope.
 
 ## Design preview
 
-어두운 기술적 화면에 절제된 따뜻한 주황색. 도롱뇽은 제품의 표식이고, 수치와 근거는 화면의 중심입니다. 밝은 테마도 같은 정보 위계로 설계했습니다. 브라우저 렌더링·상호작용 검증은 현재 환경 제한으로 미실행이며, 색상 대비·정적 검사 결과는 QA 문서에 구분해 두었습니다.
+A dark technical interface with restrained warm-orange accents. The salamander is the product mark; measurements and evidence stay at the center. The light theme follows the same hierarchy.
 
-- [디자인 가이드라인](docs/DESIGN-GUIDELINES.md): 시각 원칙, 두 테마, 상태·모바일·접근성 계약
-- [재사용 시스템](design/README.md): semantic CSS tokens, native HTML primitives, 최소 vanilla 동작
-- 오프라인 견본: 저장소를 내려받고 `node design/build.mjs` 실행 후 생성된 `design/showcase.html`을 브라우저로 열기. 빌드 결과는 Git에 넣지 않습니다
-- [검증 기록](docs/DESIGN-QA.md): 실제 확인한 화면·상태와 남은 한계
+- [Design guidelines](docs/DESIGN-GUIDELINES.md): visual principles, both themes, responsive states, and accessibility
+- [Reusable system](design/README.md): semantic CSS tokens, native HTML primitives, and minimal vanilla interactions
+- Offline showcase: download the repository, run `node design/build.mjs`, then open the generated `design/showcase.html` in a browser. The generated file is not committed
+- [QA record](docs/DESIGN-QA.md): completed checks and remaining limitations
 
-견본은 나중의 로컬 리포트와 대시보드에서 재사용할 디자인 기반입니다. 현재 서버·watcher·실시간 대시보드는 포함하지 않습니다.
+Browser rendering and interaction checks are recorded separately from static and color-contrast checks. The showcase is a design foundation for a future local report and dashboard. It is not connected to a working profiler, and it does not include a server, watcher, or live dashboard.
 
 ## Intended workflow
 
-아래는 **미배포 기능의 예정 명령**이며, 현재 `npx agentprof` 설치를 안내하는 것이 아닙니다. 공개 패키지명·등록 권한은 출시 전에 확인합니다.
+These are **planned, unreleased commands**, not instructions to install `npx agentprof` today. The public package name and publishing rights must be confirmed before release.
 
 ```bash
 # Planned workflow — not available yet
@@ -48,46 +56,52 @@ agentprof insights --last 7d
 agentprof report --last 7d --output ./agentprof.html --open
 ```
 
-초기 구현 계획은 TypeScript · Node.js ≥24.15.0 · SQLite · 단일 오프라인 HTML입니다. npm 일회성 실행과 전역 설치를 검증한 뒤 공개합니다. `node:sqlite`는 Release candidate API로 취급하며 최소 런타임·설치 검증을 먼저 수행합니다. Homebrew와 Rust는 후속 검토입니다.
+The initial implementation plan is TypeScript, Node.js ≥24.15.0, SQLite, and a single offline HTML report. One-off npm execution and global installation must be verified before public release. `node:sqlite` is treated as a Release candidate API, with explicit runtime and installation checks. Homebrew and Rust are later considerations.
 
 ## Honest by design
 
-- **Unknown ≠ zero.** 측정·관측·추정·미지원과 표본·분모·커버리지를 구분합니다
-- **Slow ≠ waste.** 느리거나 비중이 큰 도구만으로 낭비라고 단정하지 않습니다
-- **Overlaps count once.** 병렬 호출·wrapper와 여러 진단의 같은 시간 구간을 중복 합산하지 않습니다
-- **Local first.** 분석은 로컬에서 끝나도록 설계합니다. 자동 업로드·텔레메트리와 원문 프롬프트·소스·도구 출력의 기본 저장은 없습니다
-- **Evidence before claims.** 지원되지 않는 지표를 숫자로 채우거나 절감·인과 효과를 보장하지 않습니다
+- **Unknown ≠ zero.** Distinguish direct, observed, inferred, and unsupported values, with sample sizes, denominators, and coverage
+- **Slow ≠ waste.** A slow or high-share tool is not automatically unnecessary
+- **Overlaps count once.** Separate duplicate representations from real parallel executions, then union eligible elapsed intervals
+- **Tokens need context.** Count unique final usage once. Keep cache semantics, output-size estimates, and unattributed usage explicit
+- **Local first.** Analysis is designed to stay local, without automatic uploads or telemetry. Raw prompts, source, commands, and tool outputs are excluded from stored analysis and reports
+- **Quality comes first.** Keep required tests, evidence, and review standards when evaluating a faster or smaller workflow
+- **Evidence before claims.** Do not fill unsupported metrics with invented numbers or promise savings or causal effects
 
-v0.1 목표는 10개 지표·6개 진단과 수동 matched before/after 파일럿입니다. 자동 비교 UI·설정 변경 추적은 v0.2입니다.
+The v0.1 target is 10 metrics, 6 diagnostic rules, and a manual [quality-preserving before/after pilot](docs/ACCEPTANCE.md#quality-preserving-improvement-pilot). The pilot records unchanged results, quality regressions, and incomparable runs as well as observed improvements. Automated comparison UI and configuration-change tracking are v0.2 scope.
 
 ## Roadmap
 
-1. **P0–P3 · Can we observe it?** 로컬 실로그 의미·버전별 coverage, 합성 기대값, 원문 폐기 전 정규화
-2. **P4–P5 · Can we trust it?** 증분 저장, 시간·실패·재시도의 최소 CLI/HTML, 지표·진단과 오탐 검증
-3. **P6–P7 · Can we use it?** 오프라인 상세 화면, 설치·자원 예산·로컬 파일럿
+1. **P0–P3 · Can we observe it?** Validate local-log semantics and version-specific coverage, define synthetic expectations, and normalize before discarding raw data
+2. **P4–P5 · Can we trust it?** Build incremental storage, a minimal time/failure/retry CLI and HTML path, metrics, and diagnostics with false-positive checks
+3. **P6–P7 · Can we use it?** Add offline evidence navigation, installation and resource-budget verification, and a local pilot
 
-[8개 구현 이슈](https://github.com/WhiteKiwi/agentprof/issues)와 [v0.1-alpha](https://github.com/WhiteKiwi/agentprof/milestone/1) · [v0.1](https://github.com/WhiteKiwi/agentprof/milestone/2) 마일스톤이 있습니다. 세부 단계·검증 기준은 유지 관리 문서를 우선하며 기존 이슈 본문의 동기화는 별도 작업입니다. 디자인 견본 완성을 P5/P6 제품 구현 완료로 세지 않습니다.
+The [implementation priorities](docs/IMPLEMENTATION.md#efficiency-review-priorities) put freshness and coverage before hotspots, actionable suggestions, and matched verification. The [implementation issues](https://github.com/WhiteKiwi/agentprof/issues) and [v0.1-alpha](https://github.com/WhiteKiwi/agentprof/milestone/1) / [v0.1](https://github.com/WhiteKiwi/agentprof/milestone/2) milestones track the broader work.
+
+Maintained planning documents define the detailed scope and verification criteria. Existing issue text may need separate synchronization. Completing the design showcase does not complete P5/P6 product implementation.
 
 ## Documentation
 
+The README is in English. Detailed planning and research documents are currently in Korean.
+
 | Document | Purpose |
 | --- | --- |
-| [SPEC](docs/SPEC.md) | 제품 목표·관측 가능한 동작·범위 |
-| [FINDINGS](docs/FINDINGS.md) | 조사 근거·결정·불확실성 |
-| [ARCHITECTURE](docs/ARCHITECTURE.md) | 데이터·저장·개인정보 경계 |
-| [METRICS](docs/METRICS.md) | 10개 지표·6개 진단·시간 회계 |
-| [IMPLEMENTATION](docs/IMPLEMENTATION.md) | 구현 순서·접근·검증 |
-| [TODO](docs/TODO.md) · [ACCEPTANCE](docs/ACCEPTANCE.md) | 진행 상태와 실제 실행 증거 |
-| [DESIGN](DESIGN.md) · [Guidelines](docs/DESIGN-GUIDELINES.md) | 간결한 실행 규칙과 디자인 판단 근거 |
-| [Brand references](docs/DESIGN.md) · [BACKLOG](docs/BACKLOG.md) | 제공 이미지·후속 아이디어 |
-| [AGENTS](AGENTS.md) | 문서 우선·구현 세션·Git 작업 방식 |
+| [SPEC](docs/SPEC.md) | Product goals, observable behavior, scope, and capability snapshot |
+| [FINDINGS](docs/FINDINGS.md) | Dated evidence, official references, decisions, and uncertainty |
+| [ARCHITECTURE](docs/ARCHITECTURE.md) | Data flow, storage, identity, and privacy boundaries |
+| [METRICS](docs/METRICS.md) | Metrics, diagnostic rules, aggregation, and improvement cards |
+| [IMPLEMENTATION](docs/IMPLEMENTATION.md) | Implementation order, trade-offs, and verification |
+| [TODO](docs/TODO.md) · [ACCEPTANCE](docs/ACCEPTANCE.md) | Progress and recorded execution evidence |
+| [DESIGN](DESIGN.md) · [Guidelines](docs/DESIGN-GUIDELINES.md) | Concise execution rules and design rationale |
+| [Brand references](docs/DESIGN.md) · [BACKLOG](docs/BACKLOG.md) | Supplied artwork and deferred ideas |
+| [AGENTS](AGENTS.md) | Documentation-first workflow and repository conventions |
 
 ## Brand direction · provisional
 
 <p align="center">
-  <img src="assets/reference/salamander2.png" alt="임시 compact mark: 어두운 사각 바탕의 주황색 도롱뇽" width="160">
+  <img src="assets/reference/salamander2.png" alt="Provisional compact mark: an orange salamander on a dark square background" width="160">
 </p>
 
-마스코트는 **Salamander / 도롱뇽**입니다. 제공한 dark/technical 이미지에서 분위기를, 평면 도롱뇽에서 작은 식별 마크를 참고했습니다. 현재 logo/favicon은 임시 적용이며 최종 벡터 로고를 확정한 것은 아닙니다. [원본·선택·사용 범위](docs/DESIGN.md)를 함께 기록합니다.
+The mascot is a **salamander**. The supplied dark, technical reference informs the atmosphere; the flat salamander informs the compact mark. The current logo/favicon direction is provisional, not a finished vector identity. [Sources, choices, and usage boundaries](docs/DESIGN.md) are documented.
 
-원문 제안은 [AgentTrace](docs/reference/agenttrace-design.md)와 [AgentProf metrics](docs/reference/agentprof-metrics-and-insights.md)에 보존합니다. 원문의 데모 숫자·범위보다 유지 관리 사양이 우선합니다.
+The original [AgentTrace proposal](docs/reference/agenttrace-design.md) and [AgentProf metrics proposal](docs/reference/agentprof-metrics-and-insights.md) are preserved. Maintained specifications take precedence over their illustrative numbers and proposed scope.

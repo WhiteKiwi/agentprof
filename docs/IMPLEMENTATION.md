@@ -2,7 +2,7 @@
 
 ## Status and Authority
 
-Draft, 2026-09-30. [SPEC.md](SPEC.md)의 사용자 동작, [ARCHITECTURE.md](ARCHITECTURE.md)의 불변 조건, [METRICS.md](METRICS.md)의 계산 계약을 구현하는 계획이다. 프로파일러 코드는 아직 구현하지 않았다. 사용자 요청에 따른 디자인 기반은 아래 별도 트랙에서 준비하며 데이터 파서·분석기 구현과 구분한다. [FINDINGS.md](FINDINGS.md)는 조사 근거이며 사양을 덮어쓰지 않는다.
+Draft, 2026-09-30. [SPEC.md](SPEC.md)의 사용자 동작, [ARCHITECTURE.md](ARCHITECTURE.md)의 불변 조건, [METRICS.md](METRICS.md)의 계산 계약을 구현하는 계획이다. `main`에는 아직 프로파일러 코드가 없다. 별도 [draft PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)의 P0 조사·P1 기반과 후속 미구현 분석 기능을 구분하며 [상태 snapshot](SPEC.md#capability-snapshot-2026-09-30)을 따른다. 사용자 요청에 따른 디자인 기반은 아래 별도 트랙에서 준비하며 데이터 파서·분석기 구현과 구분한다. [FINDINGS.md](FINDINGS.md)는 조사 근거이며 사양을 덮어쓰지 않는다.
 
 새 지표 제안을 반영해 v0.1에 10개 지표와 6개 자동 진단을 포함했다. 이 계획을 검토한 뒤 개발 서브세션이 구현한다. 제품 범위를 바꾸면 SPEC, 구조·불변 조건은 ARCHITECTURE, 계산 의미는 METRICS, 접근·순서는 이 문서와 TODO를 먼저 갱신한다.
 
@@ -66,7 +66,7 @@ Codex 구조화 완료 항목과 response 표현, Claude call/result·메시지 
 
 P0에서 허용된 로컬 실로그의 소규모 층화 표본을 수작업으로 읽어 [METRICS의 행렬](METRICS.md#metric-evidence-matrix)을 작성한다. 공급자·정확한 버전·관측 기간·선택 기준, 지표별 필요 필드·direct/observed/inferred/unsupported, 표본 수·커버리지·누락 이유를 기록한다. 원문·명령·출력은 커밋하거나 다른 환경으로 옮기지 않는다. 접근이 없으면 NOT RUN과 차단 사유를 남기고 해당 버전의 검증된 지원 주장을 보류한다. P2/P3의 파서 결과 대조와 P7의 출시 파일럿은 이 초기 조사를 대체하지 않는다.
 
-6개 진단마다 양성·정상 음성 사례와 근거/시간 포함 이벤트를 설계한다. 오탐 검토, 제안의 적용 가능성·후속 확인 방법과 파일럿 보정 절차를 정한다. 성능은 대표 합성 workload의 파일 수·크기·이벤트 수·최대 줄 크기, 장비·Node·cold/warm 조건을 먼저 고정하고 full/incremental scan 시간·peak RSS·HTML 크기의 합격 예산을 결정한다. 현재 예산은 TBD, 측정은 NOT RUN이며 측정 전 숫자를 성공 기준으로 꾸며 넣지 않는다. 예산 결정은 성능 acceptance 실행보다 선행한다.
+6개 진단마다 양성·정상 음성 사례와 근거/시간 포함 이벤트를 설계한다. 오탐 검토, 제안의 적용 가능성·후속 확인 방법과 파일럿 보정 절차를 정한다. 성능은 대표 합성 workload의 파일 수·크기·이벤트 수·최대 줄 크기, 장비·Node·cold/warm 조건을 먼저 고정하고 full/incremental scan 시간·peak RSS·HTML 크기의 합격 예산을 결정한다. [PR #9의 resource-v1](https://github.com/WhiteKiwi/agentprof/blob/6f614727dced9df2693ac008aa3f3e4be559386c/docs/BENCHMARKS.md)에 초기 예산이 정해져 있으며 측정은 NOT RUN이다. 예산 결정과 성능 acceptance 실행을 구분하고 유리한 결과에 맞춰 기준을 소급하지 않는다.
 
 ### P1 — Installation and Privacy Foundations
 
@@ -113,6 +113,25 @@ npm 이름·scope 권한·license를 확정하고 `npm pack` 결과를 isolated 
 macOS arm64·Linux에서 clean install → scan → stats → insights → report를 검증한다. 실제 원문은 로컬에서만 시험하고 공유된 evidence에는 정규화 결과와 측정 조건만 기록한다. 실제 시간·메모리·HTML 크기를 측정하고 P0에서 정한 예산과 대조하며 합성 성능 조건과 구분한다. P0/P2/P3의 지원 행렬을 최종 갱신하고 진단별 표본·오탐·판정 불가·제안 적용 가능 여부를 보고한다. [ACCEPTANCE](ACCEPTANCE.md)의 수동 matched before/after 절차로 한 가지 개선 전후를 대조한다. 비교 불가·효과 없음도 결과이며 자동 비교 UI는 v0.2에 둔다.
 
 Homebrew tap·formula 게시, npm 공개와 license 선택은 이 계획의 구현 artifact 준비와 별개인 게시 단계다. 현재 저장소 초기화 요청은 패키지 공개를 의미하지 않는다.
+
+## Efficiency Review Priorities
+
+2026-09-30 검토는 P0–P7을 대체하지 않고 기존 순서의 통과 기준을 구체화한다. 목표는 품질 보존형 토큰·task elapsed 개선이다. 문서만으로 구현 완료를 표시하지 않으며, PR #9의 실행 결과·Project 진행 상태를 이 문서 개정으로 재작성하지 않는다. 다음 구현에서는 해당 PR의 최신 계약과 병합 후 상태를 먼저 대조한다.
+
+| 순서 / 기존 단계 | 결과물·설계 선택 | Verify / 수용 기준 |
+| --- | --- | --- |
+| 1 / P2·P3·P4 | 수집 freshness·provider/version capability와 canonical identity를 먼저 표시. direct duration·paired interval·lifecycle과 final usage 후보를 별도 보존 | PR #9의 P0 evidence를 시작점으로 실제 adapter 출력을 대조. unknown≠0, missing/pending·same-ID update·replay/fork·scope conflict를 합성 oracle로 재현. 원문/secret 비노출, 재스캔 동일값 |
+| 2 / P5 최소 세로 단면 | coverage → 같은 scope의 hotspot(count/sum/p50/p95) → 확인된 실패 → 검증된 retry 한 종류 → 작은 행동 카드. 두 공급자의 최소 CLI/HTML 연결 | 10초 두 호출/5초 overlap이20초/15초. global union/session-minutes30/60분. 상태 불명·identity 불명을 제외 사유와 함께 표시. CLI/HTML이 같은 snapshot·값·근거를 소비 |
+| 3 / P5 기존 지표 완성 | 고유 최종 token usage·cache/weighted denominator, validation/recovery/lookup evidence를 추가. token 전체 합보다 응답/턴·실패/lookup 맥락을 탐색 | response6→10을10 한 번, cache 포함/별도 의미 각각 기대값. `1/2 + 9/98 = 10/100`, pooled quantile 일치. resolved만의 recovery 분포와 unresolved 수를 분리. tool별 token 귀속 근거 없으면 미분류 |
+| 4 / P5·P6 카드/리포트 | 근거 → 조치 하나 → 실험 → 품질 보호 조건을 모든 insight에 연결. 기간·필터·coverage·사용량·한계를 함께 표시 | 양성/정상 음성·evidence/included/excluded IDs, observation window vs clipping, duration-only·권한/데이터 부족 검증. 느린 정상 작업·필수 테스트·정상 탐색을 확정 낭비로 말하면 실패 |
+| 5 / P7 품질 보존 파일럿 | 같은 조건에서 한 가지 변경의 토큰·task elapsed·품질을 수동 비교. 효과 없음/품질 악화/비교 불가도 보존 | [ACCEPTANCE 파일럿](ACCEPTANCE.md#quality-preserving-improvement-pilot)의 작업/버전/분모/품질 gate·반복 실행·교란 조건을 사전 고정. 품질 미검증 상태에서 절감 성공 주장 금지. 인과 효과·일반화 주장은 별도 실험 필요 |
+| 후속 / 범위 결정 이후 | 큰 출력·context 성장·병렬 중복, private tool 별칭과 관계 분석 | [BACKLOG gate](BACKLOG.md#efficiency-candidate-gates)를 통과한 뒤 SPEC·정규화·fixture·Verify를 갱신. 새로운 수집·자동 규칙·instrumentation은 이번 문서 PR에서 구현하지 않음 |
+
+첫 두 단계는 대시보드 장식이나 모든 고급 추정에 앞선다. 이후에도 기존 v0.1 10개 지표·6개 진단의 완료 기준은 유지한다. 필수 근거가 부족한 항목은 명시적으로 보류하며 전부 unknown을 반환하는 것으로 지표 구현을 완료하지 않는다. 특정 기간/모델/공급자 순위를 생산성 점수로 만들지 않는다.
+
+### 문서 PR과 병행 구현의 경계
+
+이 개정은 `main 514ee77`에서 분기한 문서 변경이다. PR #9의 코드·합성 fixture·테스트 결과·완료 체크를 복사하거나 수정하지 않는다. 두 PR 병합 순서에 따라 충돌이 생기면 P0 실측과 P1 실행 기록을 보존한 채 이 측정/개선 계약을 적용한다. Project·이슈의 진행 상태 변경, 코드 구현·패키지 공개·병합은 별도 작업이다.
 
 ## Verification and Handoff
 
