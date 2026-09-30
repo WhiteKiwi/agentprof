@@ -1,9 +1,5 @@
 <p align="center">
-  <img src="assets/brand/readme-cover.svg" alt="AgentProf — Follow the slow. Local-first agent profiling. Design preview, not yet released." width="100%">
-</p>
-
-<p align="center">
-  <img src="assets/brand/salamander-trace-reference.png" alt="AgentProf 마스코트: 어두운 바탕에 따뜻한 주황색 빛의 흔적을 가진 도롱뇽. Follow the slow." width="160">
+  <img src="assets/brand/readme-cover-mascot.webp" alt="AgentProf — Follow the slow. Local-first agent profiling. Design preview, not yet released." width="100%">
 </p>
 
 <p align="center">
