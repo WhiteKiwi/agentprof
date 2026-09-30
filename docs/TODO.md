@@ -8,8 +8,9 @@
 
 ## Planning and Repository Bootstrap
 
-- [ ] 원본 두 문서와 locron 구조를 반영한 계획을 검토하고 저장소에 게시한다.
+- [x] 원본 두 문서와 locron 구조를 반영한 계획을 검토하고 저장소에 게시한다.
   **Verify:** 원본 두 파일의 SHA-256이 Downloads 파일과 일치한다. 문서 링크, 10 MVP 지표·6 진단, 개인정보·시간 계약과 단계별 검증이 서로 일치한다. private GitHub 저장소의 main에서 동일 문서를 확인한다.
+  **Evidence:** 2026-09-30 원문 2개·참고 PNG 3개의 SHA-256 동일성, 로컬 문서 링크 49개, TODO 18개 항목의 Verify와 staged diff whitespace 검사를 통과했다. 계획 서브세션 검토와 부모 검토를 마쳤다. `00000ed89054180014db5a89ede7d4fa8bda3fc2`의 로컬 HEAD·GitHub main이 일치하고 저장소는 PRIVATE다. 8개 열린 구현 이슈와 2개 마일스톤을 확인했다. 제품 실행 acceptance는 아직 NOT RUN이다.
 
 ## P0 — Logs, Metric Contracts and Synthetic Fixtures
 
