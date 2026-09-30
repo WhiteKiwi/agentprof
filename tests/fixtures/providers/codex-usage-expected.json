@@ -1,0 +1,20 @@
+{
+  "schema": "agentprof.fixture-codex-usage/v1",
+  "synthetic": true,
+  "supportStatus": "SHAPE_ONLY_NOT_PROVIDER_VERSION_SUPPORT",
+  "independentHandCalculated": true,
+  "file": "codex-usage-replay.jsonl",
+  "conditions": "Trusted external fixture evidence declares one ordering group with partial ordinals 1/2 then final ordinal 3; ordinals 4/5 validate mapping only. These annotations are not provider fields.",
+  "outputsObserved": [6, 8, 10],
+  "canonicalResponses": 1,
+  "finalCounts": {"input": 100, "output": 10, "cachedInput": 40, "cacheWriteInput": 60, "reasoningOutput": 4, "total": 110},
+  "ordinaryInputIfAllComponentsKnown": 0,
+  "cachedComponentsAddedToTotal": 0,
+  "snapshotCount": 3,
+  "lastSnapshotDecreaseIsReset": false,
+  "unknownSourceChangedResponse": "conflicted",
+  "differentFinalCounts": "conflicted",
+  "trustedOlderPartialAfterFinal": "retain_final",
+  "missingInput": {"input": null, "output": 10, "total": null, "selection": "provisional"},
+  "optionalComponentsMissing": {"input": 100, "output": 10, "cachedInput": null, "cacheWriteInput": null, "reasoningOutput": null, "total": 110}
+}

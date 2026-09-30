@@ -20,9 +20,9 @@ Draft, 2026-09-30. 사용자 제공 AgentTrace 제안과 AgentProf metrics 제�
 
 최적화의 목적은 **품질을 유지하면서 같은 작업에 필요한 토큰과 작업 경과 시간을 줄이는 것**이다. 검증을 생략하거나 불완전한 결과를 빨리 반환하는 것은 개선이 아니다. 측정 → 실행 가능한 작은 변경 → 같은 조건의 재검증까지 연결하되, 관측 연관성과 검증된 효과를 분리한다.
 
-### Capability snapshot (2026-09-30)
+### Capability snapshot (2026-10-01 KST)
 
-이 사양의 `main` 기준은 `514ee77`이며 계획·디자인 기반만 포함한다. [draft PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)의 검토 기준은 `6f614727`이다. 그 PR에는 P0 표본·합성 계약과 P1 help/version·개인정보·bounded reader·SQLite 기반이 있지만, `scan/stats/insights/report/open`은 `NOT_IMPLEMENTED`·exit 2다. 파서·분석·리포트와 개선 효과 검증은 앞으로의 기능이다. P0 조사를 하지 않았다고 표현하거나 기반 테스트 통과를 제품 분석 완료로 표현하지 않는다. [검토 근거](FINDINGS.md#2026-09-30-측정에서-개선으로-검토)를 참조한다.
+P1 통합 revision `c3856249bdc0a9c19b856ca32c97d3484e189176`에는 문서 PR #11과 기반 [PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)가 병합되었다. P0 표본·합성 계약과 P1 help/version·개인정보·bounded reader·SQLite 기반을 사용한다. P2는 [Codex 어댑터](CODEX-PARSER.md)의 호출·턴·usage 관측과 [bounded 대조](CODEX-EVIDENCE.md)를 추가한다. `scan/stats/insights/report/open`은 계속 `NOT_IMPLEMENTED`·exit 2이며 제품 분석·리포트와 개선 효과 검증은 후속 기능이다. P0 조사를 하지 않았다고 표현하거나 부분 테스트 통과를 제품 분석 완료로 표현하지 않는다. [검토 근거](FINDINGS.md#2026-09-30-측정에서-개선으로-검토)와 [실행 evidence](ACCEPTANCE.md)를 참조한다.
 
 ## Product Principles
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-2026-09-30. 아래는 **제품 흐름의 예정된 검증**이다. P0의 조사·계약·독립 합성 기대값 검토와 P1 실행 기반의 macOS/Linux 검증을 마쳤다. 파서·분석·HTML·출시 파일럿은 아직 `NOT RUN`이다. 기반 코드의 부분 검증과 전체 제품 acceptance를 구분해 기록한다. 별도 디자인 scaffold 검증은 [DESIGN-QA.md](DESIGN-QA.md)에 기록하며 제품 acceptance 통과로 취급하지 않는다.
+2026-10-01 KST. 아래는 **제품 흐름의 예정된 검증**이다. P0의 조사·계약·독립 합성 기대값 검토와 P1 실행 기반의 macOS/Linux 검증을 마쳤다. P2 Codex 어댑터는 아래 범위의 로컬 대조·macOS/Linux 검증을 통과했다. 두 공급자를 연결한 제품 scan·분석·HTML·출시 파일럿은 아직 `NOT RUN`이다. 부분 검증과 전체 제품 acceptance를 구분해 기록한다. 별도 디자인 scaffold 검증은 [DESIGN-QA.md](DESIGN-QA.md)에 기록하며 제품 acceptance 통과로 취급하지 않는다.
 
 | ID | 기대 동작 | 검증 방식 | 상태 |
 | --- | --- | --- | --- |
@@ -107,3 +107,26 @@ CLI는 help/version만 구현했다. `scan`, `stats`, `insights`, `report`, `ope
 마지막 원격 확인에서 main `514ee77`의 도롱뇽 README hero 변경을 추가 통합했다. 디자인·brand 소스 18개가 최신 main과 byte 동일하며 새 README로 `npm run verify:artifact`를 다시 통과했다. 시스템 소스는 변경되지 않았고 이미지·README의 브라우저 검증은 #10에서 계속 추적한다.
 
 사용자 요청으로 문서 [PR #11](https://github.com/WhiteKiwi/agentprof/pull/11)의 8개 파일을 검토하고 main `90998a5`에 병합했다. PR head `1c9b402`의 로컬 링크 83개·section anchor 21개, README 한글 0개·마스코트 header 보존을 확인했으며 해당 head의 CI check는 0개였다. 기반 브랜치에서는 P0/P1 실행 기록·자원 예산과 Project 운영 규칙을 보존하며 충돌을 해결했다. src·bin·scripts·tests·package·workflow는 이전 기반과 동일하고 디자인·brand는 main과 동일하다. macOS arm64 Node 26.7.0의 build와 14파일 tarball의 격리 npm exec/global install help/version을 통과했다. 최종 usage·집계·개선 카드·A23–A27 계약은 적용하되 제품·파일럿 통과로 표시하지 않는다.
+
+최종 foundation head `3d94be91b5573ee65001fbd828307f21e162d5a6`의 [Linux CI](https://github.com/WhiteKiwi/agentprof/actions/runs/36727381093)는 Ubuntu 24.04의 Node 24.15.0·24.21.0·26.7.0에서 각각 60개 테스트·14파일 artifact와 Node 22.16.0 거부 guard를 통과했다. 사용자 요청으로 PR #9를 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 병합하고 P1 이슈 #2를 closed/Project Done으로 정리했다. P0 #1도 Done이며, P2 #3은 별도 main 기준 PR과 검증 근거로 추적한다.
+
+## P2 Codex Adapter Verification — 2026-10-01 KST
+
+P1 통합 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 기반한 P2 구현이다. 검증한 코드 revision은 `fb6e3ad86d886487f12196211c4c8b4a5a94d733`이며 parser/normalization/key version 1, package `0.1.0-dev.0`, DB schema 1을 사용했다. 구현 계약은 [CODEX-PARSER.md](CODEX-PARSER.md), 독립 실표본 대조와 tag별 의미·한계는 [CODEX-EVIDENCE.md](CODEX-EVIDENCE.md)에 있다. [PR #12](https://github.com/WhiteKiwi/agentprof/pull/12)와 [P2 이슈 #3](https://github.com/WhiteKiwi/agentprof/issues/3)에 게시·최종 head 검증을 연결한다. 아래 CI는 이 코드 revision의 [Linux run](https://github.com/WhiteKiwi/agentprof/actions/runs/36738136770)이다.
+
+| 환경·대상 | 실행 | 실제 결과 |
+| --- | --- | --- |
+| macOS arm64, Node 24.15.0 | `npm run check` | PASS: 타입 검사·빌드, 8개 파일·116개 테스트, 20파일 production tarball 설치 |
+| macOS arm64, Node 24.21.0 | 동일 실행 | PASS: 116개 테스트·20파일 tarball 설치 |
+| macOS arm64, Node 26.7.0 | 동일 실행 | PASS: 116개 테스트·20파일 tarball 설치 |
+| Ubuntu 24.04 x64, Node 24.15.0·24.21.0·26.7.0 | `npm ci --ignore-scripts --no-audit --no-fund` + `npm run check` | PASS: 각 8개 파일·116개 테스트·20파일 tarball npm exec/global install; CI 3개 job success |
+| Ubuntu 24.04 x64, Node 22.16.0 | bootstrap만 복사한 CI guard | PASS: CLI/SQLite import 전 거부, stderr JSON `UNSUPPORTED_RUNTIME`, stdout 없음·exit 2 |
+| 고정 P0 Codex prefix S4–S12, Node 26.7.0 | 독립 기준과 통합·9개 개별·메모리 내 archive 재표현 대조 | PASS: reader eligible 3,104개에서 실행 362개·턴 84개·usage 1,611개 및 원천 observedUsage 1,611개 불일치 0 |
+| 동일 source replay·archive canonical 의미 | 별도 source 관측과 canonical 출력 대조 | PASS: 같은 source의 state/counter 불변, archive의 ID·수치·선택 의미 불변. archive는 명시 확장 상태 한도로 실행 |
+| 원문 없는 반환·retained state | 16자 이상 민감 문자열 후보 6,141개 대조 | PASS: 선정 후보의 완전 문자열 노출 0. 짧은 문자열 전체·VM heap·zeroization 검증은 아님 |
+
+각 runtime의 `verify:artifact`는 격리 npm cache/prefix에서 local tarball의 npm exec·global install help/version을 실행했다. install scripts는 비활성화했고 실제 공개 npm/npx는 NOT RUN이다. compiled JS·package metadata·README 20파일만 포함하며 fixtures·TS source·source maps·brand 이미지·DB·sentinel은 제외했다. 기존 P1 60개 검사와 P2 56개 검사를 함께 실행했다.
+
+P2 행동 검증은 구조화 우선·inert shell argv·wrapper 분리, 같은 ID pending 갱신·결과 역순·terminal poll, 안전한 상태·진단과 aggregate wrapper links 한도, archive/fork의 명시 관계와 ambiguity, source/record endpoint 분리, required/optional usage component, trusted partial 6→8→final 10·더 이른 partial replay·충돌, cache containment와 snapshot 분리를 포함한다. 실제 표본의 unsupported call→result 57쌍에는 false `REORDERED_RECORD` 0개였고 last snapshot의 정상 감소는 `USAGE_RESET`으로 만들지 않았다. native response 301개 중 origin/source-terminal 근거가 확인된 31개만 eligible이며 270개는 provisional이다.
+
+이 결과는 bounded adapter의 명시 shape·field 대조다. 실제 legacy polling, 변경된 동일 response ID의 partial→final, 양수 cache-write, fork copied-boundary의 실제 의미는 NOT RUN이고 합성 시험과 구분한다. 실제 reader·CLI·DB 이벤트 transaction·지표·HTML을 연결한 A01–A27, 성능과 사람 파일럿은 계속 NOT RUN이다.

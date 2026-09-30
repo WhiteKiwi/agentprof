@@ -69,3 +69,13 @@ SQLite 기반은 `schema_migrations`와 허용된 설정 키만 갖는 `settings
 transaction callback은 동기 함수만 지원한다. native async 함수는 실행 전에 거부하고 thenable 반환도 misuse로 거부한다. BEGIN에 실패하면 caller가 소유한 기존 transaction을 rollback하지 않는다. 임의 동기 함수가 따로 예약한 비동기 작업을 취소하는 기능은 제공하지 않는다. nested/async transaction을 제품 동작으로 사용하지 않는다.
 
 CLI entry는 호환 가능한 작은 JavaScript bootstrap에서 Node >=24.15.0을 검사한 뒤 compiled CLI를 import한다. 구형 Node가 SQLite import·새로운 런타임 문법을 먼저 만나지 않도록 한다. Commander 오류도 raw argv를 그대로 출력하지 않고 고정 code/message로 바꾼다. help/version은 data directory를 만들거나 source를 읽지 않는다. `--json`의 오류 envelope는 `schema`, `ok`, `error.code`, `error.message`만 갖는다.
+
+## P2 Codex Adapter Boundary
+
+Codex parser version 1은 [CODEX-PARSER.md](CODEX-PARSER.md)의 bounded in-memory API다. 기존 normalized event allowlist·normalization/key version 1을 유지하며 턴·usage·source 관측은 별도 고정 타입으로 반환한다. `ingest`는 raw record를 이번 호출에서만 읽고 `snapshot`과 `inspectRetainedState`는 numeric 값·고정 enum·UTC 시각·opaque HMAC IDs만 반환한다. identity context의 키와 raw metadata·arguments·command·output은 pairing 상태에 남지 않는다. 실제 로컬 대조와 한계는 [CODEX-EVIDENCE.md](CODEX-EVIDENCE.md)를 따른다.
+
+같은 stream/item/response ID의 재표현은 upsert이며 source 위치는 별도 관측이다. 다른 ID를 명령·시각으로 연결하지 않는다. fork 출처가 모호한 실행도 관측을 보존하지만 해당 source observation의 `origin`과 capability의 ambiguity를 함께 소비해야 한다. snapshot에 존재한다는 이유로 새 실행이나 적격 총계로 승격하지 않는다. trusted fixture context는 로그 annotation과 분리되며 실제 copied 경계·완전한 출력·final usage의 근거를 발명하는 용도가 아니다.
+
+stdout이나 text block은 완전한 파일 읽기 증거가 아니다. 기본 content fingerprint는 null이며, 독립 합성 테스트가 명시적으로 보증한 완전한 비교 입력만 fingerprint를 만든다. `parsed_cmd`의 파일 경로는 opaque file identity까지만 지원하고 범위·옵션·완전한 내용이 없으면 lookup identity는 null이다. 확인된 MCP `isError`도 비교 입력이 없으면 error fingerprint는 null이다. P5에서 이를 반복 읽기·반복 오류의 확인된 동일성으로 채우지 않는다.
+
+source terminal response usage와 provisional·conflicted·snapshot-only·invalid 관측을 구분한다. nullable component·매핑·finality·제외 이유를 유지하며 cache read/write와 reasoning을 상위 합계에 다시 더하지 않는다. source-reported turn seconds와 monotonic elapsed milliseconds는 다른 시간 근거다. payload 경계와 record ISO 경계가 섞이면 interval scope는 unknown이다. P4 이벤트/checkpoint 저장, P5 집계, P6 HTML 및 전체 제품 acceptance는 이 API 검증과 별도다.
