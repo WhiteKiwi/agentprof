@@ -212,3 +212,51 @@ P1에 필요한 prepared binding·migration·동기 transaction·rollback·reope
 [Radix의 역할별 색상 구조](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale)와 [WCAG text contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)를 확인했다. 색상 측정은 특정 pair의 근거이고 전체 접근성 인증은 아니다. 상세 판단은 [DESIGN-GUIDELINES](DESIGN-GUIDELINES.md), 실제 실행/렌더링 증거는 [DESIGN-QA](DESIGN-QA.md)에 분리한다. 제품 로그·지표 검증 상태는 변하지 않는다.
 
 후속 확인: 최신 `create-design-guideline` skill과 두 reference를 `aeb0d118784de28aa616db2066a89c94eff4d850`에서 읽고 primitive/semantic·state·측정 pair·governance 표를 보완했다. 브라우저 QA는 환경 제한으로 NOT RUN이며 정적·색상 측정과 구분한다.
+
+## 2026-09-30 측정에서 개선으로 검토
+
+검토 목표는 **결과 품질을 유지하면서 토큰과 작업 경과 시간을 줄이는 의사결정**이다. 이번 작업은 저장소 코드·기존 공개 evidence·공식 자료를 읽은 문서 검토다. 새로운 사용자 로그를 읽거나 업로드하지 않았고 제품 파서·분석기·파일럿을 실행하지 않았다. 조회일과 저장소 revision을 구분한다.
+
+### 현재 가능한 것과 계획된 것
+
+| 기준 | 확인한 상태 | 해석 한계 |
+| --- | --- | --- |
+| [main `514ee77`](https://github.com/WhiteKiwi/agentprof/tree/514ee77b7e76f988116614e652268dfa1e31f252) | 계획 문서·합성 디자인 scaffold. 제품 src·패키지·분석기 없음 | 목표 화면·명령을 배포 기능으로 표현하지 않음 |
+| [draft PR #9](https://github.com/WhiteKiwi/agentprof/pull/9), head `6f614727` | P0 bounded 표본과 합성 계약, P1 CLI/privacy/reader/discovery/SQLite 기반 | 미병합이며 ingestion 기반은 실제 provider parser·분석기 완료가 아님 |
+| [PR #9 CLI](https://github.com/WhiteKiwi/agentprof/blob/6f614727dced9df2693ac008aa3f3e4be559386c/src/cli/main.ts#L21-L32) | help/version 기반, scan/stats/insights/report/open은 NOT_IMPLEMENTED·exit2 | time/token 집계·자동 insight·offline 제품 report는 아직 실행 기능 아님 |
+| [PR #9 evidence](https://github.com/WhiteKiwi/agentprof/blob/6f614727dced9df2693ac008aa3f3e4be559386c/docs/EVIDENCE.md#L185-L193) | 공급자별 필요 필드·누락·coverage·후속 의미 대조를 기록 | P0를 미실시로 부르면 오래된 평가. 표본의 필드 존재는 제품 지원/정확도 보장도 아님 |
+| [PR #9 fixture 계약](https://github.com/WhiteKiwi/agentprof/blob/6f614727dced9df2693ac008aa3f3e4be559386c/docs/FIXTURES.md), [품질 절차](https://github.com/WhiteKiwi/agentprof/blob/6f614727dced9df2693ac008aa3f3e4be559386c/docs/QUALITY.md) | 손계산 oracle·정상 음성·판정 불가·actionability gate가 있음 | fixture 가정의 wrapper/fork 관계는 공급자 schema 보장이 아님. 기반 테스트는 분석기·사람 파일럿 통과가 아님 |
+
+### 기존 P0 evidence의 중요한 경계
+
+아래는 위 고정 revision의 공개 요약을 재검토한 것이며 이번 작업의 새 실측이 아니다. 선택된 bounded 표본을 전체 사용자/공급자의 대표 수치로 확대하지 않는다.
+
+- Codex command/MCP 후보 362개 중 32개는 직접 duration과 `end-start`가 1ms보다 달랐다. runtime·lifecycle·observed latency를 분리하며 원인을 반올림/overhead로 확정하지 않는다.
+- Claude paired 후보 280개에는 직접 duration이 없었다. pair는 관측 latency이며 순수 runtime이 아니다. `turn_duration` 8개도 위치를 아는 턴 구간이 아니다.
+- Claude `2.1.241`의 고유 usage ID 243개 중 108개는 재저장 값이 달랐다. 첫 snapshot 고정·전체 합산 대신 source ordering·final 의미 확인이 우선이다.
+- failed 후보 45개에 timing이 있어도 operation/error/성공 연결이 미검증이면 retry·recovery 지원 근거가 아니다. eligible chain 없음과 실패 없음은 다르다.
+- [정규화 계약](https://github.com/WhiteKiwi/agentprof/blob/6f614727dced9df2693ac008aa3f3e4be559386c/docs/NORMALIZATION.md#L11-L31)의 exact argv/error keyed 비교는 잘못된 병합을 줄이지만 표현이 달라진 같은 작업을 놓칠 수 있다. identity coverage를 보고해야 한다.
+
+### 공식 참고 자료와 적용 한계
+
+조회일: **2026-09-30**. 아래는 설계 참고용 1차 출처이며 AgentProf 통합·개선 효과·벤더 성능 비교 결과가 아니다.
+
+| 공식 자료 | 참고할 점 | AgentProf에서의 한계·판단 |
+| --- | --- | --- |
+| [OpenTelemetry GenAI metrics](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md) | client operation·agent invocation·workflow의 duration 경계를 분리. 문서는 Development 상태 | 기존 [웹 문서](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/)는 새 저장소로 이동. 날짜/버전을 고정해야 함. instrumentation 경계를 사후 로그에서 항상 복원할 수 없으며 OTel 수집/호환 지원은 이번 범위에 추가하지 않음 |
+| [Langfuse data model](https://langfuse.com/docs/observability/data-model) | observation → trace → session의 단위를 구분하고 필터/버전별 탐색에 연결 | 같은 trace/session의 관측을 무조건 더하지 않음. evidence navigation의 참고이며 원문 input/output 저장·외부 trace 전송을 채택하지 않음 |
+| [LangSmith evaluation types](https://docs.langchain.com/langsmith/evaluation-types) | curated dataset의 버전 비교, regression·pairwise·summary 평가 구분 | task mix가 다른 세션 비교를 실험처럼 해석하지 않음. 품질 기준을 사전 고정하되 LLM judge·온라인 평가 서비스 도입은 v0.1 범위 밖 |
+| [Phoenix workflow](https://arize.com/docs/phoenix/quickstart) | tracing의 관측 → correctness 평가 → 같은 입력/기준의 experiment로 연결 | trace 화면만으로 개선을 입증하지 못함. local-first를 유지하며 서비스/SDK 설치 없이 수동 matched pilot 설계에 참고 |
+| [OpenAI latency optimization](https://developers.openai.com/api/docs/guides/latency-optimization) | 생성 token·입력 token·요청 수·병렬화는 서로 다른 latency 최적화 축 | 일반적 heuristic을 AgentProf 예상 절감률로 복사하지 않음. 입력 축소가 task elapsed를 같은 비율로 줄인다는 보장 없음. 필요한 결과/검증을 줄이지 않음 |
+| [OpenAI prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching) | cached input과 cache-write 세부값은 input usage 안에서 해석. cache-hit 비율은 cached 합/input 합 | cache-hit와 비용·latency는 다른 값. API 의미를 Codex 로그 전 버전에 그대로 적용하지 않음. 가격/모델별 설정은 검토 범위 밖 |
+| [Anthropic prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) | total input은 input + cache-read + cache-creation. creation 세부 bucket은 상위 합계 내역 | OpenAI와 같은 포함 관계로 합산하면 오류. Claude Code 로그의 final/partial·cache 의미는 adapter에서 별도 대조 |
+
+### 검토 결론과 문서 반영
+
+1. **관측 정확성과 개선 가능성을 분리한다.** 정확한 시간/usage가 있어도 낭비·원인·절감 가능성은 추가 근거가 필요하다. Detected Waste는 관측된 패턴 관련 시간이다.
+2. **토큰과 체감 시간을 함께 본다.** response input·output·cache·전체 사용량과 task elapsed, 호출 합·구간 union·session-minutes를 혼동하지 않는다. provider 생산성 순위·tree만으로 critical path·gap을 모델 사고로 설명하는 것은 보류한다.
+3. **작은 행동 단위를 먼저 만든다.** freshness/coverage → hotspot → 확인된 실패 → 검증된 retry → 조치 하나 → 같은 조건 검증이 우선이다.
+4. **여섯 후보를 구체화한다.** 큰 출력, 반복 검색, 넓은 검증, 반복 실패, context 성장, 병렬 중복을 근거·제안·실험·품질 보호 조건으로 연결한다. 기존 6개 규칙과 신규 후속 후보를 구분한다.
+5. **효과 없음도 결과다.** 실패/미완료를 제외하거나 coverage가 낮아진 실행을 빨라졌다고 해석하지 않는다. 품질 gate·parent/child usage·준비/요약/재조회 비용과 변동성을 함께 기록한다.
+
+공식 자료를 AgentProf에 적용한 부분은 **설계 판단**이다. 계산은 [METRICS](METRICS.md#aggregation-and-token-accounting), [행동 카드](METRICS.md#efficiency-opportunity-cards), 순서는 [IMPLEMENTATION](IMPLEMENTATION.md#efficiency-review-priorities), 검증은 [ACCEPTANCE](ACCEPTANCE.md#quality-preserving-improvement-pilot)에 반영한다. 후속 후보는 [BACKLOG](BACKLOG.md#efficiency-candidate-gates)에 남긴다. 원본 제안과 병행 PR의 코드는 변경하지 않는다.

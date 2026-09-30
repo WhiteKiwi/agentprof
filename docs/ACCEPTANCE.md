@@ -28,6 +28,11 @@
 | A20 | 진단 품질·제안 유용성 | 6개 규칙별 양성/정상 음성, 로컬 검토 표본·오탐·판정 불가·실행 가능한 다음 행동 | NOT RUN |
 | A21 | 초기 세로 단면 | P5 초반 두 공급자 시간·실패·재시도의 CLI/최소 offline HTML 값·근거·privacy 일치 | NOT RUN |
 | A22 | 수동 개선 전후 확인 | 아래 matched before/after 절차, 조건·표본·커버리지·비교 불가/효과 없음 기록 | NOT RUN |
+| A23 | 집계 수준·분모 재현 | 동시 두 stream30분: global30분/session-minutes60분; 비율1/2와9/98→10/100; pooled p95 | NOT RUN |
+| A24 | 최종 usage·cache 회계 | 같은 ID output6→10은10 한 번; OpenAI100in/cache40/out20→120; Anthropic100/read30/create20/out10→160; reset/final 불명은 unknown | NOT RUN |
+| A25 | 개선 카드의 근거·조치·보호 조건 | 6개 후보 분류와 기존6개 규칙 구분; 큰 출력/context/병렬 신규 규칙은 후속; 정상 반례·제안·실험·품질 gate | NOT RUN |
+| A26 | 품질 보존형 전후 판정 | 같은 과제·revision·성공 기준·필수 검사 유지, parent+child token 포함, 품질 악화/효과 없음/비교 불가 보존 | NOT RUN |
+| A27 | 관계·window·지원 한계 | observation window와 query clipping 분리, identity coverage, tree만으로 critical path 금지. private tool 별칭 구현은 후속 조건부 gate | NOT RUN |
 
 ## Evidence Gates and Recording
 
@@ -46,6 +51,21 @@
 4. 개선 방향 관측/효과 없음/비교 불가로 결과와 다음 확인을 기록한다. 작은 표본·선택 편향과 교란 요인을 남기고 절감 보장이나 인과 효과를 주장하지 않는다. 자동 매칭·변경 추적·비교 UI는 v0.2다.
 
 현재 파일럿은 **NOT RUN**이다. 이 절차는 실제 비교 결과가 아니다.
+
+## Quality-Preserving Improvement Pilot
+
+위 수동 파일럿의 실행 양식이다. 제품 구현·사람 검토·개선 효과는 아직 **NOT RUN**이며 아래 숫자/성공을 실측한 것으로 읽지 않는다. PR #9의 기반 테스트나 합성 계약 검사도 이 gate를 대체하지 않는다.
+
+1. **비교 단위 고정:** 프로젝트 별칭, task ID/과제 설명의 안전한 분류, 입력 fixture/revision·작업량, provider/model/version·도구/환경, 설정과 parser/rule 버전, query period·timezone·warm/cold cache 조건을 기록한다. 명시적 작업 경계가 없으면 task elapsed는 미지원이고 대신 비교하는 시간의 정확한 이름을 쓴다.
+2. **품질 기준 먼저 고정:** 기대 산출물·정답 rubric, 필수 단위/통합/회귀 테스트·빌드·정적 검사와 검토 요구를 바꾸기 전에 정한다. 정상 독립 검토/보안 gate를 생략하지 않는다. 테스트 통과만으로 정확성·완전성을 전부 증명했다고 하지 않는다. 가능한 경우 같은 rubric으로 결과를 비교하고 평가자/자동 검사와 한계를 남긴다.
+3. **한 가지 변경:** output 범위, 검색 지도, targeted-first 순서, setup 확인, 요약 등 카드와 연결된 변경 하나만 정한다. baseline과 treatment의 다른 조건은 유지한다. 요약·재조회·parent/child·재시도 사용량까지 같은 accounting 범위에 포함한다. 변경 자체의 준비 비용은 따로 기록한다.
+4. **반복과 순서:** 반복 가능한 동일 과제를 양쪽에서 실행하고 stochastic 변동·cache warm-up·실행 순서 영향을 기록한다. 가능하면 순서를 교차/무작위화한다. 실험 전에 반복 수와 허용 품질 조건을 정하고 좋은 결과만 선택하지 않는다. 작은 표본이면 불확실성을 남기며 임의의 유의성·확정 개선률을 붙이지 않는다.
+5. **비교 값:** 완료/미완료/실패 수, 품질 gate 결과, 고유 최종 input/output/cache와 전체 관측 token, 정의된 task elapsed 또는 대체 시간, 호출/실패/재시도, coverage·unknown 수를 함께 비교한다. `(after-before)/before`는 같은 분모·단위이고 before>0일 때만 변화율로 표시한다. 작업 수가 다르면 합계 차이를 성능 개선으로 부르지 않는다.
+6. **판정:** 품질 gate를 만족한 관측 개선 / 효과 없음 / 품질 악화 / 비교 불가로 남긴다. token↓·time↑처럼 trade-off가 있으면 둘 다 보인다. coverage가 바뀌거나 task mix·모델이 달라지면 단순 전후 절감을 주장하지 않는다. 작은 matched 관측은 인과 효과나 모든 작업의 절감 보장이 아니다.
+
+기록 필드: `experiment ID`, `candidate/rule version`, 안전한 task/조건 별칭, `baseline/treatment revision`, 변경 하나, 사전 품질 기준, 실행별 outcome·tokens·시간 scope·coverage, 제외/실패/미완료 수, 관측 변화·교란 요인, 판정과 다음 확인. 실제 로그·prompt·원문 출력·개인 경로는 기록하지 않는다.
+
+**Verify:** synthetic 결과로 (a) token/time 감소+품질 동일, (b) token 감소+필수 테스트 실패, (c) 시간 감소+coverage 하락, (d) 실패 실행 누락, (e) 변경 효과 없음, (f) parent/child 중복/누락을 입력한다. (b)는 개선 실패, (c)·(d)는 비교 보류, (e)는 유효한 효과 없음으로 남고, (f)는 accounting을 고치기 전 판정을 보류해야 한다.
 
 ## Planning Evidence
 
@@ -85,3 +105,5 @@ CLI는 help/version만 구현했다. `scan`, `stats`, `insights`, `report`, `ope
 충돌 marker 없음, 로컬 문서 링크 124개와 whitespace를 확인했다. Project의 private·저장소 연결·9개 이슈 항목을 확인하고 기존 #1–#8 체크리스트·Verify가 그대로 보존되었음을 본문 readback으로 대조했다. 별도 디자인 QA는 #10으로 이관했으며 TODO의 병행 진행 체크리스트를 제거했다.
 
 마지막 원격 확인에서 main `514ee77`의 도롱뇽 README hero 변경을 추가 통합했다. 디자인·brand 소스 18개가 최신 main과 byte 동일하며 새 README로 `npm run verify:artifact`를 다시 통과했다. 시스템 소스는 변경되지 않았고 이미지·README의 브라우저 검증은 #10에서 계속 추적한다.
+
+사용자 요청으로 문서 [PR #11](https://github.com/WhiteKiwi/agentprof/pull/11)의 8개 파일을 검토하고 main `90998a5`에 병합했다. PR head `1c9b402`의 로컬 링크 83개·section anchor 21개, README 한글 0개·마스코트 header 보존을 확인했으며 해당 head의 CI check는 0개였다. 기반 브랜치에서는 P0/P1 실행 기록·자원 예산과 Project 운영 규칙을 보존하며 충돌을 해결했다. src·bin·scripts·tests·package·workflow는 이전 기반과 동일하고 디자인·brand는 main과 동일하다. macOS arm64 Node 26.7.0의 build와 14파일 tarball의 격리 npm exec/global install help/version을 통과했다. 최종 usage·집계·개선 카드·A23–A27 계약은 적용하되 제품·파일럿 통과로 표시하지 않는다.
