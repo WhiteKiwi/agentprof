@@ -64,6 +64,8 @@ type NormalizedEvent = {
 
 이 모델은 허용 필드를 명시한다. 원문 `metadata: Record<string, unknown>`를 그대로 DB에 넣지 않는다. 스키마·파서 버전, 소스 버전, ID 별칭과 진단은 별도 필드·테이블에 둔다. lookup의 파일·범위·내용 식별자와 validation scope도 원문 없는 허용된 정규화 필드로 관리한다.
 
+위 코드는 main의 초기 설계 요약이다. [PR #9의 정규화 계약](https://github.com/WhiteKiwi/agentprof/blob/6f614727dced9df2693ac008aa3f3e4be559386c/docs/NORMALIZATION.md#downstream-allowlist)은 duration의 `durationScope/timingEvidence`와 구간의 `intervalScope/intervalTimingEvidence`를 이미 분리한다. 병합·후속 구현에서는 이 분리를 보존한다. union은 구간의 scope/evidence, duration 통계는 duration의 scope/evidence를 사용하며 이 요약으로 P1 필드나 검증을 축소하지 않는다.
+
 P1에서 commandPattern·operationKey·lookup/content/error fingerprint의 허용 필드·null·키 버전 계약을 정한다. P2/P3의 파서 정규화 단계에서 필요한 원문이 메모리에 있을 때 비실행 방식으로 안전한 패턴과 식별자를 생성한 뒤 원문을 폐기한다. P4는 이 결과와 normalization/key version을 저장하고 P5는 소비만 한다. 원문 폐기 후 P5에서 대상을 복원하거나 fingerprint를 새로 만들지 않는다. 필수 정보가 없으면 null과 unsupported 이유를 남긴다. 키·정규화 버전이 다르면 동일성 비교를 하지 않으며, 재처리에 필요한 로컬 원본이 없으면 비교 불가로 남긴다.
 
 소스의 직접 duration과 시작·종료 시각은 모두 검증한다. 충돌하면 두 근거를 진단에 남기고 정의가 맞는 값만 채택한다. duration만 있고 배치할 구간이 없으면 호출 합계에는 포함할 수 있지만 구간 합집합에는 넣지 않는다.
@@ -87,6 +89,10 @@ P1에서 commandPattern·operationKey·lookup/content/error fingerprint의 허�
 
 근거별 통계는 분리한다. p50·p95는 정렬된 유효 표본의 nearest-rank 방식으로 정의하고 `n`을 표시한다. 기간 경계에 걸친 시간은 구간을 잘라 집계하고, 호출 수는 시작 시각 기준으로 집계한다. 추이는 타임존과 집계 기준을 함께 저장·표시한다.
 
+집계 snapshot은 시간 scope·evidence와 별도로 aggregation scope(`stream`, `task`, `project`, `global`)·grouping·중복 제거 정책을 가진다. 세션 안의 union을 세션 간 합산한 session-minutes와 공통 시계 위의 global union은 다른 값이다. 명시적 작업 경계가 없는 세션 span은 task elapsed가 아니다. 자세한 공식·분모·예시는 [METRICS](METRICS.md#aggregation-and-token-accounting)에 둔다.
+
+호출 관계는 parent/child, 같은 실행의 wrapper 표현, 실제 spawn/join, fork의 복사 이력을 별도로 구분한다. trace tree만으로 critical path나 병렬화 절감량을 만들지 않는다. cross-stream 연결·시계의 비교 가능성이 확인되지 않으면 관계 coverage를 낮추고 경로 분석을 보류한다.
+
 ## 호출 연결과 중복 제거
 
 - Codex의 `item_completed`에 구조화된 명령·MCP 정보가 있으면 그것을 우선 사용한다. 동일 작업의 `response_item`을 추가 호출로 세지 않는다.
@@ -96,6 +102,10 @@ P1에서 commandPattern·operationKey·lookup/content/error fingerprint의 허�
 - 프로세스 시작 호출·폴링 시간·프로세스 실행 시간을 구분한다. 폴링 응답의 누적 시간을 다시 더하지 않는다.
 - fork의 복사된 과거와 서브에이전트의 자체 실행을 분리한다. 명시적 원본 ID가 있을 때만 중복을 제거하고, 관계가 불명확하면 그룹 통계 커버리지를 낮춘다.
 - 토큰은 가능한 경우 고유 응답 ID 기준으로 한 번만 센다. 누적 스냅샷을 반복 합산하지 않으며, 서로 다른 사용량 소스를 더하지 않는다. v0.1 핵심 시간 집계 이후 검증된 토큰만 보조 표시한다.
+
+토큰 정규화는 response/message별 최종 사용량 판정과 원본 순서·partial/final 상태를 보존한다. 같은 ID의 첫 값 고정이나 최대값 선택을 final 판정으로 대신하지 않는다. 원본 재저장·fork copy와 실제 새 응답을 구분한 뒤 공급자별 cache 포함 관계를 적용한다. 수치 사용량·출력 크기·토큰 추정과 source/evidence version은 allowlist 확장 계약을 먼저 통과해야 하며 원문을 추가 저장하지 않는다.
+
+도구별 조언을 위해 private MCP/server/method를 모두 하나의 `other`로 묶는 한계도 기록한다. 필요한 경우 설치별 keyed identity와 고정 별칭으로 분리하는 후속 계약을 검토한다. 원문 도구명·경로·인자를 노출하지 않고 key version이 다른 식별자는 비교하지 않는다. 이는 현재 P1 필드가 이미 해당 관계를 지원한다는 뜻이 아니다.
 
 ## 저장과 증분 스캔
 

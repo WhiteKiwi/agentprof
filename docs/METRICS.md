@@ -35,7 +35,7 @@ P0에서 아래 필요 필드를 공급자·로그 버전별로 대조하고, P2
 
 `direct`는 검증된 직접 값, `observed`는 검증된 관측 관계로 계산, `inferred`는 별도 추정, `unsupported`는 필요한 근거 없음이다. 시간 evidence의 `source_reported/paired_timestamps/estimated/unknown`과 각각 대응하지만 비시간 지표에도 적용한다. 혼합 근거는 따로 나눠 기록한다. 0 분모의 coverage는 `null`이다. 버전·표본 선택·관측 기간과 누락 사유를 남겨 선택된 표본을 전체 모집단의 지원율로 확대하지 않는다.
 
-현재 이 행렬의 실측 결과는 **NOT RUN**, 표본 수·커버리지는 **TBD**다. 기존 필드 구조 관측은 의미 검증 통과가 아니다. 지원 승격은 해당 버전·지표의 합성 기대값과 로컬 대조가 통과한 범위에 한정한다. 원본을 읽을 권한/환경이 없으면 검증을 보류하고 지원 주장을 낮춘다.
+`main`에는 아직 이 행렬의 구현 결과가 없다. 별도 [PR #9의 P0 evidence](https://github.com/WhiteKiwi/agentprof/blob/6f614727dced9df2693ac008aa3f3e4be559386c/docs/EVIDENCE.md)에 bounded 표본·필드·coverage와 의미 확인 과제가 기록되어 있다. 이는 미실시 조사가 아니지만 파서/분석기 acceptance 통과도 아니다. 지원 승격은 해당 버전·지표의 합성 기대값과 로컬 대조가 통과한 범위에 한정한다. 원본을 읽을 권한/환경이 없으면 검증을 보류하고 지원 주장을 낮춘다.
 
 ## 1. Active Time
 
@@ -125,6 +125,72 @@ v0.1은 근거가 있는 턴별 사용량을 제공한다. 탐색·구현·디�
 
 **Verify:** 동일 response 재저장, cumulative snapshot, 모델 변경, cache 의미 차이와 분류 불명에서 중복·허위 배분이 없다.
 
+## Aggregation and Token Accounting
+
+아래는 위 10개 지표를 신뢰할 수 있게 집계하는 추가 계약이다. 구현·성능 개선 결과가 아니며 예시는 모두 합성이다.
+
+### 범위·분모·시간
+
+| 값 | 공식·필수 근거 | 제한·표시 |
+| --- | --- | --- |
+| Task elapsed | 명시적으로 연결된 작업의 완료 시각 − 시작 시각 | 같은 task ID/경계가 필수. 승인·편집·대기가 포함될 수 있음. 세션 span이나 마지막 로그 시각으로 대체하지 않음 |
+| Stream active | 한 execution stream의 검증된 턴 구간 union 길이 | CPU 실행 시간이 아님. pending/위치 불명 duration 제외 |
+| Session-minutes | `sum(stream active ms) / 60000` | 동시 stream 기여를 더한 누적량. 사용자 체감 경과 시간이나 global union이 아님 |
+| Global observed active | 비교 가능한 공통 시계에 놓인 모든 적격 턴 구간의 union 길이 | 중복 표현은 먼저 제거. cross-device clock 관계 불명이면 계산 보류/범위 분리 |
+| Tool duration sum | 같은 scope/evidence의 고유 호출 duration 합 | 독립 병렬 실행은 각각 유지. runtime과 lifecycle을 합치지 않음 |
+| Tool busy | query period에 잘린, 같은 interval scope/evidence의 검증된 구간 union 길이 | duration의 scope/evidence와 별도로 판단. duration-only로 구간을 역산하지 않음. 분모의 턴 범위 밖 기여도 숨기지 않음 |
+| Aggregate ratio | 같은 정의의 모든 적격 numerator 합 / denominator 합 | 세션별 비율의 단순 평균 금지. 전체·제외·unknown 분모를 함께 표시 |
+| Aggregate quantile | 동일 scope/evidence의 원 표본을 모아 nearest-rank | 세션별 p95를 평균하거나 p95의 p95로 전체 p95를 만들지 않음 |
+
+두 stream이 같은 30분 동안 실행되면 session-minutes는 60분, global observed active는 30분이다. 작업 경계가 없으면 두 값 중 어느 것도 task elapsed라고 부르지 않는다. 비율이 `1/2`와 `9/98`인 두 집단의 전체 비율은 `10/100 = 10%`이며 약 29.6%인 단순 평균이 아니다. 호출 수 분모·상태·필터가 다른 집단은 합치지 않는다.
+
+규칙 적격성은 기록한 observation window에서 먼저 판정한다. 표시할 기간으로 구간을 clipping하는 단계와 구분한다. 예를 들어 window 안에 실패 3회가 있고 query period에는 마지막 1회만 들어오면 적격 체인의 근거 3개와 표시 기간의 기여 1개를 따로 보인다. window를 바꿔 재판정했다면 새 snapshot으로 기록한다. 기간 밖 근거를 몰래 현재 기간의 시간에 더하지 않는다.
+
+**Verify:** 동시 두 stream 30/60분, 서로 다른 시계, `1/2 + 9/98`, pooled quantiles, observation window와 query clipping의 합성 손계산을 고정한다. duration scope·표본·filter가 다른 값을 합치면 검증 실패다.
+
+### 고유 최종 usage와 cache
+
+1. 공급자·고유 execution stream·response/message ID로 usage를 묶고 복사된 이력/재저장을 제거한다. 한 응답 안의 여러 저장 레코드는 새 응답이 아니다.
+2. adapter가 검증한 source ordering·terminal/final 신호에 따라 마지막 완성 usage를 선택한다. 첫 값 고정·모든 snapshot 합산·각 component 최대값 선택은 금지다. final 판정 불가면 provisional/unknown과 제외 수를 남긴다.
+3. response usage와 같은 사용량을 나타내는 turn/session cumulative를 더하지 않는다. cumulative만 가능한 소스는 reset/epoch·시작 baseline·증분 의미가 검증된 별도 fallback을 사용한다. 감소·reset·누락 baseline을 0으로 보정하지 않는다. 중간 기간의 사용량을 session 최종 누계로 대신하지 않는다.
+4. 같은 응답 단위에서 의미가 검증된 input/output을 한 번 더한다. 알려진 응답의 합은 **관측 usage 합계**이며 누락 응답을 포함한 전체 사용량으로 주장하지 않는다. usage-covered responses / eligible responses, final/provisional/unknown 수와 source version을 표시한다.
+
+| 공급자별 의미 | 정규화 공식 | 합성 기대값 |
+| --- | --- | --- |
+| [OpenAI API](https://developers.openai.com/api/docs/guides/prompt-caching): cached input이 input의 부분집합인 검증된 schema | `inputTotal = inputTokens`; `nonCacheReadInput = inputTokens - cachedInput`; `total = inputTotal + outputTokens` | input100, cached40, output20이면 total120. cache를 더한160 아님 |
+| [Anthropic Messages](https://platform.claude.com/docs/en/build-with-claude/prompt-caching): input은 non-cache, cache read/create는 별도인 검증된 schema | `inputTotal = inputTokens + cacheReadInput + cacheCreationInput`; `total = inputTotal + outputTokens` | input100, read30, create20, output이 같은 ID에서6→10이면 최종 total160. 156+160을 더하지 않음 |
+
+이는 2026-09-30 확인한 공식 API 의미를 adapter 검증의 참고로 삼는 계약이다. Codex/Claude Code의 모든 로그 버전이 API schema와 같다고 가정하지 않는다. OpenAI의 cache-write 세부 필드가 존재하면 input에 포함된 별도 subset으로 보존한다. `nonCacheReadInput`에는 cache-write가 포함될 수 있으므로 일반 입력의 과금량으로 해석하지 않는다. cache 세부 bucket이 상위 합계에 포함되면 또 더하지 않는다. output 안의 reasoning 세부값도 부분집합이면 추가 합산하지 않는다. 필수 component가 누락되거나 포함 관계가 불명확하면 total/차감값은 `null`이며 원래 확인된 component만 보인다. cached > input 등 모순도 진단하고 억지로 0에 맞추지 않는다.
+
+Cache read share는 의미가 맞는 `sum(cacheReadInput) / sum(inputTotal)`이다. 기간·모델·공급자와 eligibility를 고정하며, 이 비율이 가격 절감률이나 latency 개선률은 아니다. 반복 입력은 새 응답의 실제 usage로 남긴다. 전체 token 합은 고유 텍스트 양·현재 context 길이·tool output token 수가 아니다.
+
+도구 출력은 관측된 byte/character 수와 실제 tokenizer/model로 추정한 token 수를 구분한다. 추정에는 tokenizer version·단위를 표시하고 provider usage에 더하지 않는다. 크기를 얻을 원문은 정규화 중 폐기하며, 유출 위험이 있는 내용/경로를 cardinality label로 저장하지 않는다. 명시적 연결이 없는 tool별 token 귀속은 `unattributed`다.
+
+**Verify:** updated usage6→10, 동일 응답 replay, fork copy와 새 응답, cumulative reset·baseline 부재·역순 source, missing cache component, 두 공급자 cache 의미, 모델 변경과 provisional/final을 대조한다. 합성 기대값과 실제 adapter 출력 대조를 통과하기 전 지원으로 승격하지 않는다.
+
+### 근거 등급과 우선순위
+
+`direct / observed / inferred / unsupported`는 **측정 근거**다. 정확한 직접 사용량도 그 작업이 불필요했다는 근거는 아니다. 별도로 rule의 판정 상태·정상 작업 반례·identity coverage·time/token coverage·제안 적용 가능성을 표시한다. exact argv/error fingerprint는 다른 작업을 합치는 오탐을 줄이지만 표현만 다른 동일 작업을 놓칠 수 있다. 낮은 recall을 0회 발생으로 해석하지 않는다.
+
+우선순위는 (1) 충분한 근거와 실행 가능한 행동, (2) 관측된 시간/토큰 영향과 반복 빈도, (3) 작은 검증의 비용·위험 순으로 설명한다. 토큰과 초를 임의의 단일 점수로 합치거나, coverage가 낮은 큰 숫자로 상단을 채우지 않는다. 예상 절감률은 측정 전 표시하지 않는다.
+
+## Efficiency Opportunity Cards
+
+다음 여섯 항목은 **개선 후보 분류**이며 아래 기존 Six Initial Diagnostics의 대체 목록이나 새 6개 구현 규칙이 아니다. 신호가 있어도 불필요함·원인·절감 가능성은 가설이다. 각 카드에는 `candidate ID/version`, 기간·대상 별칭, evidence IDs, 측정값·단위·분모·coverage, 측정 근거 등급, 정상 반례, 제안 하나, validation experiment, quality guardrail, 확인 결과를 표시한다.
+
+| 후보 / 연결·범위 | 필요한 근거·한계 | 제안과 작은 실험 | 품질 보호 조건 |
+| --- | --- | --- | --- |
+| 큰 도구 출력 / 후속 후보 | per-call 출력 크기·잘림·선택 옵션; 실제 usage와 연결 없으면 출력량만 표시. 큰 출력 자체는 낭비 아님 | 필요한 필드/행 범위를 좁히고 같은 질문으로 기존/축약 출력을 비교. 출력 bytes·모델 usage·task elapsed를 각각 측정 | 필요한 근거·오류 맥락·누락 가능성이 유지되어야 함. 잘린 결과의 후속 재조회까지 포함 |
+| 반복 검색·읽기 / exploration-thrashing, context-churn | 동일 query/범위/옵션·content/change fingerprint, 완전한 결과. 조사·리뷰·수정 뒤 재읽기는 정상 가능 | 모듈 지도나 검색 범위 하나를 개선하고 동일 작업의 lookup 수·관측 시간·usage를 비교 | 답변 근거와 탐색 범위 충분성 확인. 필요한 탐색/최신 내용 확인을 금지하지 않음 |
+| 과도하게 넓은 검증 / validation-thrashing | 관측 edit-cycle, 실제 full/targeted scope·대상 대응. 명령명·작은 diff만으로 과도함 판정 금지 | 검증된 targeted test를 먼저 수행하는 순서와 기존 순서를 비교. 전체 사이클 시간·재시도·usage 측정 | 필수 전체/회귀 테스트·보안/빌드 gate 유지. 최종 결과·커버리지·결함 발견 동등성 확인 |
+| 반복 실패 / retry-loop, repeated-error | 검증된 실패 의미, 같은 operation/error, 첫 실패 포함·성공 제외, unresolved 구분 | 첫 실패의 필수 조건이나 setup 지침 하나를 고치고 동일 작업에서 실패 수·실패 구간·복구를 비교 | 다른 오류를 숨기거나 검증을 우회하지 않음. 성공 산출물·필수 테스트 기준 동일 |
+| context 성장 / 후속 후보 | 순서 있는 고유 최종 response input 사용량, 모델·cache·compaction/재개 여부. input 증가는 현재 context 크기와 동의어 아님 | 짧은 상태 요약/불필요한 재첨부 감소 한 가지를 시험. response별 input 추이·전체 usage·task elapsed 비교 | 요구사항·결정·근거 보존, 같은 품질 rubric으로 누락/환각/재탐색 확인. 요약 비용도 포함 |
+| 병렬 중복 작업 / 후속 후보 | 명시 task/operation·spawn/join·내용/범위·시간 관계. 별개 execution ID는 측정에서 그대로 유지 | 작업 소유 범위를 분리한 경우와 기존 경우 비교. 전체 parent+child usage, task elapsed, 합산 활동량 측정 | 의도된 독립 검토·교차 검증·안전 확인 보존. trace tree만으로 critical path나 제거 가능한 시간을 주장하지 않음 |
+
+합성 카드 예: “같은 lookup의 적격 반복 3회, 관측 구간 합집합 6초, timing 3/3, identity 4/4. 모듈 지도 한 항목을 추가해 같은 과제를 재시도하고 lookup 수·전체 usage·task elapsed를 비교한다. 정답 근거와 필수 테스트를 유지한다.” 여기서 6초는 관측된 패턴 관련 시간이며 “6초 절감 가능”이라는 뜻이 아니다.
+
+큰 출력·context 성장·병렬 중복은 [BACKLOG](BACKLOG.md#efficiency-candidate-gates)에 gate를 둔다. 기존 규칙에 연결되는 후보도 근거가 없으면 카드에서 보류 이유를 표시한다. 초기 구현 순서와 Verify는 [IMPLEMENTATION](IMPLEMENTATION.md#efficiency-review-priorities)에 있다.
+
 ## Detected Waste Aggregation
 
 아래 포함표를 통과한 규칙이 지정한 정규화 이벤트 구간의 합집합을 총계로 계산한다. 같은 이벤트·구간이 여러 규칙에 해당해도 한 번만 센다. 내역별 값은 겹칠 수 있으므로 합계와 overlap을 함께 설명한다.
@@ -170,4 +236,3 @@ severity는 `INFO`, `NOTICE`, `WARNING`, `HOTSPOT`이다. 우선순위는 근거
 각 결과는 rule ID·version, severity, evidence event IDs, observation window, sample·coverage, measured impact, confidence, suggestion을 가진다. root cause는 가설임을 표시하고 조언과 실제 효과를 구분한다. v0.1의 수동 파일럿과 v0.2의 자동 before/after 기능은 같은 조건의 비교이며 인과 효과 검증으로 표현하지 않는다.
 
 각 규칙은 최소 하나의 양성 및 정상 음성 합성 사례, 기대 included/excluded event IDs, 오탐이 될 수 있는 정상 작업, 구체적 다음 행동과 그 행동을 확인할 지표를 갖춰야 한다. Slow Tool의 정상 음성은 비중 기준 미달 또는 scope가 다른 표본이며, 느리지만 필요한 작업을 낭비로 해석하는지도 별도로 검토한다. 실제 파일럿에서는 검토 표본·오탐 수·판단 불가 수·제안의 적용 가능 여부와 rule version을 기록한다. precision 목표나 개선률을 미리 발명하지 않고 P0에서 평가 절차를 정한 뒤 P5/P7의 근거로 임계값을 보정한다.
-
