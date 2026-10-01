@@ -36,7 +36,7 @@ P0에서 아래 필요 필드를 공급자·로그 버전별로 대조하고, P2
 
 `direct`는 검증된 직접 값, `observed`는 검증된 관측 관계로 계산, `inferred`는 별도 추정, `unsupported`는 필요한 근거 없음이다. 시간 evidence의 `source_reported/paired_timestamps/estimated/unknown`과 각각 대응하지만 비시간 지표에도 적용한다. 혼합 근거는 따로 나눠 기록한다. 0 분모의 coverage는 `null`이다. 버전·표본 선택·관측 기간과 누락 사유를 남겨 선택된 표본을 전체 모집단의 지원율로 확대하지 않는다.
 
-P0의 bounded 로컬 필드·ID/timestamp 대조와 누락 사유는 [EVIDENCE.md](EVIDENCE.md)에 기록했다. 12개 snapshot·7개 runtime-header 버전 층에서 10개 지표의 후보 분모·시간 필드 coverage를 조사했다. 후속 P2의 Codex 실행·턴·usage와 고정 prefix의 실제 파서 출력 대조는 [CODEX-EVIDENCE.md](CODEX-EVIDENCE.md)의 명시 범위에서 PASS다. 원래 실행 버전·실제 fork copied-boundary·wrapper-child 관계와 Claude 출력·제품 지표 계산은 검증하지 않았다. 후보 필드 coverage는 제품 지원율이 아니다. 지원 승격은 해당 버전·지표의 합성 기대값과 로컬 대조가 통과한 범위에 한정한다. 원본을 읽을 권한/환경이 없으면 검증을 보류하고 지원 주장을 낮춘다.
+P0의 bounded 로컬 필드·ID/timestamp 대조와 누락 사유는 [EVIDENCE.md](EVIDENCE.md)에 기록했다. 12개 snapshot·7개 runtime-header 버전 층에서 10개 지표의 후보 분모·시간 필드 coverage를 조사했다. 후속 P2 Codex·P3 Claude의 실행·턴·usage와 고정 prefix의 실제 파서 출력 대조는 [CODEX-EVIDENCE.md](CODEX-EVIDENCE.md)·[CLAUDE-EVIDENCE.md](CLAUDE-EVIDENCE.md)의 명시 범위에서 PASS다. Claude의 실제 turn 8개는 duration-only/unknown scope이며 usage 251개는 unknown finality/provisional, eligible 0이다. 이를 Active Time·최종 토큰 총계로 합산하지 않는다. 원래 실행 버전·실제 fork copied-boundary·wrapper-child 관계와 제품 지표 계산은 검증하지 않았다. 후보 필드 coverage는 제품 지원율이 아니다. 지원 승격은 해당 버전·지표의 합성 기대값과 로컬 대조가 통과한 범위에 한정한다. 원본을 읽을 권한/환경이 없으면 검증을 보류하고 지원 주장을 낮춘다.
 
 ## 1. Active Time
 

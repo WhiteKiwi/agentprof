@@ -71,3 +71,11 @@ P0 검사는 JSON/JSONL 문법, 입력 ID/기대 ID 참조, fixture 목록, 모�
 `codex-oracles.test.ts`는 기존 `expected.json`과 P0 Codex 입력을 수정하지 않고 structured/legacy/pending append/archive/fork 기대값에 연결한다. wrapper 관계·copied ordinal은 외부 trusted fixture context만 제공한다. `codex-behavior.test.ts`와 usage 행동 테스트는 상태·순서·상한·privacy·finality의 회귀를 검증한다. 합성 파서 통과를 Claude 파서나 P5의 19 metric/9 waste oracle 실행 통과로 확장하지 않는다.
 
 `providers/codex-usage-replay.jsonl`·`codex-usage-expected.json`은 같은 response의 partial output6→8→final10을 독립 기대값으로 검증한다. ordering/finality는 별도 trusted fixture context로만 제공하며 실제 provider 필드가 아니다. cache read40/write60은 input100 안에 포함되고 output10과 total110을 만든다. 더 이른 partial replay·untrusted source의 충돌·필수 input 누락·optional cache/reasoning 누락·last snapshot의 정상 감소를 따로 대조한다.
+
+## P3 Claude Additions
+
+`providers/claude-real-shapes.jsonl`, `claude-p3-expected.json`, `claude-p3-notes.md`는 관측한 구조를 바탕으로 독립 작성한 합성 입력·손계산 기대값·설명이다. 13개 레코드에서 root 실행 4개·sidechain 실행 1개, completed 2·failed 1·pending 2를 기대한다. 정상 paired invocation latency는 3,000/3,000/2,000ms이며 두 launch acknowledgement의 1,000ms는 canonical 종료·runtime에 넣지 않는다. 직접 tool runtime은 없다. turn duration 9,000ms·0은 scope unknown이고 배치 가능한 구간은 없다.
+
+같은 API message ID의 세 UUID/content 기록과 output6→8→10에서 두 tool call을 유지한다. source ordinal로 provisional 최신값을 선택하고 외부 trusted final context에서만 final 적격성을 검증한다. uncached100+cache-read30+cache-create20은 input150, output10을 더한 total160이다. TTL bucket을 다시 더하거나 검증되지 않은 thinking detail을 reasoningOutput으로 올리지 않는다.
+
+기존 P0 `claude-message.jsonl`, `claude-fork.jsonl`, `expected.json`은 바꾸지 않았다. `claude-oracles.test.ts`는 P0 기대값의 runtime·완전한 출력·fork copied ordinal·usage finality를 정확한 외부 trusted context에 연결한다. 행동·usage 테스트는 pending/결과 선행/충돌·source와 UUID replay·bounded proof history·뒤 project context/ownership 변화·raw privacy를 검증한다. 이 88개 Claude 검사와 실제 bounded 대조는 P5 metric oracle·제품 CLI·모든 Claude 버전의 통과가 아니다. 계약은 [CLAUDE-PARSER](CLAUDE-PARSER.md), 실제 한계는 [CLAUDE-EVIDENCE](CLAUDE-EVIDENCE.md)에 둔다.
