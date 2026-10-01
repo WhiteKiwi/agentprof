@@ -6,12 +6,13 @@ The coordinator approved the independent concrete layout review before this
 separate development session. Project-only execution tracking:
 https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=259743024
 
-Baseline: PR25 head `7a5570bf88446b1e3580b6d8039458d960f57df9`, exact tree
-`9e1cd66d531b50bb21fb134b50014a49935041f7`. Stack on `feat/readonly-source-stats`.
+Original implementation baseline: PR25 head `7a5570bf88446b1e3580b6d8039458d960f57df9`, exact tree
+`9e1cd66d531b50bb21fb134b50014a49935041f7`. Originally stacked on `feat/readonly-source-stats`.
 At 2026-10-01 14:48 UTC PR24 was merged as `b96bda476042b41a3b60507376b781c677e6997d`;
 PR25 was retargeted to main, with unchanged head, still open/draft. Recheck the
-base before publication and reconcile after dependency merge. Local materialization
-uses the exact dependency tree; its synthetic local commit is not a remote commit.
+base before publication and reconcile after dependency merge. At that developer
+handoff, local materialization used the exact dependency tree; its synthetic local
+commit was not a remote commit. The current integrated review follows below.
 
 Ownership readback confirmed the prior stats reservation release and the external
 reservation of `report/**` and `docs/REPORT-PREVIEW.md`. Only `src/cli/stats.ts`,
@@ -71,7 +72,7 @@ it does not promote provider or label support. Long valid repeated-flag patterns
 are retained with distinguishing suffixes. No new validation or escaping is needed
 at this already-validated boundary.
 
-## Verification evidence — 2026-10-01
+## Implementation verification evidence — 2026-10-01
 
 - PASS: Linux x64, Node 24.19.0, final `npm run check`: typecheck/build,
   513 tests in 24 files and 35-file artifact. Existing isolated script-disabled
@@ -133,5 +134,43 @@ independent paired execution of the pre/post formatter confirms byte-identical
 human and JSON output for all ten fixtures and the 4096-session long-label case
 (11880633 human bytes; SHA256
 `d5788a003aa800931e36dce8b17892202e652ef7a968336f7fc33c5c39b64523`).
-No snapshots or numeric/layout semantics changed. Final review/publication gates
-remain pending; this supersedes the earlier frozen candidate.
+No snapshots or numeric/layout semantics changed. At that refinement handoff,
+final review/publication gates were pending; this superseded the earlier frozen
+candidate. Current integrated verification is recorded below.
+
+
+## Repository-owner integration review (2026-10-01)
+
+All six slice files were reviewed at original remote head
+`131883f7e934a3ac9e10c771524b95892c622890`: one production formatter selected
+with OCR delegate rules and five document/test files read manually. No additional
+actionable findings were identified. Numeric formatting, separate known/unknown
+buckets and omission counts, full identity/evidence partitions, immutable inputs
+and linear session bucketing match the reviewed presentation contract.
+
+PR25 is merged at main `fa4a662f8fbec4c920a0f118572e382bb292a98c`.
+Integration head `d1da0e2c30d29f672005620b5c31521320c895ea` retains all six
+original slice hashes, the exact summary implementation, both upstream review
+documents and the reviewed Mac fixture correction. A fresh PR read already
+selected main; no redundant base mutation was needed.
+
+- PASS: macOS arm64 Node 24.15.0, 24.21.0 and 26.7.0; each full
+  `npm run check` passes typecheck/build, 513 tests across 24 files and 35-file
+  artifact verification, including the 23 formatter cases, 4096-session
+  structural regression, captured Codex/Claude JSON and complete human examples,
+  source-list byte checks and script-disabled packed synthetic scan/list/select.
+- PASS: Node 22.16.0 returns fixed `UNSUPPORTED_RUNTIME`, exit 2 and no stdout.
+- PASS: 35 documents, 236 local links, 23 anchors and diff whitespace. This final
+  evidence follow-up changes only this document; all other five verified file
+  hashes remain identical and references are checked again before publication.
+- The original ten-fixture paired and installed comparisons above remain scoped
+  to the author's Linux handoff. Mac checks use repository synthetic fixtures;
+  actual user logs, full-history resource acceptance and browser/report visual
+  acceptance remain unperformed. Long labels and identities remain exact; this
+  width/scanning change is not a measured token/time saving or terminal-fit claim.
+
+Exact final-head/base Linux CI, six remote byte/Git blob hashes and merge receipts
+are final publication gates recorded in
+[PR26](https://github.com/WhiteKiwi/agentprof/pull/26) and its
+[Project ticket](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=259743024).
+Full P5/P6 acceptance and existing report reservations remain open.
