@@ -61,7 +61,7 @@ describe("existing-store read-only safety", () => {
     await expect(withReadOnlyStore(f.dir, () => 1)).rejects.toMatchObject({ code: "INVALID_IDENTITY_KEY" });
     expect(await snapshot(f.dir)).toEqual(before);
   });
-  it.each([0, 2, 4])("rejects schema %s without migration", async version => {
+  it.each([0, 2, 3, 5])("rejects schema %s without migration", async version => {
     const f = await fixture(); f.db.exec(`PRAGMA user_version=${version}`); f.db.close(); const before = await snapshot(f.dir);
     await expect(withReadOnlyStore(f.dir, () => 1)).rejects.toMatchObject({ code: "DATABASE_SCHEMA_INCOMPATIBLE" }); expect(await snapshot(f.dir)).toEqual(before);
   });
@@ -147,4 +147,13 @@ describe("existing-store read-only safety", () => {
       })).toBe(1);
     } finally { peer.close(); }
   });
+});
+
+it("rejects an actual historical schema3 store without writes, then reads an explicitly migrated schema4 with absent proof", async () => {
+  const f = await fixture(); createSourceStore(f.db, f.context.keyId).replaceSource(f.input, null);
+  f.db.exec("DROP TABLE source_cache_evidence; DELETE FROM schema_migrations WHERE version=4; PRAGMA user_version=3"); f.db.close(); const before = await snapshot(f.dir);
+  await expect(withReadOnlyStore(f.dir, () => 1)).rejects.toMatchObject({ code: "DATABASE_SCHEMA_INCOMPATIBLE" }); expect(await snapshot(f.dir)).toEqual(before);
+  const writer = await openDatabase(f.dir); writer.close(); const migrated = await snapshot(f.dir);
+  const saved = await withReadOnlyStore(f.dir, (db, key) => { const store = createSourceStore(db, key); expect(store.listSources().returnedCount).toBe(1); return store.readSource(f.sourceId); });
+  expect(saved).toMatchObject({ revision: 1, evidence: null, cacheEvidence: null }); expect(await snapshot(f.dir)).toEqual(migrated);
 });

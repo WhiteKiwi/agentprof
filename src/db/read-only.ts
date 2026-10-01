@@ -43,8 +43,8 @@ function rejectSidecars(path: string): void {
 function verifySchema(database: DatabaseSync, key: string): void {
   if (database.prepare("PRAGMA journal_mode").get()?.["journal_mode"] !== "delete") throw new SafeError("DATABASE_MODE_UNSUPPORTED");
   if (database.prepare("PRAGMA user_version").get()?.["user_version"] !== DATABASE_SCHEMA_VERSION) throw new SafeError("DATABASE_SCHEMA_INCOMPATIBLE");
-  const markers = database.prepare("SELECT CASE WHEN typeof(version)='integer' THEN version ELSE NULL END AS version FROM schema_migrations ORDER BY version LIMIT 4").all();
-  if (markers.length !== 3 || markers.some((r, i) => r["version"] !== i + 1)) throw new SafeError("DATABASE_SCHEMA_INCOMPATIBLE");
+  const markers = database.prepare("SELECT CASE WHEN typeof(version)='integer' THEN version ELSE NULL END AS version FROM schema_migrations ORDER BY version LIMIT 5").all();
+  if (markers.length !== 4 || markers.some((r, i) => r["version"] !== i + 1)) throw new SafeError("DATABASE_SCHEMA_INCOMPATIBLE");
   const settings = database.prepare("SELECT substr(key,1,32) AS key, length(CAST(key AS BLOB)) AS n, CASE WHEN typeof(value)='integer' THEN value ELSE NULL END AS value FROM settings ORDER BY key LIMIT 3").all();
   if (settings.length !== 2 || settings[0]?.["key"] !== "key_version" || settings[1]?.["key"] !== "normalization_version"
     || settings.some(r => r["value"] !== 1 || typeof r["n"] !== "number" || r["n"] > 32)) throw new SafeError("DATABASE_SCHEMA_INCOMPATIBLE");

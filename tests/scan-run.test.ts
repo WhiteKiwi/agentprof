@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { mkdir, readFile, writeFile, appendFile, rename, unlink, symlink } from "node:fs/promises";
+import { mkdir, readFile, writeFile, appendFile, rename, unlink, symlink, stat, utimes, truncate, readdir } from "node:fs/promises";
 import fileSystem from "node:fs/promises";
 import { syncBuiltinESMExports } from "node:module";
 import { join, resolve } from "node:path";
@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { migrate, openDatabase } from "../src/db/database.js";
 import { createSourceStore } from "../src/db/source-store.js";
 import { createIdentityContext } from "../src/normalize/identity.js";
+import { ClaudeAdapter } from "../src/parsers/claude/index.js";
 import { CodexAdapter } from "../src/parsers/codex/index.js";
 import { SafeError, safeErrorEnvelope } from "../src/privacy/diagnostics.js";
 import type { InputRoot } from "../src/privacy/paths.js";
@@ -54,26 +55,26 @@ describe("real bounded directory integration", () => {
     expect(store.readSource(id(a))!.revision).toBe(1); expect(store.readSource(id(b))!.revision).toBe(1);
     expect(new Set(result.sources.map((s) => s.sourceId)).size).toBe(2);
   });
-  it("reparses repeat/append and stable-path replacement with exactly one original revision", async () => {
+  it("reuses repeats and reparses append/stable-path replacement with exactly one original revision", async () => {
     const root = temporaryDirectory(), { store } = memory(), path = await file(root, "a.jsonl");
     expect((await scanSources(store, context, roots(root))).status).toBe("completed");
     const first = store.readSource(id(path))!;
-    const repeat = await scanSources(store, context, roots(root)); expect(repeat.sources[0]).toMatchObject({ expectedRevision: 1, committedRevision: 2 });
+    const repeat = await scanSources(store, context, roots(root)); expect(repeat.sources[0]).toMatchObject({ status: "unchanged", expectedRevision: 1, committedRevision: null, reusedRevision: 1 });
     expect(store.readSource(id(path))!.events).toEqual(first.events);
     await appendFile(path, JSON.stringify({ type: "response_item", timestamp: "2026-09-01T00:00:12.000Z", payload: { type: "function_call_output", call_id: "pending1", output: { exit_code: 0, text: "FICTITIOUS_OUTPUT" } } }) + "\n");
-    expect((await scanSources(store, context, roots(root))).sources[0]).toMatchObject({ expectedRevision: 2, committedRevision: 3 });
+    expect((await scanSources(store, context, roots(root))).sources[0]).toMatchObject({ expectedRevision: 1, committedRevision: 2 });
     const pending = first.events.find((e) => e.status === "pending")!;
     expect(store.readSource(id(path))!.events.find((e) => e.id === pending.id)?.status).toBe("completed");
     const replacement = join(root, "replacement.tmp"); await writeFile(replacement, ""); await rename(replacement, path);
-    expect((await scanSources(store, context, roots(root))).sources[0]).toMatchObject({ sourceId: id(path), expectedRevision: 3, committedRevision: 4 });
+    expect((await scanSources(store, context, roots(root))).sources[0]).toMatchObject({ sourceId: id(path), expectedRevision: 2, committedRevision: 3 });
     expect(store.readSource(id(path))!.events).toEqual([]);
   });
   it("commits valid files while a rejected file preserves its old generation", async () => {
     const root = temporaryDirectory(), { store } = memory(), good = await file(root, "good.jsonl"), bad = await file(root, "bad.jsonl");
     await scanSources(store, context, roots(root)); const previous = store.readSource(id(bad)); await writeFile(bad, '{"FICTITIOUS_SECRET":\n');
     const result = await scanSources(store, context, roots(root));
-    expect(result.status).toBe("partial"); expect(result.counts).toMatchObject({ attempted: 2, committed: 1, rejected: 1 });
-    expect(store.readSource(id(bad))).toEqual(previous); expect(store.readSource(id(good))!.revision).toBe(2);
+    expect(result.status).toBe("partial"); expect(result.counts).toMatchObject({ attempted: 2, committed: 0, unchanged: 1, rejected: 1 });
+    expect(store.readSource(id(bad))).toEqual(previous); expect(store.readSource(id(good))!.revision).toBe(1);
     expect(result.sources.find((s) => s.sourceId === id(bad))).toMatchObject({ status: "rejected", rejectionReason: "reader_error" });
     expect(JSON.stringify(result)).not.toContain("FICTITIOUS_");
   });
@@ -98,6 +99,7 @@ describe("original revisions, failures and cancellation", () => {
     const root = temporaryDirectory(), dir = join(temporaryDirectory(), "db"), path = await file(root, "a.jsonl"), db = await openDatabase(dir), peer = await openDatabase(dir);
     try {
       const store = createSourceStore(db, context.keyId), other = createSourceStore(peer, context.keyId); await scanSources(store, context, roots(root));
+      await appendFile(path, " "); // Changed pending tail forces the original-CAS parsing path.
       const original = CodexAdapter.prototype.ingest; let wrote = false, reads = 0;
       vi.spyOn(CodexAdapter.prototype, "ingest").mockImplementation(function (record, source) { const value = original.call(this, record, source); if (!wrote) { wrote = true; other.markUnavailable(id(path), 1); } return value; });
       const result = await scanSources({ ...store, readSource(key: string) { reads++; return store.readSource(key); } }, context, roots(root));
@@ -115,6 +117,7 @@ describe("original revisions, failures and cancellation", () => {
   });
   it("stops after a real SQLite insertion failure, preserving previous source data", async () => {
     const root = temporaryDirectory(), { db, store } = memory(); await file(root, "a.jsonl"); await file(root, "b.jsonl"); await scanSources(store, context, roots(root)); const before = headers(db);
+    await appendFile(join(root, "a.jsonl"), " "); await appendFile(join(root, "b.jsonl"), " ");
     db.exec("CREATE TRIGGER fail_scan BEFORE INSERT ON source_event_contributions BEGIN SELECT RAISE(ABORT, 'FICTITIOUS_SQL_SECRET'); END");
     const result = await scanSources(store, context, roots(root));
     expect(result).toMatchObject({ status: "partial", stopReason: "storage_failure", counts: { attempted: 1, failed: 1, committed: 0 } });
@@ -224,5 +227,110 @@ describe("bounds, resource closure and safe summaries", () => {
     const options = Object.defineProperty({}, "maxSources", { enumerable: true, get() { invoked++; return 1; } });
     await expect(scanSources(store, context, roots(root), options)).rejects.toMatchObject({ code: "INVALID_ARGUMENT" }); expect(invoked).toBe(0);
     expect(safeErrorEnvelope(new SafeError("INVALID_ARGUMENT")).error.message).not.toContain(root);
+  });
+});
+
+describe("whole-byte unchanged generation reuse", () => {
+  it("reopens and reuses all ten provider fixtures with no adapter ingestion or source writes", async () => {
+    const root = temporaryDirectory(), data = join(temporaryDirectory(), "db"), codex = join(root, "codex"), claude = join(root, "claude");
+    const files = (await readdir(fixtures)).filter(n => n.endsWith(".jsonl")); expect(files).toHaveLength(10);
+    for (const name of files) await file(name.startsWith("codex") ? codex : claude, name, name);
+    const selected = [{ provider: "codex" as const, path: codex }, { provider: "claude" as const, path: claude }];
+    let db = await openDatabase(data); const original = createSourceStore(db, context.keyId); const cold = await scanSources(original, context, selected, { maxDiagnostics: 5 });
+    expect(cold.counts.committed).toBe(10); const sources = cold.sources.map(s => original.readSource(s.sourceId)); db.close(); db = await openDatabase(data);
+    try {
+      const store = createSourceStore(db, context.keyId), codexIngest = vi.spyOn(CodexAdapter.prototype, "ingest"), claudeIngest = vi.spyOn(ClaudeAdapter.prototype, "ingest"), replace = vi.fn(store.replaceSourceSnapshot);
+      const before = await readFile(join(data, "agentprof.sqlite"));
+      const warm = await scanSources({ ...store, replaceSourceSnapshot: replace }, context, selected, { maxDiagnostics: 5, chunkBytes: 17 });
+      expect(warm.counts).toMatchObject({ attempted: 10, unchanged: 10, committed: 0 }); expect(warm.status).toBe(cold.status);
+      expect(warm.diagnostics).toEqual(cold.diagnostics); expect(warm.sources.map(s => s.capabilities)).toEqual(cold.sources.map(s => s.capabilities));
+      expect(warm.sources.every(s => s.status === "unchanged" && s.reusedRevision === 1 && s.committedRevision === null)).toBe(true);
+      expect(codexIngest).not.toHaveBeenCalled(); expect(claudeIngest).not.toHaveBeenCalled(); expect(replace).not.toHaveBeenCalled();
+      expect(warm.sources.map(s => store.readSource(s.sourceId))).toEqual(sources); expect(await readFile(join(data, "agentprof.sqlite"))).toEqual(before);
+      const json = JSON.stringify(warm); expect(json).not.toContain(root); expect(json).not.toContain("contentFingerprint"); expect(json).not.toContain("cacheEvidence");
+    } finally { db.close(); }
+  });
+  it.each(["early", "middle", "tail", "lf", "append", "truncate", "replace"] as const)("reparses %s changes under the original revision even with restored mtime", async change => {
+    const root = temporaryDirectory(), path = join(root, "a.jsonl"), { store } = memory();
+    const bytes = JSON.stringify({ type: "unrecognized", padding: "1" + "a".repeat(10000) + "2" + "b".repeat(10000) }) + '\n{}\n{"pending":1}';
+    await writeFile(path, bytes); const time = new Date("2026-09-01T00:00:00.000Z"); await utimes(path, time, time);
+    await scanSources(store, context, roots(root)); const before = store.readSource(id(path))!, info = await stat(path, { bigint: true });
+    if (change === "early") await writeFile(path, bytes.replace('"1a', '"9a'));
+    if (change === "middle") await writeFile(path, bytes.replace('a2b', 'a9b'));
+    if (change === "tail") await writeFile(path, bytes.replace('"pending":1', '"pending":9'));
+    if (change === "lf") await appendFile(path, "\n");
+    if (change === "append") await appendFile(path, " ");
+    if (change === "truncate") await truncate(path, 0);
+    if (change === "replace") { const replacement = path + ".tmp"; await writeFile(replacement, "{}\n"); await rename(replacement, path); }
+    await utimes(path, time, time); expect((await stat(path, { bigint: true })).mtimeNs).toBe(info.mtimeNs);
+    const ingest = vi.spyOn(CodexAdapter.prototype, "ingest"), result = await scanSources(store, context, roots(root));
+    expect(result.sources[0]).toMatchObject({ status: "committed", expectedRevision: 1, committedRevision: 2, reusedRevision: null });
+    if (change !== "truncate") expect(ingest).toHaveBeenCalled();
+    const after = store.readSource(id(path))!; expect(after.cacheEvidence).not.toEqual(before.cacheEvidence);
+    if (["early", "middle", "tail"].includes(change)) { expect(after.observedSize).toBe(before.observedSize); expect(after.boundaryFingerprint).toBe(before.boundaryFingerprint); }
+  });
+  it.each(["file", "records", "line"] as const)("does not bypass a lowered semantic %s limit", async bound => {
+    const root = temporaryDirectory(), path = await file(root, "a.jsonl"), { store } = memory(); await scanSources(store, context, roots(root)); const before = store.readSource(id(path));
+    const options = bound === "file" ? { maxFileBytes: 1 } : bound === "records" ? { maxRecords: 1 } : { maxLineBytes: 1 };
+    const result = await scanSources(store, context, roots(root), options);
+    expect(result.counts).toMatchObject({ unchanged: 0, committed: 0, rejected: 1 }); expect(store.readSource(id(path))).toEqual(before);
+  });
+  it("forces a miss for changed effective limits even when content still fits", async () => {
+    const root = temporaryDirectory(), { store } = memory(); await file(root, "a.jsonl"); await scanSources(store, context, roots(root));
+    const result = await scanSources(store, context, roots(root), { maxRecords: SCAN_LIMITS.records - 1 }); expect(result.sources[0]).toMatchObject({ status: "committed", committedRevision: 2 });
+    expect((await scanSources(store, context, roots(root), { maxRecords: SCAN_LIMITS.records - 1, chunkBytes: 1 })).sources[0]).toMatchObject({ status: "unchanged", reusedRevision: 2 });
+  });
+  it("reads current actual provider version so an adapter bump cannot reuse old proof", async () => {
+    const root = temporaryDirectory(), path = await file(root, "a.jsonl"), { store } = memory(); await scanSources(store, context, roots(root)); const snapshot = CodexAdapter.prototype.snapshot;
+    vi.spyOn(CodexAdapter.prototype, "snapshot").mockImplementation(function () { const s = snapshot.call(this); return { ...s, capabilities: { ...s.capabilities, parserVersion: 2 } } as never; });
+    const ingest = vi.spyOn(CodexAdapter.prototype, "ingest"), confirm = vi.fn(store.confirmUnchangedSource), replace = vi.fn(() => ({ status: "committed" as const, revision: 2 }));
+    const result = await scanSources({ ...store, confirmUnchangedSource: confirm, replaceSourceSnapshot: replace }, context, roots(root));
+    expect(confirm).not.toHaveBeenCalled(); expect(ingest).toHaveBeenCalled(); expect(replace.mock.calls[0]?.[0]).toMatchObject({ parserVersion: 2 });
+    expect(result.sources[0]).toMatchObject({ status: "committed", expectedRevision: 1, committedRevision: 2 }); expect(store.readSource(id(path))!.revision).toBe(1); // Replacement is a test observer; schema support did not expand.
+  });
+  it.each(["absent", "event_only", "unavailable", "limited", "dropped"] as const)("reparses a legitimate %s cache ineligibility", async condition => {
+    const root = temporaryDirectory(), path = await file(root, "a.jsonl"), { db, store } = memory(); await scanSources(store, context, roots(root));
+    if (condition === "absent") db.exec("DELETE FROM source_cache_evidence");
+    if (condition === "event_only") db.exec("DELETE FROM source_cache_evidence; DELETE FROM source_metric_contributions; DELETE FROM source_metric_headers");
+    if (condition === "unavailable") store.markUnavailable(id(path), 1);
+    if (condition === "limited" || condition === "dropped") {
+      const row = db.prepare("SELECT row_json FROM source_metric_contributions WHERE kind='capabilities'").get()!, original = row["row_json"] as string, caps = JSON.parse(original);
+      if (condition === "limited") caps.stateLimited = true; else caps.diagnosticsDropped = 1;
+      const changed = JSON.stringify(caps); db.prepare("UPDATE source_metric_contributions SET row_json=? WHERE kind='capabilities'").run(changed);
+      db.prepare("UPDATE source_metric_headers SET metric_bytes=metric_bytes+?").run(Buffer.byteLength(changed) - Buffer.byteLength(original));
+    }
+    const ingest = vi.spyOn(CodexAdapter.prototype, "ingest"), result = await scanSources(store, context, roots(root)); expect(result.sources[0]!.status).toBe("committed"); expect(ingest).toHaveBeenCalled();
+  });
+  it.each(["replace", "unavailable"] as const)("detects real peer %s between probe and final confirmation", async operation => {
+    const root = temporaryDirectory(), path = await file(root, "a.jsonl"), data = join(temporaryDirectory(), "store"), db = await openDatabase(data), peer = await openDatabase(data);
+    try {
+      const store = createSourceStore(db, context.keyId), other = createSourceStore(peer, context.keyId); await scanSources(store, context, roots(root)); const before = other.readSource(id(path))!;
+      const { revision: _revision, availability: _availability, aggregationReady: _aggregationReady, parserResumeReady: _parserResumeReady, persistedScope: _scope, ...input } = before;
+      let confirmations = 0; const replace = vi.fn(store.replaceSourceSnapshot), ingest = vi.spyOn(CodexAdapter.prototype, "ingest");
+      const result = await scanSources({ ...store, replaceSourceSnapshot: replace, confirmUnchangedSource(token, signal) {
+        confirmations++; if (operation === "unavailable") other.markUnavailable(id(path), 1); else other.replaceSourceSnapshot(input as never, 1);
+        return store.confirmUnchangedSource(token, signal);
+      } }, context, roots(root));
+      expect(confirmations).toBe(1); expect(result.sources[0]).toMatchObject({ status: "stale", expectedRevision: 1, staleActualRevision: 2, committedRevision: null, reusedRevision: null });
+      expect(replace).not.toHaveBeenCalled(); expect(ingest).not.toHaveBeenCalled(); expect(other.readSource(id(path))!.revision).toBe(2);
+    } finally { db.close(); peer.close(); }
+  });
+  it("fails closed on initial or final cached payload corruption without reparsing/repair", async () => {
+    for (const late of [false, true]) {
+      const root = temporaryDirectory(), { db, store } = memory(); await file(root, "a.jsonl"); await scanSources(store, context, roots(root));
+      const corrupt = () => db.exec("UPDATE source_event_contributions SET event_json='{}'"); if (!late) corrupt();
+      const ingest = vi.spyOn(CodexAdapter.prototype, "ingest"), replace = vi.fn(store.replaceSourceSnapshot);
+      const result = await scanSources({ ...store, replaceSourceSnapshot: replace, confirmUnchangedSource(t, signal) { corrupt(); return store.confirmUnchangedSource(t, signal); } }, context, roots(root));
+      expect(result).toMatchObject({ stopReason: "storage_failure", counts: { failed: 1, unchanged: 0 } }); expect(result.sources[0]!.errorCode).toBe("DATABASE_ACCESS_FAILED");
+      expect(ingest).not.toHaveBeenCalled(); expect(replace).not.toHaveBeenCalled(); vi.restoreAllMocks();
+    }
+  });
+  it("preserves earlier reuse on later cancellation and does not relabel terminal reuse", async () => {
+    const root = temporaryDirectory(), { store } = memory(); await file(root, "a.jsonl"); await file(root, "b.jsonl"); await scanSources(store, context, roots(root));
+    const controller = new AbortController(); let confirmations = 0;
+    const result = await scanSources({ ...store, confirmUnchangedSource(t, signal) { confirmations++; if (confirmations === 2) controller.abort(); return store.confirmUnchangedSource(t, signal); } }, context, roots(root), { signal: controller.signal });
+    expect(result).toMatchObject({ status: "aborted", counts: { attempted: 2, unchanged: 1, aborted: 1, committed: 0 } }); expect(result.sources[0]!.status).toBe("unchanged"); expect(result.sources[1]!.status).toBe("aborted");
+    const later = new AbortController(); const terminal = await scanSources({ ...store, confirmUnchangedSource(t, signal) { const r = store.confirmUnchangedSource(t, signal); later.abort(); return r; } }, context, roots(root), { signal: later.signal });
+    expect(terminal).toMatchObject({ status: "aborted", counts: { attempted: 1, unchanged: 1, aborted: 0 } }); expect(terminal.sources[0]!.status).toBe("unchanged");
   });
 });

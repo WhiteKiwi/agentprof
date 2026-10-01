@@ -6,7 +6,7 @@ import { types } from "node:util";
 import { SafeError } from "../privacy/diagnostics.js";
 import { ensurePrivateDirectory, fileCode, openPrivateFile } from "../privacy/paths.js";
 
-export const DATABASE_SCHEMA_VERSION = 3;
+export const DATABASE_SCHEMA_VERSION = 4;
 
 export function transaction<T>(database: DatabaseSync, operation: (() => T) & (T extends PromiseLike<unknown> ? never : unknown)): T {
   if (types.isAsyncFunction(operation)) throw new SafeError("DATABASE_TRANSACTION_FAILED");
@@ -33,20 +33,22 @@ export function migrate(database: DatabaseSync): void {
     const current = database.prepare("PRAGMA user_version").get()?.["user_version"];
     if (typeof current !== "number" || !Number.isSafeInteger(current) || current < 0) throw new SafeError("DATABASE_MIGRATION_FAILED");
     if (current > DATABASE_SCHEMA_VERSION) throw new SafeError("DATABASE_SCHEMA_TOO_NEW");
-    if (current < DATABASE_SCHEMA_VERSION) {
-      if (current === 0) database.exec(`
+    if (current === 0) database.exec(`
         CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY) STRICT;
         CREATE TABLE settings (key TEXT PRIMARY KEY CHECK(key IN ('normalization_version', 'key_version')), value INTEGER NOT NULL) STRICT;
         INSERT INTO schema_migrations(version) VALUES (1);
         INSERT INTO settings(key, value) VALUES ('normalization_version', 1), ('key_version', 1);
         PRAGMA user_version = 1;
       `);
-      const settings = database.prepare("SELECT key, value FROM settings ORDER BY key").all();
-      if (settings.length !== 2 || settings[0]?.["key"] !== "key_version" || settings[1]?.["key"] !== "normalization_version"
-        || settings.some((row) => row["value"] !== 1) || database.prepare("SELECT version FROM schema_migrations WHERE version = 1").get() === undefined) {
-        throw new SafeError("DATABASE_MIGRATION_FAILED");
-      }
-      if (current === 2 && database.prepare("SELECT version FROM schema_migrations WHERE version = 2").get() === undefined) throw new SafeError("DATABASE_MIGRATION_FAILED");
+    const settings = database.prepare("SELECT CASE WHEN typeof(key)='text' AND length(CAST(key AS BLOB))<=32 THEN key ELSE NULL END AS key, CASE WHEN typeof(value)='integer' THEN value ELSE NULL END AS value FROM settings ORDER BY key LIMIT 3").all();
+    if (settings.length !== 2 || settings[0]?.["key"] !== "key_version" || settings[1]?.["key"] !== "normalization_version"
+      || settings.some((row) => row["value"] !== 1) || database.prepare("SELECT version FROM schema_migrations WHERE version = 1").get() === undefined) {
+      throw new SafeError("DATABASE_MIGRATION_FAILED");
+    }
+    const recordedVersion = Math.max(1, current);
+    const markers = database.prepare("SELECT CASE WHEN typeof(version)='integer' THEN version ELSE NULL END AS version FROM schema_migrations ORDER BY version LIMIT 5").all();
+    if (markers.length !== recordedVersion || markers.some((row, i) => row["version"] !== i + 1)) throw new SafeError("DATABASE_MIGRATION_FAILED");
+    if (current < DATABASE_SCHEMA_VERSION) {
       if (current < 2) database.exec(`
         CREATE TABLE source_store_identity (
           singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
@@ -76,7 +78,7 @@ export function migrate(database: DatabaseSync): void {
         INSERT INTO schema_migrations(version) VALUES (2);
         PRAGMA user_version = 2;
       `);
-      database.exec(`
+      if (current < 3) database.exec(`
         CREATE TABLE source_metric_headers (
           source_id TEXT PRIMARY KEY REFERENCES source_event_headers(source_id),
           contract_version INTEGER NOT NULL CHECK(contract_version = 1),
@@ -97,6 +99,15 @@ export function migrate(database: DatabaseSync): void {
         ) STRICT;
         INSERT INTO schema_migrations(version) VALUES (3);
         PRAGMA user_version = 3;
+      `);
+      database.exec(`
+        CREATE TABLE source_cache_evidence (
+          source_id TEXT PRIMARY KEY REFERENCES source_event_headers(source_id),
+          contract_version INTEGER NOT NULL CHECK(contract_version = 1),
+          content_fingerprint TEXT NOT NULL CHECK(length(CAST(content_fingerprint AS BLOB)) <= 128)
+        ) STRICT;
+        INSERT INTO schema_migrations(version) VALUES (4);
+        PRAGMA user_version = 4;
       `);
     }
     database.exec("COMMIT");

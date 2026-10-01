@@ -43,11 +43,11 @@ async function fixture(name = "codex-real-shapes.jsonl", fileIdentity = "FICTITI
     events: snapshot.events, evidence: { turns: snapshot.turns, usage: snapshot.usage, observations: snapshot.observations, diagnostics: snapshot.diagnostics, capabilities: snapshot.capabilities } };
 }
 function schemaTwo(db: DatabaseSync) {
-  // Schema 2's tables are unchanged by schema 3. Remove only this extension.
-  db.exec("DROP TABLE source_metric_contributions; DROP TABLE source_metric_headers; DELETE FROM schema_migrations WHERE version=3; PRAGMA user_version=2");
+  // Schema 2's tables remain unchanged. Remove later metric/cache extensions.
+  db.exec("DROP TABLE source_cache_evidence; DROP TABLE source_metric_contributions; DROP TABLE source_metric_headers; DELETE FROM schema_migrations WHERE version>=3; PRAGMA user_version=2");
 }
 
-describe("schema 3 historical evidence and atomic migration", () => {
+describe("historical metric evidence and atomic migration", () => {
   it("keeps v2 source events/settings/revisions and absent evidence across migration and reopen", async () => {
     const dir = join(temporaryDirectory(), "v2"), input = await fixture();
     let db = await openDatabase(dir);
@@ -61,21 +61,21 @@ describe("schema 3 historical evidence and atomic migration", () => {
       expect(rows(db)).toEqual(prior);
       expect(db.prepare("SELECT * FROM settings ORDER BY key").all()).toEqual([{ key: "key_version", value: 1 }, { key: "normalization_version", value: 1 }]);
       expect(db.prepare("SELECT * FROM unrelated").get()).toEqual({ value: 42 });
-      expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }]);
+      expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }]);
     } finally { db.close(); }
   });
-  it("serializes a peer-completed 2→3 migration before observing schema", async () => {
+  it("serializes a peer-completed 2→4 migration before observing schema", async () => {
     const dir = join(temporaryDirectory(), "race"), first = await openDatabase(dir), peer = await openDatabase(dir);
     const exec = first.exec.bind(first); let interleaved = false;
     try {
       schemaTwo(first);
       first.exec = (sql) => { if (sql === "BEGIN IMMEDIATE" && !interleaved) { interleaved = true; migrate(peer); } exec(sql); };
       expect(() => migrate(first)).not.toThrow(); expect(interleaved).toBe(true);
-      expect(first.prepare("PRAGMA user_version").get()).toEqual({ user_version: 3 });
+      expect(first.prepare("PRAGMA user_version").get()).toEqual({ user_version: 4 });
       expect(first.prepare("SELECT * FROM source_metric_headers").all()).toEqual([]);
     } finally { first.exec = exec; first.close(); peer.close(); }
   });
-  it("rolls back conflicting 2→3 DDL without modifying old generations", async () => {
+  it("rolls back conflicting 2→4 DDL without modifying old generations", async () => {
     const db = memory(), input = await fixture(); createSourceStore(db, context.keyId).replaceSource(eventOnly(input), null); schemaTwo(db);
     db.exec("CREATE TABLE source_metric_contributions(sentinel INTEGER); INSERT INTO source_metric_contributions VALUES(7)");
     const before = db.prepare("SELECT * FROM source_event_headers").all();
@@ -90,7 +90,7 @@ describe("schema 3 historical evidence and atomic migration", () => {
     db.exec("CREATE TABLE unrelated(value INTEGER); BEGIN IMMEDIATE; INSERT INTO unrelated VALUES(42)");
     expect(() => migrate(db)).toThrow(); db.exec("COMMIT");
     expect(db.prepare("SELECT * FROM unrelated").get()).toEqual({ value: 42 });
-    db.exec("PRAGMA user_version=4"); const before = db.prepare("SELECT * FROM sqlite_schema ORDER BY name").all();
+    db.exec("PRAGMA user_version=5"); const before = db.prepare("SELECT * FROM sqlite_schema ORDER BY name").all();
     expect(() => migrate(db)).toThrowError(expect.objectContaining({ code: "DATABASE_SCHEMA_TOO_NEW" }));
     expect(db.prepare("SELECT * FROM sqlite_schema ORDER BY name").all()).toEqual(before);
   });

@@ -9,6 +9,17 @@ import type { EncodedMetrics, MetricEvidence, MetricKind, SourceSnapshotInput } 
 export type { SourceInput, SourceHeaderInput } from "./source-validation.js";
 export type { SourceSnapshotInput, MetricEvidence } from "./source-metric-validation.js";
 
+import { fields, HEADER_FIELDS } from "./source-validation.js";
+import { validateCacheEvidence } from "./source-cache-validation.js";
+import type { SourceCacheEvidence } from "./source-cache-validation.js";
+export type { SourceCacheEvidence } from "./source-cache-validation.js";
+
+export type SourceCacheToken = SourceHeaderInput & Readonly<{ revision: number; cacheEvidence: SourceCacheEvidence }>;
+export type SourceUnchangedResult = Readonly<
+  { status: "unchanged"; reusedRevision: number; capabilities: MetricEvidence["capabilities"]; diagnostics: MetricEvidence["diagnostics"] }
+  | { status: "stale"; actualRevision: number | null } | { status: "aborted" }
+>;
+
 export type SourceWriteResult = Readonly<
   { status: "committed"; revision: number }
   | { status: "stale"; actualRevision: number | null }
@@ -17,7 +28,7 @@ export type SourceWriteResult = Readonly<
 export type StoredSource = SourceHeaderInput & Readonly<{
   revision: number; availability: "available" | "unavailable";
   events: readonly NormalizedEvent[];
-  evidence: MetricEvidence | null; persistedScope: "events_only" | "events_and_metric_evidence";
+  cacheEvidence: SourceCacheEvidence | null; evidence: MetricEvidence | null; persistedScope: "events_only" | "events_and_metric_evidence";
   aggregationReady: false; parserResumeReady: false;
 }>;
 export type SourceCatalogueItem = Readonly<{
@@ -72,16 +83,16 @@ export function createSourceStore(database: DatabaseSync, key: string) {
     signalCheck(signal);
     if (signal?.aborted) return Object.freeze({ status: "aborted" });
     const { header: h, rows, bytes } = encodeSource(input, keyId);
-    return replaceEncoded({ header: h, rows, bytes }, null, expectation, signal);
+    return replaceEncoded({ header: h, rows, bytes }, null, null, expectation, signal);
   }
   function replaceSourceSnapshot(input: SourceSnapshotInput, expectedRevision: number | null, signal?: AbortSignal): SourceWriteResult {
     const expectation = expected(expectedRevision);
     signalCheck(signal);
     if (signal?.aborted) return Object.freeze({ status: "aborted" });
     const encoded = encodeSourceSnapshot(input, keyId);
-    return replaceEncoded(encoded, encoded.metrics, expectation, signal);
+    return replaceEncoded(encoded, encoded.metrics, encoded.cacheEvidence, expectation, signal);
   }
-  function replaceEncoded({ header: h, rows, bytes }: EncodedSource, metrics: EncodedMetrics | null, expectation: number | null, signal?: AbortSignal): SourceWriteResult {
+  function replaceEncoded({ header: h, rows, bytes }: EncodedSource, metrics: EncodedMetrics | null, cacheEvidence: SourceCacheEvidence | null, expectation: number | null, signal?: AbortSignal): SourceWriteResult {
     return write(signal, (checkAbort): SourceWriteResult => {
       const actual = revision(database.prepare("SELECT revision FROM source_event_headers WHERE source_id = ?").get(h.sourceId)?.["revision"]);
       if (actual !== expectation) return { status: "stale", actualRevision: actual };
@@ -98,6 +109,7 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       database.prepare("DELETE FROM source_event_contributions WHERE source_id = ?").run(h.sourceId);
       database.prepare("DELETE FROM source_metric_contributions WHERE source_id = ?").run(h.sourceId);
       database.prepare("DELETE FROM source_metric_headers WHERE source_id = ?").run(h.sourceId);
+      database.prepare("DELETE FROM source_cache_evidence WHERE source_id = ?").run(h.sourceId);
       const insert = database.prepare("INSERT INTO source_event_contributions(source_id, event_id, event_json) VALUES (?, ?, ?)");
       for (const row of rows) { checkAbort(); insert.run(h.sourceId, row.id, row.json); }
       if (metrics !== null) {
@@ -107,6 +119,7 @@ export function createSourceStore(database: DatabaseSync, key: string) {
         const insertMetric = database.prepare("INSERT INTO source_metric_contributions(source_id, kind, ordinal, row_id, row_json) VALUES (?, ?, ?, ?, ?)");
         for (const row of metrics.rows) { checkAbort(); insertMetric.run(h.sourceId, row.kind, row.ordinal, row.id, row.json); }
       }
+      if (cacheEvidence !== null) database.prepare("INSERT INTO source_cache_evidence(source_id, contract_version, content_fingerprint) VALUES (?, 1, ?)").run(h.sourceId, cacheEvidence.contentFingerprint);
       return { status: "committed", revision: next };
     });
   }
@@ -117,9 +130,49 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       const actual = revision(database.prepare("SELECT revision FROM source_event_headers WHERE source_id = ?").get(sourceId)?.["revision"]);
       if (actual !== expectation) return { status: "stale", actualRevision: actual };
       const next = integer(actual + 1, 1);
+      database.prepare("DELETE FROM source_cache_evidence WHERE source_id = ?").run(sourceId);
       database.prepare("UPDATE source_event_headers SET availability = 'unavailable', revision = ? WHERE source_id = ?").run(next, sourceId);
       return { status: "committed", revision: next };
     });
+  }
+  // Called only after the scanner verifies a matching whole-byte observation.
+  // Own a new snapshot: reusing a caller transaction could hide a newer generation.
+  function confirmUnchangedSource(token: SourceCacheToken, signal?: AbortSignal): SourceUnchangedResult {
+    const v = fields(token, [...HEADER_FIELDS, "revision", "cacheEvidence"]), h: Record<string, unknown> = {};
+    for (const name of HEADER_FIELDS) h[name] = v[name];
+    const header = validateHeader(h, keyId), expectedRevision = integer(v["revision"], 1), proof = validateCacheEvidence(v["cacheEvidence"], keyId);
+    signalCheck(signal);
+    if (signal?.aborted) return Object.freeze({ status: "aborted" });
+    if (database.isTransaction) throw new SafeError("DATABASE_TRANSACTION_FAILED");
+    let began = false;
+    try {
+      database.exec("BEGIN"); began = true;
+      const bindings = database.prepare("SELECT CASE WHEN typeof(singleton)='integer' THEN singleton ELSE NULL END AS singleton, CASE WHEN typeof(key_id)='text' AND length(CAST(key_id AS BLOB))=32 THEN key_id ELSE NULL END AS key_id FROM source_store_identity LIMIT 2").all();
+      if (bindings.length > 1 || bindings.length === 1 && (bindings[0]!["singleton"] !== 1 || bindings[0]!["key_id"] === null)) throw new Error();
+      if (bindings.length === 0) {
+        if (database.prepare("SELECT 1 FROM source_event_headers LIMIT 1").get() !== undefined) throw new Error();
+      } else {
+        const installed = validateKeyId(bindings[0]!["key_id"]);
+        if (installed !== keyId) throw new SafeError("INVALID_IDENTITY_KEY");
+      }
+      const current = readPinned(header.sourceId);
+      let result: SourceUnchangedResult;
+      if (current === null || current.revision !== expectedRevision) result = { status: "stale", actualRevision: current?.revision ?? null };
+      else {
+        if (HEADER_FIELDS.some(name => current[name] !== header[name]) || current.cacheEvidence?.contractVersion !== proof.contractVersion
+          || current.cacheEvidence.contentFingerprint !== proof.contentFingerprint || current.availability !== "available"
+          || current.evidence === null || current.persistedScope !== "events_and_metric_evidence"
+          || current.evidence.capabilities.stateLimited || current.evidence.capabilities.diagnosticsDropped !== 0) throw new Error();
+        result = { status: "unchanged", reusedRevision: current.revision, capabilities: current.evidence.capabilities, diagnostics: current.evidence.diagnostics };
+      }
+      if (signal?.aborted) result = { status: "aborted" };
+      database.exec("COMMIT"); began = false;
+      return Object.freeze(signal?.aborted ? { status: "aborted" } : result);
+    } catch (error) {
+      if (began) try { database.exec("ROLLBACK"); } catch { /* Only this owned read transaction. */ }
+      if (error instanceof SafeError && error.code === "INVALID_IDENTITY_KEY") throw error;
+      throw new SafeError("DATABASE_ACCESS_FAILED");
+    }
   }
   function readSource(sourceId: string): StoredSource | null {
     identity(sourceId, "source", keyId);
@@ -142,14 +195,21 @@ export function createSourceStore(database: DatabaseSync, key: string) {
   function readPinned(sourceId: string): StoredSource | null {
     const first = database.prepare(`SELECT h.*, m.contract_version, m.turn_count, m.usage_count, m.observation_count, m.diagnostic_count, m.metric_bytes
       FROM source_event_headers h LEFT JOIN source_metric_headers m ON m.source_id = h.source_id WHERE h.source_id = ?`).get(sourceId);
+    // Only bounded proof metadata crosses into JS, including malformed-table sentinels.
+    const proofs = database.prepare(`SELECT
+      CASE WHEN typeof(contract_version)='integer' THEN contract_version ELSE NULL END AS contract_version,
+      CASE WHEN typeof(content_fingerprint)='text' AND length(CAST(content_fingerprint AS BLOB))<=128 THEN content_fingerprint ELSE NULL END AS content_fingerprint
+      FROM source_cache_evidence WHERE source_id=? LIMIT 2`).all(sourceId);
+    if (proofs.length > 1 || first === undefined && proofs.length !== 0) throw new Error();
     if (first === undefined) return null;
+    const cacheEvidence = proofs.length === 0 ? null : validateCacheEvidence({ contractVersion: proofs[0]!["contract_version"], contentFingerprint: proofs[0]!["content_fingerprint"] }, keyId);
     const header = validateHeader({ sourceId: first["source_id"], provider: first["provider"], parserVersion: first["parser_version"],
       normalizationVersion: first["normalization_version"], keyVersion: first["key_version"], keyId: first["key_id"],
       completedOffset: first["completed_offset"], observedSize: first["observed_size"], boundaryFingerprint: first["boundary_fingerprint"] }, keyId);
     const count = integer(first["event_count"]), recordedBytes = integer(first["event_bytes"]);
     if (count > MAX_SOURCE_EVENTS || recordedBytes > MAX_SOURCE_EVENT_BYTES || (first["availability"] !== "available" && first["availability"] !== "unavailable")) throw new Error();
     const hasMetrics = first["contract_version"] !== null;
-    if (hasMetrics && first["contract_version"] !== 1) throw new Error();
+    if (hasMetrics && first["contract_version"] !== 1 || cacheEvidence !== null && (!hasMetrics || first["availability"] !== "available")) throw new Error();
     const expectedCounts = { turn: 0, usage: 0, observation: 0, diagnostic: 0, capabilities: hasMetrics ? 1 : 0 };
     for (const kind of ["turn", "usage", "observation", "diagnostic"] as const) {
       if (hasMetrics) { expectedCounts[kind] = integer(first[`${kind}_count`]); if (expectedCounts[kind] > METRIC_LIMITS[kind]) throw new Error(); }
@@ -207,7 +267,7 @@ export function createSourceStore(database: DatabaseSync, key: string) {
     if (events.length !== count || bytes !== recordedBytes || metricBytes !== recordedMetricBytes
       || (Object.keys(expectedCounts) as MetricKind[]).some((kind) => expectedCounts[kind] !== actualCounts[kind])) throw new Error();
     const evidence: MetricEvidence | null = hasMetrics ? Object.freeze({ turns: Object.freeze(turns), usage: Object.freeze(usage), observations: Object.freeze(observations), diagnostics: Object.freeze(diagnostics), capabilities: capabilities! }) : null;
-    return Object.freeze({ ...header, revision: integer(first["revision"], 1), availability: first["availability"], events: Object.freeze(events), evidence,
+    return Object.freeze({ ...header, revision: integer(first["revision"], 1), availability: first["availability"], events: Object.freeze(events), evidence, cacheEvidence,
       persistedScope: evidence === null ? "events_only" : "events_and_metric_evidence", aggregationReady: false, parserResumeReady: false });
   }
   function listSources(): SourceCatalogue {
@@ -256,5 +316,5 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       throw new SafeError("DATABASE_ACCESS_FAILED");
     }
   }
-  return Object.freeze({ replaceSource, replaceSourceSnapshot, markUnavailable, readSource, listSources });
+  return Object.freeze({ replaceSource, replaceSourceSnapshot, markUnavailable, readSource, confirmUnchangedSource, listSources });
 }

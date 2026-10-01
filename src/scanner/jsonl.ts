@@ -46,7 +46,7 @@ export async function* readJsonLines(path: string, options: ReaderOptions = {}):
 }
 
 /** Internal same-descriptor decoder; the caller owns and closes the handle. */
-export async function* readJsonLinesFromFile(file: FileHandle, snapshotSize: number, options: ReaderOptions = {}, signal?: AbortSignal): AsyncGenerator<JsonLineEntry> {
+export async function* readJsonLinesFromFile(file: FileHandle, snapshotSize: number, options: ReaderOptions = {}, signal?: AbortSignal, observeRaw?: (bytes: Uint8Array) => void): AsyncGenerator<JsonLineEntry> {
   const startOffset = options.startOffset ?? 0;
   const maxLineBytes = options.maxLineBytes ?? MAX_LINE_BYTES;
   const chunkBytes = options.chunkBytes ?? READER_CHUNK_BYTES;
@@ -75,6 +75,7 @@ export async function* readJsonLinesFromFile(file: FileHandle, snapshotSize: num
       if (bytesRead === 0) break;
       readOffset += bytesRead;
       const chunk = readBuffer.subarray(0, bytesRead);
+      observeRaw?.(chunk); // Synchronous observer sees the exact bytes decoded below.
       let from = 0;
       while (from < chunk.length) {
         if (signal?.aborted) throw new SafeError("INPUT_ACCESS_FAILED");

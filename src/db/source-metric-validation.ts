@@ -5,6 +5,9 @@ import type { DiagnosticCode, SafeDiagnostic } from "../privacy/diagnostics.js";
 import { array, choice, encodeSource, fields, HEADER_FIELDS, identity, integer, invalid, nullableIdentity, number, timestamp } from "./source-validation.js";
 import type { EncodedSource, SourceHeaderInput, SourceInput } from "./source-validation.js";
 
+import { validateCacheEvidence } from "./source-cache-validation.js";
+import type { SourceCacheEvidence } from "./source-cache-validation.js";
+
 export const MAX_METRIC_ROW_BYTES = 64 * 1024;
 export const MAX_SOURCE_METRIC_BYTES = 16 * 1024 * 1024;
 export const METRIC_LIMITS = Object.freeze({ turn: 4096, usage: 4096, observation: 8192, diagnostic: 8192, capabilities: 1 });
@@ -17,7 +20,7 @@ export type MetricEvidence = Readonly<{
   diagnostics: readonly SafeDiagnostic[];
   capabilities: ParserCapabilities | ClaudeCapabilities;
 }>;
-export type SourceSnapshotInput = SourceInput & Readonly<{ evidence: MetricEvidence }>;
+export type SourceSnapshotInput = SourceInput & Readonly<{ evidence: MetricEvidence; cacheEvidence?: SourceCacheEvidence | null }>;
 export type MetricRow = Readonly<{ kind: MetricKind; ordinal: number; id: string | null; json: string }>;
 export type EncodedMetrics = Readonly<{ rows: readonly MetricRow[]; bytes: number; counts: Readonly<Record<MetricKind, number>> }>;
 type Header = SourceHeaderInput;
@@ -182,9 +185,10 @@ export function encodeMetrics(value: unknown, h: Header): EncodedMetrics {
   }
   return { rows, bytes, counts };
 }
-export function encodeSourceSnapshot(value: unknown, keyId: string): EncodedSource & Readonly<{ metrics: EncodedMetrics }> {
-  const v = fields(value, [...HEADER_FIELDS, "events", "evidence"]), source: Record<string, unknown> = {};
+export function encodeSourceSnapshot(value: unknown, keyId: string): EncodedSource & Readonly<{ metrics: EncodedMetrics; cacheEvidence: SourceCacheEvidence | null }> {
+  const hasCache = value !== null && typeof value === "object" && Object.hasOwn(value, "cacheEvidence");
+  const v = fields(value, [...HEADER_FIELDS, "events", "evidence", ...(hasCache ? ["cacheEvidence"] : [])]), source: Record<string, unknown> = {};
   for (const key of [...HEADER_FIELDS, "events"]) source[key] = v[key];
   const encoded = encodeSource(source, keyId);
-  return { ...encoded, metrics: encodeMetrics(v["evidence"], encoded.header) };
+  return { ...encoded, metrics: encodeMetrics(v["evidence"], encoded.header), cacheEvidence: !hasCache || v["cacheEvidence"] === null ? null : validateCacheEvidence(v["cacheEvidence"], keyId) };
 }

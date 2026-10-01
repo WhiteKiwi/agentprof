@@ -71,8 +71,8 @@ describe("built bounded scan CLI", () => {
     const before = cli(w, ["--json", "--data-dir", relative(w.root, w.data), "--codex-root", relative(w.root, w.input), "scan"]);
     expect(before.status).toBe(0); expect(result(before).counts.committed).toBe(1);
     const after = cli(w, ["scan", "--json", "--data-dir", w.data, ...Array.from({ length: 16 }, () => ["--codex-root", w.input]).flat()]);
-    expect(after.status).toBe(0); expect(result(after).sources[0]).toMatchObject({ expectedRevision: 1, committedRevision: 2 });
-    expect(result(after).counts.committed).toBe(1);
+    expect(after.status).toBe(0); expect(result(after).sources[0]).toMatchObject({ status: "unchanged", expectedRevision: 1, committedRevision: null, reusedRevision: 1 });
+    expect(result(after).counts.unchanged).toBe(1);
   });
   it("uses only explicit provider roots, preserving omitted-provider sentinel directories", () => {
     const w = workspace();
@@ -108,14 +108,14 @@ describe("built bounded scan CLI", () => {
     }
     expect(output.stdout + output.stderr).not.toContain(w.root); expect(output.stdout + output.stderr).not.toContain("FICTITIOUS_");
   });
-  it("reparses repeat/append/rewrite without duplicate contributions or lost prior generations", async () => {
+  it("reuses repeats and reparses append/rewrite without duplicate contributions or lost prior generations", async () => {
     const w = workspace(), path = join(w.input, "a.jsonl"); copyFileSync(fixture(), path);
     const first = result(scan(w)).sources[0]!; const original = await stored(w, first.sourceId);
     const again = result(scan(w)).sources[0]!;
-    expect(again).toMatchObject({ sourceId: first.sourceId, expectedRevision: 1, committedRevision: 2 });
+    expect(again).toMatchObject({ sourceId: first.sourceId, expectedRevision: 1, committedRevision: null, reusedRevision: 1 });
     expect((await stored(w, first.sourceId))!.events).toEqual(original!.events);
     appendFileSync(path, JSON.stringify({ type: "response_item", timestamp: "2026-09-01T00:00:12.000Z", payload: { type: "function_call_output", call_id: "pending1", output: { exit_code: 0, text: "FICTITIOUS_OUTPUT" } } }) + "\n");
-    expect(result(scan(w)).sources[0]!.committedRevision).toBe(3);
+    expect(result(scan(w)).sources[0]!.committedRevision).toBe(2);
     const updated = await stored(w, first.sourceId);
     const pendingId = original!.events.find((event) => event.status === "pending")!.id;
     expect(updated!.events.find((event) => event.id === pendingId)!.status).toBe("completed");
@@ -123,7 +123,7 @@ describe("built bounded scan CLI", () => {
     const rejected = scan(w); expect(rejected.status).toBe(1); expect(result(rejected).counts.rejected).toBe(1);
     expect(await stored(w, first.sourceId)).toEqual(updated);
     const replacement = join(w.root, "replacement"); writeFileSync(replacement, ""); renameSync(replacement, path);
-    expect(result(scan(w)).sources[0]).toMatchObject({ sourceId: first.sourceId, expectedRevision: 3, committedRevision: 4 });
+    expect(result(scan(w)).sources[0]).toMatchObject({ sourceId: first.sourceId, expectedRevision: 2, committedRevision: 3 });
     expect((await stored(w, first.sourceId))!.events).toEqual([]);
   });
   it("deduplicates nested roots and returns truthful missing/ambiguous/compressed/limited results", async () => {
@@ -157,6 +157,7 @@ describe("built bounded scan CLI", () => {
   });
   it("keeps human counts consistent with JSON and labels unsupported aggregation", () => {
     const w = workspace(); copyFileSync(fixture(), join(w.input, "a.jsonl"));
+    scan(w); // Warm both output modes against the same unchanged generation.
     const json = scan(w), human = cli(w, ["scan", "--codex-root", w.input, "--data-dir", w.data]);
     expect(human.status).toBe(json.status);
     for (const [key, count] of Object.entries(result(json).counts)) expect(human.stdout).toContain(`${key}=${count}`);
@@ -298,7 +299,7 @@ process.on('beforeExit', () => { if (process.connected) process.disconnect(); })
       expect(stdout + stderr).not.toContain(w.root); expect(stdout + stderr).not.toContain("FICTITIOUS_");
       const committed = envelope.result.sources.find((source: scanner.ScanSourceOutcome) => source.status === "committed");
       expect((await stored(w, committed.sourceId))!.revision).toBe(1);
-      const retry = scan(w); expect(retry.status).toBe(0); expect(result(retry).counts.committed).toBe(2);
+      const retry = scan(w); expect(retry.status).toBe(0); expect(result(retry).counts).toMatchObject({ committed: 1, unchanged: 1 });
     } finally { clearTimeout(watchdog); if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL"); }
   }, 20000);
 

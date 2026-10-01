@@ -163,3 +163,7 @@ Existing-store stats requires exactly one explicit --list-sources or --source <f
 ## Human selected-source stats tables (2026-10-01)
 
 The selected-source human report presents exact stored inventory and evidence-labelled duration/usage tables. It preserves unknown versus observed zero and full source/session identities. Known recorded-duration sums rank only within one session/scope/evidence partition; unknown sums occupy a separate unranked bucket. Each bucket shows at most ten cohorts with truthful omission counts. JSON retains all cohorts and contributing IDs unchanged; source listing is unchanged. No new metrics, global totals, elapsed/busy time, percentages or savings are inferred. See [P5-HUMAN-STATS](P5-HUMAN-STATS.md).
+
+## Bounded unchanged-source reuse (2026-10-01)
+
+A repeated explicit-root scan may reuse an available stored source generation only after bounded whole-byte equality and unchanged interpretation limits/versions are established, then fresh store validation confirms the originally observed revision. Reuse reports an additive unchanged outcome and reused revision, preserving actual diagnostics, partial coverage and readiness boundaries. Changed sources reparse from zero under the original revision check. No raw bytes persist, and size/mtime or completed-line boundary alone never prove equality. Current-schema read-only stats advances to schema 4 and rejects older stores without migration. See [P4-UNCHANGED-SCAN](P4-UNCHANGED-SCAN.md).

@@ -45,7 +45,7 @@ it('distinguishes missing from empty and unavailable sources, preserving actual 
  const result=await runStats({dataDir:data,source:id});expect(result.mode).toBe('selected_source');if(result.mode==='selected_source'){expect(result.summary).toMatchObject({revision:1,suppressionReason:'evidence_absent',durations:null,usage:null});expect(formatStatsResult(result,false)).toContain('suppressed: evidence_absent');}
  const w=await openDatabase(data);createSourceStore(w,ctx.keyId).markUnavailable(id,1);w.close();const again=await runStats({dataDir:data,source:id});if(again.mode==='selected_source')expect(again.summary).toMatchObject({revision:2,suppressionReason:'source_unavailable'});
 });
-it('keeps archive/live copies separate and repeated scans retain metrics with a new revision',async()=>{
+it('keeps archive/live copies separate and repeated scans retain metrics and the reused revision',async()=>{
  const root=temporaryDirectory(),data=join(root,'data'),input=join(root,'input');await mkdir(input);
  const fixture=fileURLToPath(new URL('fixtures/providers/codex-real-shapes.jsonl',import.meta.url));
  await copyFile(fixture,join(input,'live.jsonl'));await copyFile(fixture,join(input,'archive.jsonl'));
@@ -55,8 +55,8 @@ it('keeps archive/live copies separate and repeated scans retain metrics with a 
  const originals=[];
  for(const item of list.catalogue.items){const r=await runStats({dataDir:data,source:item.sourceId});if(r.mode!=='selected_source')throw Error();expect(r.summary.revision).toBe(1);expect(r.summary.usage![0]!.counts.total).toBe(92);originals.push(r.summary);}
  expect(originals[0]!.sourceId).not.toBe(originals[1]!.sourceId);
- const again=run(args);expect(JSON.parse(again.stdout).result.counts.committed).toBe(2);
- for(const summary of originals){const r=await runStats({dataDir:data,source:summary.sourceId});if(r.mode!=='selected_source')throw Error();expect(r.summary).toEqual({...summary,revision:2});}
+ const again=run(args);expect(JSON.parse(again.stdout).result.counts.unchanged).toBe(2);
+ for(const summary of originals){const r=await runStats({dataDir:data,source:summary.sourceId});if(r.mode!=='selected_source')throw Error();expect(r.summary).toEqual(summary);}
 });
 it('labels healthy empty and actual zero cohorts consistently with JSON',async()=>{
  const root=temporaryDirectory(),data=join(root,'data'),inputRoot=join(root,'input');await mkdir(inputRoot);
