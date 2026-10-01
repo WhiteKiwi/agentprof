@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,5 +41,26 @@ try {
   assert.equal(globalVersion, metadata.version);
   const globalHelp = execFileSync(join(prefix, "bin", "agentprof"), ["--help"], { cwd: execute, env: environment, encoding: "utf8" });
   assert(globalHelp.includes("Usage: agentprof"));
-  console.log(JSON.stringify({ status: "PASS", node: process.versions.node, platform: process.platform, arch: process.arch, artifactFiles: packed.files.length, tarballNpmExec: "help/version passed", isolatedGlobalInstall: "help/version passed", installScripts: "disabled", published: false }));
+  // Exercise the installed tarball against synthetic fixtures only; raw logs remain excluded from the package.
+  const data = join(temporary, "private-stats"), codex = join(temporary, "codex"), claude = join(temporary, "claude");
+  mkdirSync(codex); mkdirSync(claude);
+  for (const provider of ["codex", "claude"]) copyFileSync(join(root, "tests/fixtures/providers", `${provider}-real-shapes.jsonl`), join(temporary, provider, "synthetic.jsonl"));
+  const installed = join(prefix, "bin", "agentprof");
+  const scan = spawnSync(installed, ["scan", "--codex-root", codex, "--claude-root", claude, "--data-dir", data, "--json"], { cwd: execute, env: environment, encoding: "utf8" });
+  assert.equal(scan.status, 1); assert.equal(JSON.parse(scan.stdout).result.counts.committed, 2);
+  rmSync(codex, { recursive: true }); rmSync(claude, { recursive: true });
+  const snapshot = () => readdirSync(data).sort().map(name => ({ name, bytes: readFileSync(join(data, name)), mode: statSync(join(data, name)).mode }));
+  const before = snapshot();
+  const stats = args => JSON.parse(execFileSync(installed, ["--data-dir", data, "stats", ...args, "--json"], { cwd: execute, env: environment, encoding: "utf8" }));
+  const catalogue = stats(["--list-sources"]).result.catalogue;
+  assert.equal(catalogue.returnedCount, 2); assert.equal(catalogue.truncated, false);
+  for (const item of catalogue.items) {
+    const selected = stats(["--source", item.sourceId]).result.summary;
+    assert.equal(selected.sourceId, item.sourceId); assert.equal(selected.revision, item.revision); assert.equal(selected.scope, "source_prefix");
+    assert.equal(selected.crossSourceReconciled, false);
+    if (item.provider === "codex") assert.equal(selected.usage[0].counts.total, 92);
+    else assert.equal(selected.usage, null);
+  }
+  assert.deepEqual(snapshot(), before);
+  console.log(JSON.stringify({ status: "PASS", node: process.versions.node, platform: process.platform, arch: process.arch, artifactFiles: packed.files.length, tarballNpmExec: "help/version passed", isolatedGlobalInstall: "help/version passed", installScripts: "disabled", packedReadOnlyStats: "synthetic scan/list/select and unchanged store passed", published: false }));
 } finally { rmSync(temporary, { recursive: true, force: true }); }

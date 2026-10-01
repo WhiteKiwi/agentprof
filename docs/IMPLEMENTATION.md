@@ -188,3 +188,7 @@ Homebrew tap·formula 게시, npm 공개와 license 선택은 이 계획의 구�
 ## P5 bounded source-local summary supplement (2026-10-01)
 
 [P5-SOURCE-SUMMARY](P5-SOURCE-SUMMARY.md) defines the independently planned and coordinator-reviewed pure calculation slice. Consume one validated `readSource` generation through type-only imports, retain bounded inventory and conservative source suppression, group measured duration by stream/category/tool/pattern/scope/evidence, and reconcile response-usage duplicates before finality/mapping cohorts. Checked sums retain null for overflow or incomplete optional components. Deterministic immutable output has no I/O, global canonical totals or CLI/report integration. Implement in a separate development session after Project claim readback; verify unit partitions, adapter/store/reopen integration, privacy and full checks before independent review and draft publication.
+
+## P5 read-only selected-source stats (2026-10-01)
+
+Implement the reviewed [read-only stats contract](P5-READONLY-STATS.md) before broader report/reconciliation work. First prove a non-creating, non-migrating existing-private-store opener for supported DELETE mode; reuse exact key/header validation and pinned readSource. Then bounded header catalogue, explicit-mode CLI and synthetic full/artifact verification. Stop and report if the supported-case no-write gate cannot be demonstrated. No report files, parser, schema or dependency changes.

@@ -20,6 +20,19 @@ export type StoredSource = SourceHeaderInput & Readonly<{
   evidence: MetricEvidence | null; persistedScope: "events_only" | "events_and_metric_evidence";
   aggregationReady: false; parserResumeReady: false;
 }>;
+export type SourceCatalogueItem = Readonly<{
+  sourceId: string; provider: "codex" | "claude"; revision: number;
+  completedOffset: number; observedSize: number; availability: "available" | "unavailable";
+  persistedScope: "events_only" | "events_and_metric_evidence";
+  storedCounts: Readonly<{ events: number; turns: number | null; usage: number | null; observations: number | null; diagnostics: number | null }>;
+}>;
+export type SourceCatalogue = Readonly<{
+  schema: "agentprof.source-catalogue/v1"; limit: 64; returnedCount: number; truncated: boolean;
+  selection: "source_id_order"; snapshotConsistent: true; metadataOnly: true;
+  sourceFreshnessChecked: false; crossSourceReconciled: false; aggregationReady: false; parserResumeReady: false;
+  items: readonly SourceCatalogueItem[];
+}>;
+
 function expected(value: number | null): number | null { return value === null ? null : integer(value, 1); }
 function revision(value: unknown): number | null { return value === undefined ? null : integer(value, 1); }
 function signalCheck(signal: AbortSignal | undefined): void {
@@ -197,5 +210,51 @@ export function createSourceStore(database: DatabaseSync, key: string) {
     return Object.freeze({ ...header, revision: integer(first["revision"], 1), availability: first["availability"], events: Object.freeze(events), evidence,
       persistedScope: evidence === null ? "events_only" : "events_and_metric_evidence", aggregationReady: false, parserResumeReady: false });
   }
-  return Object.freeze({ replaceSource, replaceSourceSnapshot, markUnavailable, readSource });
+  function listSources(): SourceCatalogue {
+    let began = false;
+    try {
+      if (!database.isTransaction) { database.exec("BEGIN"); began = true; }
+      // CASE bounds bytes before exposing fields to JS; malformed headers never materialize unbounded text.
+      const text = (column: string, maximum: number, alias: string) =>
+        `CASE WHEN typeof(${column})='text' AND length(CAST(${column} AS BLOB))<=${maximum} THEN ${column} ELSE NULL END AS ${alias}`;
+      const number = (column: string, alias: string) => `CASE WHEN typeof(${column})='integer' THEN ${column} ELSE NULL END AS ${alias}`;
+      const columns = [
+        text("h.source_id", 128, "source_id"), text("h.provider", 6, "provider"), text("h.key_id", 32, "key_id"),
+        text("h.boundary_fingerprint", 128, "boundary_fingerprint"),
+        // Distinguish a genuine null fingerprint from an invalid/oversized value masked by CASE.
+        "(h.boundary_fingerprint IS NULL OR (typeof(h.boundary_fingerprint)='text' AND length(CAST(h.boundary_fingerprint AS BLOB))<=128)) AS fingerprint_valid",
+        text("h.availability", 11, "availability"),
+        ...["parser_version", "normalization_version", "key_version", "completed_offset", "observed_size", "revision", "event_count", "event_bytes"].map(c => number(`h.${c}`, c)),
+        "(m.source_id IS NOT NULL) AS has_metrics",
+        ...["contract_version", "turn_count", "usage_count", "observation_count", "diagnostic_count", "metric_bytes"].map(c => number(`m.${c}`, c)),
+      ];
+      const rows = database.prepare(`SELECT ${columns.join(",")} FROM source_event_headers h INDEXED BY sqlite_autoindex_source_event_headers_1 LEFT JOIN source_metric_headers m INDEXED BY sqlite_autoindex_source_metric_headers_1 ON m.source_id=h.source_id ORDER BY h.source_id COLLATE BINARY LIMIT 65`).all();
+      const items = rows.slice(0, 64).map(row => {
+        if (row["fingerprint_valid"] !== 1) throw new Error();
+        const h = validateHeader({ sourceId: row["source_id"], provider: row["provider"], parserVersion: row["parser_version"],
+          normalizationVersion: row["normalization_version"], keyVersion: row["key_version"], keyId: row["key_id"],
+          completedOffset: row["completed_offset"], observedSize: row["observed_size"], boundaryFingerprint: row["boundary_fingerprint"] }, keyId);
+        const events = integer(row["event_count"]), bytes = integer(row["event_bytes"]);
+        if (events > MAX_SOURCE_EVENTS || bytes > MAX_SOURCE_EVENT_BYTES || !["available", "unavailable"].includes(row["availability"] as string)) throw new Error();
+        const hasMetrics = row["has_metrics"] === 1;
+        if (hasMetrics && (row["contract_version"] !== 1 || integer(row["metric_bytes"]) > MAX_SOURCE_METRIC_BYTES)) throw new Error();
+        const counts: Record<"turn" | "usage" | "observation" | "diagnostic", number | null> = { turn: null, usage: null, observation: null, diagnostic: null };
+        if (hasMetrics) for (const kind of ["turn", "usage", "observation", "diagnostic"] as const) {
+          counts[kind] = integer(row[`${kind}_count`]); if (counts[kind]! > METRIC_LIMITS[kind]) throw new Error();
+        }
+        return Object.freeze({ sourceId: h.sourceId, provider: h.provider, revision: integer(row["revision"], 1),
+          completedOffset: h.completedOffset, observedSize: h.observedSize, availability: row["availability"] as "available" | "unavailable",
+          persistedScope: hasMetrics ? "events_and_metric_evidence" as const : "events_only" as const,
+          storedCounts: Object.freeze({ events, turns: counts.turn, usage: counts.usage, observations: counts.observation, diagnostics: counts.diagnostic }) });
+      });
+      if (began) database.exec("COMMIT");
+      return Object.freeze({ schema: "agentprof.source-catalogue/v1", limit: 64, returnedCount: items.length, truncated: rows.length > 64,
+        selection: "source_id_order", snapshotConsistent: true, metadataOnly: true, sourceFreshnessChecked: false,
+        crossSourceReconciled: false, aggregationReady: false, parserResumeReady: false, items: Object.freeze(items) });
+    } catch {
+      if (began) try { database.exec("ROLLBACK"); } catch { /* Do not touch caller-owned transactions. */ }
+      throw new SafeError("DATABASE_ACCESS_FAILED");
+    }
+  }
+  return Object.freeze({ replaceSource, replaceSourceSnapshot, markUnavailable, readSource, listSources });
 }

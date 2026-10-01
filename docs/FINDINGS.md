@@ -284,3 +284,11 @@ P3 최종 재freeze build 대조는 2026-10-01 10:35:00.753–10:35:04.662 KST, 
 ## 2026-10-01 source-local summary planning evidence
 
 Independent planning inspected main `489cd20637e692b27ed6e590af41b04f0858c27f`: schema 3 readback validates a bounded single generation but omits metadata/wrapper/message graphs and parser recovery state. Therefore cross-source canonical reconciliation cannot be inferred from source order, revision or component maxima. Existing Codex usage selection distinguishes source-terminal evidence from trusted fixture finality; actual Claude transcript usage remains provisional. Normalized Claude input already contains cache-read and cache-write components. The coordinator reviewed the separate plan before implementation, requiring whole-group duplicate conflict exclusion, all-selected-row optional-component completeness, and an internal validated-readSource-only boundary. These are design findings, not execution passes or additional provider-version support.
+
+## P5 read-only selected-source stats (2026-10-01)
+
+Rechecked live P4/P5 claims and PR24 on 2026-10-01 13:47 UTC. CLI reservations are released; report/** and REPORT-PREVIEW remain independently owned. PR24 is draft/unmerged at 9cb0b19675cb8f695ceee3b6860780e5ccdab932. Read-only SQLite supports this product DELETE-mode store; immutable is prohibited, WAL/sidecars reject, and arbitrary external journal-mode switches are not supported. Opener syscall/no-side-effect verification is still NOT RUN.
+
+Read-only stats execution evidence is now recorded in [P5-READONLY-STATS](P5-READONLY-STATS.md): Node 24.19.0 Linux full check 488 tests / 23 files / 35-file artifact passes; synchronized inotify with positive transient controls found no reader mutations in seven synthetic success/failure scenarios. This supersedes the initial NOT RUN above only for those local checks. Other-runtime CI, macOS, arbitrary external mode/schema/path races and full-history resource acceptance remain outside this local result.
+
+Final metadata projection correction raises the passing local gate to 490 tests / 23 files / 35-file artifact; large TEXT/BLOB settings reject before materialization. See the final evidence and historical interrupted-run caveat in the stats contract.

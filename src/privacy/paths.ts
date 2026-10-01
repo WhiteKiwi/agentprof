@@ -14,11 +14,34 @@ export type PathOptions = Readonly<{
   env?: Readonly<Record<string, string | undefined>>;
 }>;
 
+/** Resolve only data storage; never resolve provider log roots. */
+export function resolveDataDirectory(options: Pick<PathOptions, "dataDir" | "home" | "env"> = {}): string {
+  const home = options.home ?? homedir();
+  const xdg = (options.env ?? process.env)["XDG_DATA_HOME"];
+  const path = options.dataDir ?? join(xdg && isAbsolute(xdg) ? xdg : join(home, ".local", "share"), "agentprof");
+  if (!path.length || /[\0\r\n]/.test(path)) throw new SafeError("INVALID_ARGUMENT");
+  return resolve(path);
+}
+
+export async function validateExistingPrivateDirectory(path: string): Promise<string> {
+  const directory = resolve(path);
+  await assertNoSymlink(directory);
+  try {
+    const stat = await lstat(directory);
+    if (!stat.isDirectory() || stat.isSymbolicLink() || (stat.mode & 0o777) !== 0o700
+      || (process.getuid && stat.uid !== process.getuid())) throw new SafeError("UNSAFE_PRIVATE_FILE");
+    return directory;
+  } catch (error) {
+    if (fileCode(error) === "ENOENT") throw new SafeError("STORE_NOT_FOUND");
+    if (error instanceof SafeError) throw error;
+    throw new SafeError("DATA_ACCESS_FAILED");
+  }
+}
+
 export function resolvePaths(options: PathOptions = {}) {
   const home = options.home ?? homedir();
   const env = options.env ?? process.env;
-  const xdg = env["XDG_DATA_HOME"];
-  const dataDir = options.dataDir ?? join(xdg && isAbsolute(xdg) ? xdg : join(home, ".local", "share"), "agentprof");
+  const dataDir = resolveDataDirectory(options);
   const codex = options.codexRoots?.length ? options.codexRoots : [join(home, ".codex", "sessions"), join(home, ".codex", "archived_sessions")];
   const claude = options.claudeRoots?.length ? options.claudeRoots : [join(env["CLAUDE_CONFIG_DIR"] || join(home, ".claude"), "projects")];
   for (const path of [dataDir, ...codex, ...claude]) {
