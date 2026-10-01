@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
-import { appendFile, readFile, symlink, truncate, writeFile } from "node:fs/promises";
+import { appendFile, open, readFile, symlink, truncate, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { discoverSources } from "../src/scanner/discovery.js";
-import { MAX_LINE_BYTES, readJsonLines } from "../src/scanner/jsonl.js";
+import { MAX_LINE_BYTES, readJsonLines, readJsonLinesFromFile } from "../src/scanner/jsonl.js";
 import type { JsonLineEntry } from "../src/scanner/jsonl.js";
 import { temporaryDirectory } from "./helpers.js";
 
@@ -15,6 +15,23 @@ async function collect(path: string, options: Parameters<typeof readJsonLines>[1
 const checksum = (value: Buffer) => createHash("sha256").update(value).digest("hex");
 
 describe("bounded read-only JSONL", () => {
+  it("keeps caller-owned handles open after same-descriptor decoding and early return", async () => {
+    const path = join(temporaryDirectory(), "owned.jsonl");
+    await writeFile(path, '{}\n{}\n');
+    const file = await open(path, "r");
+    try {
+      const reader = readJsonLinesFromFile(file, 6, { chunkBytes: 1 });
+      expect((await reader.next()).value).toMatchObject({ kind: "record", byteOffset: 0 });
+      await reader.return();
+      expect((await file.stat()).size).toBe(6);
+      const replay = [];
+      for await (const entry of readJsonLinesFromFile(file, 6)) replay.push(entry);
+      expect(replay.at(-1)).toEqual({ kind: "checkpoint", nextOffset: 6, pendingBytes: 0, bytesRead: 6 });
+      const boundary = Buffer.alloc(1);
+      expect((await file.read(boundary, 0, 1, 5)).bytesRead).toBe(1);
+      expect(boundary[0]).toBe(0x0a);
+    } finally { await file.close(); }
+  });
   it("counts BOM/CRLF/UTF-8 physical offsets and resumes a partial UTF-8/JSON tail", async () => {
     const path = join(temporaryDirectory(), "synthetic.jsonl");
     const first = Buffer.from('\uFEFF{"a":"도"}\r\n{"b":2}\n');

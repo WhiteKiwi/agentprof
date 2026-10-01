@@ -1,5 +1,6 @@
 import { constants } from "node:fs";
 import { open } from "node:fs/promises";
+import type { FileHandle } from "node:fs/promises";
 import { TextDecoder } from "node:util";
 import { diagnostic, SafeError } from "../privacy/diagnostics.js";
 import type { SafeDiagnostic } from "../privacy/diagnostics.js";
@@ -40,8 +41,19 @@ export async function* readJsonLines(path: string, options: ReaderOptions = {}):
     return;
   }
 
+  try { yield* readJsonLinesFromFile(file, snapshotSize, options); }
+  finally { await file.close(); }
+}
+
+/** Internal same-descriptor decoder; the caller owns and closes the handle. */
+export async function* readJsonLinesFromFile(file: FileHandle, snapshotSize: number, options: ReaderOptions = {}, signal?: AbortSignal): AsyncGenerator<JsonLineEntry> {
+  const startOffset = options.startOffset ?? 0;
+  const maxLineBytes = options.maxLineBytes ?? MAX_LINE_BYTES;
+  const chunkBytes = options.chunkBytes ?? READER_CHUNK_BYTES;
+  if (!Number.isSafeInteger(snapshotSize) || snapshotSize < 0 || !Number.isSafeInteger(startOffset) || startOffset < 0 || startOffset > snapshotSize
+    || !Number.isSafeInteger(maxLineBytes) || maxLineBytes <= 0 || maxLineBytes > MAX_LINE_BYTES
+    || !Number.isSafeInteger(chunkBytes) || chunkBytes <= 0 || chunkBytes > READER_CHUNK_BYTES) throw new SafeError("INVALID_ARGUMENT");
   if (startOffset === snapshotSize) {
-    await file.close();
     yield { kind: "checkpoint", nextOffset: startOffset, pendingBytes: 0, bytesRead: 0 };
     return;
   }
@@ -49,17 +61,23 @@ export async function* readJsonLines(path: string, options: ReaderOptions = {}):
   // A fixed byte buffer bounds retained line bytes; oversized lines never accumulate.
   const line = Buffer.allocUnsafe(maxLineBytes);
   const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
-  const stream = file.createReadStream({ start: startOffset, end: snapshotSize - 1, highWaterMark: chunkBytes, autoClose: false });
+  const readBuffer = Buffer.allocUnsafe(chunkBytes);
+  let readOffset = startOffset;
   let cursor = startOffset;
   let lineStart = startOffset;
   let completeOffset = startOffset;
   let lineBytes = 0;
   let oversize = false;
   try {
-    for await (const rawChunk of stream) {
-      const chunk = rawChunk as Buffer;
+    while (readOffset < snapshotSize) {
+      if (signal?.aborted) throw new SafeError("INPUT_ACCESS_FAILED");
+      const { bytesRead } = await file.read(readBuffer, 0, Math.min(chunkBytes, snapshotSize - readOffset), readOffset);
+      if (bytesRead === 0) break;
+      readOffset += bytesRead;
+      const chunk = readBuffer.subarray(0, bytesRead);
       let from = 0;
       while (from < chunk.length) {
+        if (signal?.aborted) throw new SafeError("INPUT_ACCESS_FAILED");
         const newline = chunk.indexOf(0x0a, from);
         const until = newline === -1 ? chunk.length : newline;
         const length = until - from;
@@ -99,8 +117,5 @@ export async function* readJsonLines(path: string, options: ReaderOptions = {}):
     yield { kind: "checkpoint", nextOffset: completeOffset, pendingBytes: cursor - completeOffset, bytesRead: cursor - startOffset };
   } catch {
     yield { kind: "diagnostic", diagnostic: diagnostic("INPUT_ACCESS_FAILED", options.sourceAlias ?? null, completeOffset), nextOffset: completeOffset };
-  } finally {
-    stream.destroy();
-    await file.close();
   }
 }
