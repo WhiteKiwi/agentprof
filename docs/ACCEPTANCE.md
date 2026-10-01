@@ -2,7 +2,7 @@
 
 ## Status
 
-2026-10-01 KST. 아래는 **제품 흐름의 예정된 검증**이다. P0의 조사·계약·독립 합성 기대값 검토와 P1 실행 기반의 macOS/Linux 검증을 마쳤다. P2 Codex 어댑터는 아래 범위의 로컬 대조·macOS/Linux 검증을 통과했다. 두 공급자를 연결한 제품 scan·분석·HTML·출시 파일럿은 아직 `NOT RUN`이다. 부분 검증과 전체 제품 acceptance를 구분해 기록한다. 별도 디자인 scaffold 검증은 [DESIGN-QA.md](DESIGN-QA.md)에 기록하며 제품 acceptance 통과로 취급하지 않는다.
+2026-10-01 KST. 아래는 **제품 흐름의 예정된 검증**이다. P0의 조사·계약·독립 합성 기대값 검토와 P1 실행 기반의 macOS/Linux 검증을 마쳤다. P2 Codex·P3 Claude 어댑터와 초기 npm 알파의 실제 실행 범위는 아래 evidence에 구분해 기록한다. 두 공급자를 연결한 제품 scan·분석·HTML·출시 파일럿은 아직 `NOT RUN`이다. 부분 검증과 전체 제품 acceptance를 구분해 기록한다. 별도 디자인 scaffold 검증은 [DESIGN-QA.md](DESIGN-QA.md)에 기록하며 제품 acceptance 통과로 취급하지 않는다.
 
 | ID | 기대 동작 | 검증 방식 | 상태 |
 | --- | --- | --- | --- |
@@ -138,3 +138,34 @@ P2 행동 검증은 구조화 우선·inert shell argv·wrapper 분리, 같은 I
 최종 CLI readback은 10개 item 모두 DraftIssue, 이관 본문 10개 보존, 빠진 item·기존 issue item·open repository issue 0개였다. P0/P1/P2는 검증·병합 근거에 따라 Done, 다른 세션의 P5 preview claim·reserved paths는 In Progress로 보존했다. 새 Owner/Owner session 텍스트 필드를 추가했고 확인되지 않은 다른 세션의 runtime ID는 추측하지 않았다. 추적 규칙 갱신은 Workflow draft에서 별도 단계로 진행하며 완료 후에만 Done으로 바꾼다.
 
 GitHub GraphQL의 draft 생성·본문 편집·상태 갱신은 [공식 Projects schema](https://docs.github.com/en/graphql/reference/projects)를 확인했다. [TODO.md](TODO.md)에 실제 Project item ID 기반 티켓 링크와 조작 규칙, [AGENTS.md](../AGENTS.md)에 repository issue 생성·draft 변환 금지와 한 세션/한 티켓 원칙을 반영한다. 이 검증은 작업 관리 이관이며 제품 A01–A27 통과가 아니다.
+
+## P3 Claude Adapter Verification — 2026-10-01 KST
+
+코드 commit은 `faeb057a3f937f09c5566a63048f0c9caac396c6`이며 P2/추적 규칙 main `baa384f779d5eab6d31a6c7099372f19a1d98496`에 기반한다. parser/normalization/key version 1, package `0.1.0-dev.0`, DB schema 1을 유지했다. 부모의 doc-first 검토 후 별도 개발 담당이 구현하고 독립 연구 담당이 frozen build를 대조했다. 구현 계약은 [CLAUDE-PARSER](CLAUDE-PARSER.md), 분모·공식 source·실제 필드·대조와 한계는 [CLAUDE-EVIDENCE](CLAUDE-EVIDENCE.md)에 있다. [PR #18](https://github.com/WhiteKiwi/agentprof/pull/18)·[P3 Project 티켓](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833029)에서 최종 head·병합 결과를 추적한다.
+
+| 환경·대상 | 실제 실행·결과 |
+| --- | --- |
+| macOS arm64, Node 24.15.0·24.21.0·26.7.0 | PASS: 각 `npm run check`, 타입/빌드·11파일 204개 테스트·25파일 production tarball allowlist·격리 npm exec/global install help/version |
+| macOS arm64, Node 22.16.0 | PASS: help/version 모두 CLI·SQLite import 전 `UNSUPPORTED_RUNTIME`, stderr safe JSON·stdout 없음·exit 2 |
+| Ubuntu 24.04 x64, Node 24.15.0·24.21.0·26.7.0 | PASS: clean scripts-disabled install·각 타입/빌드·11파일 204개 테스트·25파일 artifact npm exec/global install; 지원 runtime 3개 job success |
+| Ubuntu 24.04 x64, Node 22.16.0 | PASS: bootstrap만 복사한 guard에서 CLI·SQLite import 전 거부·UNSUPPORTED_RUNTIME·stdout 없음·exit 2 |
+| 고정 P0 S1–S3 prefix | PASS: reader eligible 1,179개 / 3,240,661bytes; 개별 3개·합본의 독립 keyed execution/turn/usage/message/metadata/source observation mismatch 0 |
+| Canonical 관측 | 실행 280개(completed180/failed12/unknown82/pending6), paired invocation interval·duration 274개, duration-only turn 8개, usage251개/source usage626개/eligible0개 |
+| Same-source replay·RAM archive 재표현 | PASS: replay의 snapshot·retained state·counter 불변. archive canonical 의미 불변, source observations3,552→7,104·metadata1,179→2,358. 실제 archive 파일의 지원 검증은 아님 |
+| 기본 상태 상한·privacy | PASS: 각 표본·합본·재표현 모두 기본 상한 내, STATE_LIMIT·dropped diagnostics0, usageProofReplays0. 16 UTF-16 code units 이상 민감 후보3,075개/archive3,078개의 exact leaf string/key 노출0 |
+
+macOS runtime check는 2026-10-01 10:47:44–10:47:54 KST에 npm 11.19.0을 사용했다. 앞선 환경 preflight에서 임시 Node 24.15/24.21 배포의 npm symlink가 `MODULE_NOT_FOUND('../lib/cli.js')`로 실패했으므로 제품 check를 시작하지 않았다. 원래 두 symlink를 private 임시 경로에 보존하고 이미 검증한 global npm CLI를 가리키도록 임시 링크만 고쳤다. global npm·Node 4개 바이너리와 제품 코드는 변경하지 않았고 실제 npm 진입의 Node version·바이너리 checksum을 전후 대조했다. 환경 복구를 제품 코드 수정이나 최초 preflight 통과로 기록하지 않는다. Linux CI는 별도 setup-node runtime과 npm을 사용한다.
+
+PR의 검증 head `148ffb9204a46d61054c8431166691c55d29fdbf`는 원격 main `00539409595fe17349cf68dd41c0f83cc0383e23`의 다른 세션 합성 report preview를 충돌 없이 포함한다. 이 head의 [Linux PR CI](https://github.com/WhiteKiwi/agentprof/actions/runs/36805094842)는 2026-10-01 11:17 KST에 4개 job 모두 success였다. setup-node 로그의 실제 npm은 Node24.15=11.12.1, Node24.21/26.7=11.19.0, Node22.16 guard=10.9.2다. 부모는 job 로그의 204 tests/11 files·artifactFiles25·help/version·scripts disabled와 guard를 대조했다. 원격 main 기준 PR diff는 P3 코드/fixture/문서 22파일이며 report/design/README/package/workflow 변경은 없다. 로컬 문서26개·링크206개·anchor23개와 whitespace를 통과했다. 이후 evidence 문서만 보완하며 최종 head check·merge/readback은 Project와 PR에 연결한다.
+
+기존 116개 검사에 Claude 88개를 더했다. P0 fixture/oracle와 기존 Codex, CLI/scanner/DB/package/workflow, README/design/brand의 보존 대상 29파일 checksum이 같았다. 25파일 tarball은 compiled JS·metadata·README만 포함하며 fixture·TS source/map·DB·brand 이미지·실제 데이터·sentinel을 제외한다. 설치 scripts는 비활성화했다. source/dist 22개 모듈과 독립 harness의 최종 연구 freeze도 유지했다.
+
+합성 검증은 다중 content/UUID와 message usage, root/sidechain·결과 선행·pending·launch metadata 대상 불명·is_error 충돌·상한·원문 폐기를 포함한다. call input/최초 nullable project context·source-point declaration/ownership replay와 별도 bounded usage proof history를 검증했다. direct tool timing·완전한 output·copied boundary·finality는 해당 합성 대상의 외부 trusted context에서만 검증한다. 실제 turn scope·usage 종결·direct tool runtime, 미관측 버전/실제 fork·P4 durable 복구·제품 A01–A27·성능·사람 파일럿은 **NOT RUN**이다. privacy 결과는 선정된 완전 문자열 대조이며 짧은 문자열 전체·VM heap·zeroization 보장이 아니다.
+
+## Early Public npm Alpha Verification — 2026-10-01 KST
+
+사용자 요청으로 [agentprof npm package](https://www.npmjs.com/package/agentprof)를 `0.1.0-dev.0`·`alpha`로 공개했다. 이 첫 artifact의 고정 source는 main `baa384f779d5eab6d31a6c7099372f19a1d98496`이며 Claude P3를 포함하지 않는다. 빈 이름 예약 대신 이미 검증한 Codex parser·JSONL reader·privacy API와 CLI help/version을 제공한다. [NPM-ALPHA](NPM-ALPHA.md)에 실제 metadata·integrity·파일·시각·태그 상태를 기록했다.
+
+정확한 20파일 tarball의 scripts-disabled 격리 설치·API oracle·README 예제·publish dry-run은 macOS Node 24.15.0·26.7.0 / npm 11.19.0에서 PASS다. 게시 요청은 한 번·exit 0이며 registry owner `whitekiwi`·version·source revision·integrity·shasum이 일치한다. public registry에서 새 cache·빈 작업 디렉터리로 SDK·npx 경로 help/version을 다시 실행해 두 Node에서 PASS였다. `scan --json`은 여전히 `NOT_IMPLEMENTED`·exit 2다.
+
+`--tag alpha`로 게시했으나 실제 `alpha`·`latest`가 같은 prerelease를 가리킨다. `latest` 삭제는 HTTP 400으로 실패했고 재시도하지 않았다. 안정 버전 출시로 표현하지 않으며 실행 안내는 `npx agentprof@alpha --help`·`--version`이다. primary package/lock/README/design/CLI source를 변경하지 않고 별도 private archive에서 packaging했다. 인증 값은 evidence·repository·memory에 보관하지 않았다. 공개 Linux registry 설치·정식 라이선스/API·전체 P7 설치/제품 파일럿은 **NOT RUN**이다.

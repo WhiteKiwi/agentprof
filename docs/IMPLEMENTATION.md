@@ -2,7 +2,7 @@
 
 ## Status and Authority
 
-Draft, 2026-10-01 KST. [SPEC.md](SPEC.md)의 사용자 동작, [ARCHITECTURE.md](ARCHITECTURE.md)의 불변 조건, [METRICS.md](METRICS.md)의 계산 계약을 구현하는 계획이다. `36bb389`의 개정 계획에 따른 P0 계약 검토와 P1 실행 기반 검증을 완료했으며 [PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)는 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 병합되었다. P2 Codex 계약·bounded 검증은 [CODEX-PARSER.md](CODEX-PARSER.md)·[CODEX-EVIDENCE.md](CODEX-EVIDENCE.md)·[ACCEPTANCE.md](ACCEPTANCE.md)에 있고 P3 Claude 어댑터가 다음 단계다. [FINDINGS.md](FINDINGS.md)는 조사 근거이며 사양을 덮어쓰지 않는다. 디자인 기반은 아래 별도 트랙으로 유지하고 데이터 파서·분석기 구현과 구분한다.
+Draft, 2026-10-01 KST. [SPEC.md](SPEC.md)의 사용자 동작, [ARCHITECTURE.md](ARCHITECTURE.md)의 불변 조건, [METRICS.md](METRICS.md)의 계산 계약을 구현하는 계획이다. `36bb389`의 개정 계획에 따른 P0 계약 검토와 P1 실행 기반 검증을 완료했으며 [PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)는 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 병합되었다. P2 Codex 계약·bounded 검증은 [CODEX-PARSER.md](CODEX-PARSER.md)·[CODEX-EVIDENCE.md](CODEX-EVIDENCE.md)·[ACCEPTANCE.md](ACCEPTANCE.md)에 있다. P3의 별도 조사·구현·검증 계약은 [CLAUDE-PARSER.md](CLAUDE-PARSER.md)에 둔다. [FINDINGS.md](FINDINGS.md)는 조사 근거이며 사양을 덮어쓰지 않는다. 디자인 기반은 아래 별도 트랙으로 유지하고 데이터 파서·분석기 구현과 구분한다.
 
 새 지표 제안을 반영해 v0.1에 10개 지표와 6개 자동 진단을 포함했다. 이 계획을 검토한 뒤 개발 서브세션이 구현한다. 제품 범위를 바꾸면 SPEC, 구조·불변 조건은 ARCHITECTURE, 계산 의미는 METRICS, 접근·선행 조건은 이 문서를 먼저 갱신한다. 실행 작업·Verify·담당·상태는 [Project](https://github.com/users/WhiteKiwi/projects/2)의 해당 draft ticket에 반영한다. repository issue를 새로 만들지 않는다.
 
@@ -76,17 +76,21 @@ P0에서 허용된 로컬 실로그의 소규모 층화 표본을 수작업으�
 
 로컬 데이터 경로, config·key 권한, source overrides, JSON envelope와 비밀값 없는 진단을 구현한다. 공급자 어댑터에는 원문을 읽을 권한만 주고 정규화 경계 밖으로 전달하지 않는다. P1에서 commandPattern·operationKey·lookup/content/error fingerprint의 필드·null·정규화/키 버전 계약과 비실행 정규화 API를 고정한다.
 
-초기 foundation package는 `0.1.0-dev.0`, `private: true`, `UNLICENSED`로 공개 배포를 막는다. npm lockfile에 Commander 15.0.0, TypeScript 7.0.2, Vitest 5.0.2, Node 타입 24.19.0을 고정했다. 실행 의존성은 Commander뿐이며 SQLite는 Node 내장 모듈이다. TypeScript·테스트 도구의 platform binary는 개발 의존성으로만 설치하며 packed artifact에는 compiled JS만 넣는다. clean install과 production tarball 설치는 lifecycle scripts를 끄고 검증한다. public npm 이름·license 결정과 실제 게시 후 npx 검증은 P7에 남긴다.
+초기 foundation package는 `0.1.0-dev.0`, `private: true`, `UNLICENSED`로 작업 트리의 직접 공개 배포를 막는다. npm lockfile에 Commander 15.0.0, TypeScript 7.0.2, Vitest 5.0.2, Node 타입 24.19.0을 고정했다. 실행 의존성은 Commander뿐이며 SQLite는 Node 내장 모듈이다. TypeScript·테스트 도구의 platform binary는 개발 의존성으로만 설치하며 packed artifact에는 compiled JS만 넣는다. clean install과 production tarball 설치는 lifecycle scripts를 끄고 검증한다. 정식 출시의 license·배포·설치 artifact·파일럿 검증은 P7에 남기며 초기 npm 공개 예외는 아래에 기록한다.
+
+2026-10-01 사용자의 초기 npm 공개 요청에 따라 이미 검증된 main의 Codex parser/JSONL reader API를 `agentprof@alpha`·`0.1.0-dev.0`로 공개했다. [NPM-ALPHA](NPM-ALPHA.md)에 고정 source archive·정확한 tarball 검토·게시·fresh registry SDK/npx 실행 결과를 기록했다. 원본 package/README의 공개 guard는 유지했다. 빈 이름 예약과 전체 제품 출시를 구분하며 후속 P7 설치·파일럿·라이선스·정식 배포 검증은 계속 필요하다.
 
 P1 구현 경계는 [NORMALIZATION.md](NORMALIZATION.md)다. CLI help/version과 원문 없는 오류, inert 정규화, bounded reader, private key·SQLite migration/동기 transaction만 포함한다. `scan`, `stats`, `insights`, `report`, `open`은 exit 2의 `NOT_IMPLEMENTED`로 처리한다. 이벤트/checkpoint 저장은 P4이며 리포트·대시보드 디자인 시스템은 별도 작업이다. CI는 Ubuntu 24.04에서 Node 24.15.0·24.21.0·26.7.0의 동일 check와 Node 22.16.0의 실행 전 거부를 수행한다. 실제 실행 결과는 [ACCEPTANCE.md](ACCEPTANCE.md)에 기록한다.
 
 ### P2 / P3 — Provider Adapters
 
-P2 Codex의 실제 shape·API·pairing·privacy·검증 세부는 [CODEX-PARSER.md](CODEX-PARSER.md)에 둔다. 해당 Project draft의 작업과 Verify를 먼저 확정한 뒤 개발 서브세션이 구현한다. P1 PR #9 병합 후 P2 PR은 main을 기준으로 검토한다.
+P2 Codex의 실제 shape·API·pairing·privacy·검증 세부는 [CODEX-PARSER.md](CODEX-PARSER.md), P3 Claude의 별도 계약은 [CLAUDE-PARSER.md](CLAUDE-PARSER.md)에 둔다. 해당 Project draft의 작업과 Verify를 먼저 확정한 뒤 개발 서브세션이 구현한다. P1 PR #9 병합 후 P2 PR은 main을 기준으로 검토한다.
 
-Codex는 검증된 구조화 `item_completed`를 우선하고 같은 response를 중복 세지 않는다. namespace·call ID·content-block output과 직접 duration을 처리한다. Claude는 UUID·parent·tool IDs를 연결하고 직접 duration과 관측 latency를 구분한다.
+Codex는 검증된 구조화 `item_completed`를 우선하고 같은 response를 중복 세지 않는다. namespace·call ID·content-block output과 직접 duration을 처리한다. Claude는 transcript UUID·API message ID·tool ID를 구분해 연결한다. call/result latency는 invocation 관측이며 background acknowledgement는 process 종결이 아니다. 직접 turn duration은 scope·경계 불명을 유지한다. cache read/create를 포함한 all-input과 uncached input을 보존하고, 실제 transcript의 finality가 검증되지 않은 usage는 provisional로 남긴다.
 
 pending 갱신, 취소·background·polling, 복사된 과거와 실제 새 실행, schema drift를 명시적으로 다룬다. 관계·scope가 불명확하면 capability와 coverage를 낮추고 raw 내용 없는 진단을 제공한다. 원문을 폐기하기 전에 commandPattern·operationKey·lookup/content/error fingerprint를 생성한다. 대상·플래그·편집/범위 차이와 비밀값 sentinel fixture를 통과해야 P4로 넘긴다. 각 공급자 단계에서 P0 실로그 표본의 수작업 의미와 정규화 출력을 로컬 대조하고 지원 행렬을 갱신한다. 권한/입력 부재는 NOT RUN으로 남긴다.
+
+P3 구현은 88개 Claude 검사를 기존 116개와 함께 실행한다. 고정 S1–S3 1,179개 레코드의 독립 keyed 대조·동일 source replay·RAM archive 재표현·privacy·기본 상한 결과는 [CLAUDE-EVIDENCE](CLAUDE-EVIDENCE.md)에 있다. 280개 실행·8개 duration-only turn·251개 usage를 보존하며 실제 usage eligible은 0이다. macOS/Linux의 각 3개 지원 Node에서 204개 테스트·25파일 artifact는 PASS다. runtime과 [PR #18](https://github.com/WhiteKiwi/agentprof/pull/18) 검증 결과는 [ACCEPTANCE](ACCEPTANCE.md)에 기록한다. P4 durable checkpoint·scan 연결은 아직 구현하지 않았다.
 
 ### P4 — Transactional Incremental Scan
 

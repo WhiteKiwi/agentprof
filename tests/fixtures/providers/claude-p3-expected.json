@@ -1,0 +1,27 @@
+{
+  "schema": "agentprof.fixture-claude-p3/v1",
+  "synthetic": true,
+  "supportStatus": "SHAPE_ONLY_NOT_PROVIDER_VERSION_SUPPORT",
+  "calculation": "Independent hand oracle: rg 00→03=3000ms, read 01→04=3000ms, side MCP 11→13=2000ms; background acknowledgements 05→06 and 07→08 are 1000ms observations only. Usage input=100+30+20=150, total=150+10=160. Turn 9000/0 have no located intervals.",
+  "file": "claude-real-shapes.jsonl",
+  "records": 13,
+  "executions": 5,
+  "rootExecutions": 4,
+  "sidechainExecutions": 1,
+  "statuses": { "completed": 2, "failed": 1, "pending": 2, "unknown": 0 },
+  "pairedLatencyMs": { "synthetic-p3-rg": 3000, "synthetic-p3-read": 3000, "synthetic-p3-mcp": 2000 },
+  "acknowledgementLatencyMs": [1000, 1000],
+  "turnDurationOnlyMs": [9000, 0],
+  "turnIntervals": 0,
+  "directToolDurations": 0,
+  "usageRecords": 3,
+  "usageIds": 1,
+  "usage": { "input": 150, "uncachedInput": 100, "output": 10, "cachedInput": 30, "cacheWriteInput": 20, "total": 160, "reasoningOutput": null },
+  "finality": "unknown",
+  "selection": "provisional",
+  "trustedFinalContext": { "usageEvidence": [
+    { "ordinal": 1, "messageId": "synthetic-p3-response", "finality": "partial", "order": 1, "orderingGroup": "synthetic-p3-usage", "mapping": "anthropic_messages" },
+    { "ordinal": 2, "messageId": "synthetic-p3-response", "finality": "partial", "order": 2, "orderingGroup": "synthetic-p3-usage", "mapping": "anthropic_messages" },
+    { "ordinal": 3, "messageId": "synthetic-p3-response", "finality": "final", "order": 3, "orderingGroup": "synthetic-p3-usage", "mapping": "anthropic_messages" }
+  ] }
+}
