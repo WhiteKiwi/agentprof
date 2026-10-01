@@ -1,5 +1,5 @@
 import { constants } from "node:fs";
-import { createHmac, randomBytes } from "node:crypto";
+import { createHmac, createSecretKey, randomBytes } from "node:crypto";
 import { link, open, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { SafeError } from "../privacy/diagnostics.js";
@@ -25,10 +25,10 @@ function validPart(part: IdentityPart, depth = 0): boolean {
     || (Array.isArray(part) && part.every((value) => validPart(value, depth + 1)));
 }
 
-// Raw key bytes stay in the closure; the context never exposes a key property.
+// Reuse the private key representation; every fingerprint still computes its own HMAC.
 export function createIdentityContext(secret: Uint8Array, keyId: string): IdentityContext {
   if (secret.byteLength !== 32 || !/^[a-f0-9]{32}$/.test(keyId)) throw new SafeError("INVALID_IDENTITY_KEY");
-  const key = Buffer.from(secret);
+  const key = createSecretKey(Buffer.from(secret));
   return Object.freeze({
     normalizationVersion: NORMALIZATION_VERSION,
     keyVersion: KEY_VERSION,

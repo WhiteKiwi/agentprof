@@ -10,7 +10,7 @@ Draft, 2026-10-01 KST. [SPEC.md](SPEC.md)의 사용자 동작, [ARCHITECTURE.md]
 
 **TypeScript CLI + npm 배포 + 단일 오프라인 HTML**을 초기 경로로 삼는다. JSONL·지표·UI 개발을 같은 언어로 연결하고 `npx` 시험 사용과 전역 설치를 함께 제공한다.
 
-설치 편의와 언어 선택은 분리한다. Homebrew도 Node CLI를 설치할 수 있다. Rust는 단일 실행 파일·시작 비용·대규모 처리에서 장점이 있지만, 현재 실측된 병목은 없다. 먼저 스트리밍·증분 수집과 정확한 데이터 계약을 만든 뒤 전환 필요를 판단한다.
+설치 편의와 언어 선택은 분리한다. Homebrew도 Node CLI를 설치할 수 있다. Rust는 단일 실행 파일·시작 비용·대규모 처리에서 장점이 있다. 별도 합성 component 조사에서 Node의 반복 key-representation 처리 비용을 확인했으며 [identity 성능 보완](IDENTITY-PERFORMANCE.md)으로 검증한다. 제품 전체 scanner 성능은 아직 측정하지 않았다. 먼저 스트리밍·증분 수집과 정확한 데이터 계약을 만든 뒤 전환 필요를 판단한다.
 
 | 영역 | 초기 선택 | 결정 근거·검증 |
 | --- | --- | --- |
@@ -163,3 +163,7 @@ Homebrew tap·formula 게시, npm 공개와 license 선택은 이 계획의 구�
 3. dark/light·320px/phone/desktop·keyboard·reduced-motion·privacy·contrast·print를 검증하고 [DESIGN-QA](DESIGN-QA.md)에 실제 결과와 제한을 기록한다. README는 배포/측정된 제품인 것처럼 표시하지 않는다. 남은 브라우저·README 검증은 [Design 티켓](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833178)에서 추적한다.
 
 제품 적용은 P5 최소 report부터 시작한다. 실제 snapshot 연결·파서·injection 방어의 제품 acceptance는 그대로 미실행이다. 전역 framework/package 구성을 만들거나 watcher·server·배포를 추가하지 않는다.
+
+## Identity key performance supplement (2026-10-01)
+
+[IDENTITY-PERFORMANCE.md](IDENTITY-PERFORMANCE.md) records the reviewed, behavior-preserving KeyObject reuse change and its focused verification. The earlier component experiment found an avoidable Node key-representation cost; its full-path numbers also include batching/worker changes and are not product scan evidence. This slice preserves every HMAC and privacy check, adds no fingerprint cache, and leaves ordered byte-bounded ingestion batching behind the P4 pipeline/atomic-checkpoint contract. Its Project draft owns execution status; the supplement records actual evidence.
