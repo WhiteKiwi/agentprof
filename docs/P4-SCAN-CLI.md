@@ -12,14 +12,16 @@ acceptance remains open. The baseline is merged main
 
 This connects the existing TypeScript CLI to the merged bounded sequential
 [scan coordinator](P4-SCAN-RUN.md), using the existing local identity helper,
-SQLite bootstrap and schema 3 metric-evidence store. It does not change any
-provider interpretation, identity, schema, dependency or scanner limit.
-`stats`, `insights`, `report` and `open` remain `NOT_IMPLEMENTED`, exit 2.
+SQLite bootstrap and the current schema-4 metric/proof store. The original CLI
+slice did not change provider interpretation, identity, schema, dependencies or
+scanner limits; [unchanged reuse](P4-UNCHANGED-SCAN.md) later adds the bounded
+proof/schema contract. `stats` now supports explicit read-only list/select modes;
+`insights`, `report` and `open` remain `NOT_IMPLEMENTED`, exit 2.
 Historical P1 foundation-only CLI statements in NORMALIZATION and earlier
 evidence describe the original boundary, not this scan activation.
 
 Excluded: default home-log discovery, config files, workers/watch mode,
-network/telemetry, full-history guarantees, offset resume, unchanged-file
+network/telemetry, full-history guarantees, offset resume, stat-only unchanged-file
 skipping, cross-source reconciliation, automatic unavailable/deletion marks,
 aggregate/token/time computations, report integration and package publication.
 P5's `report/**` and `docs/REPORT-PREVIEW.md` reservation is untouched.
@@ -56,26 +58,30 @@ agentprof --json --data-dir ./private-agentprof scan --codex-root ./synthetic-co
   existing helper may create a missing key even when a DB exists; a key mismatch
   then fails safely at the existing store validation boundary without replacing
   contributions. Preserve original files before any manual recovery.
-- Repeated scans intentionally reparse from zero and atomically replace each
-  source using its original revision. IDs/contributions do not duplicate, but
-  revisions may increase. No stale retry or whole-run transaction is introduced.
+- Repeated scans reuse an eligible source only after whole-byte keyed proof and
+  fresh generation validation. `unchanged` leaves the revision and rows untouched.
+  Changed/ineligible sources reparse from zero and atomically replace under the
+  original revision. No stale retry or whole-run transaction is introduced.
 
 ## Output and errors
 
 One result goes to stdout, human or JSON:
 
 ```text
-{schema:"agentprof.cli/v1",ok:<status is completed>,command:"scan",result:<unchanged ScanResult>}
+{schema:"agentprof.cli/v1",ok:<status is completed>,command:"scan",result:<ScanResult with additive unchanged/reusedRevision fields>}
 ```
 
 A returned `partial` or `aborted` result has `ok:false`; earlier source commits
 remain retained. Human output derives from the same result: status,
-discovered/attempted/committed/rejected/stale/failed/aborted/duplicate counts,
+discovered/attempted/committed/unchanged/rejected/stale/failed/aborted/duplicate counts,
 stop reason/discovery truncation, observed/adapter-dropped/sample-dropped
 diagnostic counts, safe aliases and fixed source reason/error/diagnostic codes.
 It does not print events, raw paths, arbitrary exception text/stacks, logs or
 secrets. Both readiness flags stay false; stored source counts are not verified
-final session/token/time totals.
+final session/token/time totals. The existing JSON envelope is retained as an explicitly
+additive result change: `unchanged` and `reusedRevision` distinguish reuse from
+writes. Proof metadata is private. Pre-bootstrap zero-work cancellation includes
+`unchanged: 0`. Reused partial coverage still produces a partial scan.
 
 | Outcome | Stream | Exit |
 | --- | --- | --- |

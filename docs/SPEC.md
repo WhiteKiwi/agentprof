@@ -48,7 +48,7 @@ agentprof scan --codex-root ./synthetic-codex --data-dir ./private-agentprof
 agentprof --json --data-dir ./private-agentprof scan --codex-root ./synthetic-codex --claude-root ./synthetic-claude
 ```
 
-수집 상한은 64 sources, 256 directories, 내부 nodes와 yielded entries 각각 4,096, source당 16 MiB/32,768 records, diagnostic samples 256개다. 기존 line/parser/store 상한도 적용된다. 전체 이력·성능 보장이 아니며 같은 입력도 매번 byte zero부터 재해석한다. 원자적 source 교체는 중복 행을 만들지 않지만 revision은 증가할 수 있다. 자동 삭제/이동 정합화·집계·증분 parser 복구는 없다.
+수집 상한은 64 sources, 256 directories, 내부 nodes와 yielded entries 각각 4,096, source당 16 MiB/32,768 records, diagnostic samples 256개다. 기존 line/parser/store 상한도 적용된다. [변경 없는 source 재사용](P4-UNCHANGED-SCAN.md)은 현재 adapter version·semantic limits·전체 파일 bytes와 저장 payload를 검증하고 최신 generation을 확인한 경우에만 적용한다. 이때 rows와 revision을 유지한다. 재사용 조건이 맞지 않는 안정적인 miss는 최초에 읽은 revision으로 CAS를 유지하며 byte zero부터 재해석한다. 손상된 evidence와 probe 중 관측한 파일 변경·접근/close 실패는 안전하게 실패하며 재해석으로 숨기지 않는다. 원자적 source 교체는 중복 행을 만들지 않지만 revision은 증가할 수 있다. 전체 이력·성능 보장은 없으며 자동 삭제/이동 정합화·집계·증분 parser 복구는 없다.
 
 결과는 stdout에 한 번 출력한다. JSON은 `{schema:"agentprof.cli/v1",ok:<completed 여부>,command:"scan",result:<ScanResult>}`이며 human도 같은 status/counts/stop reason/diagnostic drop 수를 사용한다. `completed` exit 0, `partial` exit 1, 협력적 SIGINT/`aborted` exit 130이다. 부분 실행의 이전 commit은 유지된다. 결과 이전 argument/bootstrap/store 오류는 기존 안전한 stderr error envelope와 exit 2를 보존한다. 내부 예상 밖 오류는 `INTERNAL_ERROR`다. 경로·원문·secret·arbitrary exception text는 출력하지 않는다. Node 자체 SQLite warning은 별개 stderr일 수 있다.
 
@@ -163,3 +163,7 @@ Existing-store stats requires exactly one explicit --list-sources or --source <f
 ## Human selected-source stats tables (2026-10-01)
 
 The selected-source human report presents exact stored inventory and evidence-labelled duration/usage tables. It preserves unknown versus observed zero and full source/session identities. Known recorded-duration sums rank only within one session/scope/evidence partition; unknown sums occupy a separate unranked bucket. Each bucket shows at most ten cohorts with truthful omission counts. JSON retains all cohorts and contributing IDs unchanged; source listing is unchanged. No new metrics, global totals, elapsed/busy time, percentages or savings are inferred. See [P5-HUMAN-STATS](P5-HUMAN-STATS.md).
+
+## Bounded unchanged-source reuse (2026-10-01)
+
+A repeated explicit-root scan may reuse an available stored source generation only after bounded whole-byte equality and unchanged interpretation limits/versions are established, then fresh store validation confirms the originally observed revision. Reuse reports an additive unchanged outcome and reused revision, preserving actual diagnostics, partial coverage and readiness boundaries. Changed sources reparse from zero under the original revision check. No raw bytes persist, and size/mtime or completed-line boundary alone never prove equality. Current-schema read-only stats advances to schema 4 and rejects older stores without migration. See [P4-UNCHANGED-SCAN](P4-UNCHANGED-SCAN.md).

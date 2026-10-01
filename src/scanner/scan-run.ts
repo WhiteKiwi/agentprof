@@ -1,13 +1,15 @@
 import { resolve } from "node:path";
-import type { createSourceStore } from "../db/source-store.js";
+import type { createSourceStore, SourceCacheToken, StoredSource } from "../db/source-store.js";
 import type { IdentityContext } from "../normalize/identity.js";
+import { createCodexAdapter } from "../parsers/codex/index.js";
+import { createClaudeAdapter } from "../parsers/claude/index.js";
 import { diagnostic, SafeError, safeErrorEnvelope } from "../privacy/diagnostics.js";
 import type { DiagnosticCode, SafeDiagnostic } from "../privacy/diagnostics.js";
 import type { InputRoot } from "../privacy/paths.js";
 import { discoverSources } from "./discovery.js";
 import { ingestSourceFile } from "./source-ingest.js";
 import type { SourceIngestResult } from "./source-ingest.js";
-import { ownInput, sourcePrefixOptions, validSourcePath } from "./source-prefix.js";
+import { ownInput, probeSourceFile, sourcePrefixOptions, validSourcePath } from "./source-prefix.js";
 
 export const SCAN_LIMITS = Object.freeze({ roots: 16, sources: 64, directories: 256, entries: 4096, fileBytes: 16 * 1024 * 1024, records: 32768, diagnostics: 256 });
 export type ScanOptions = Readonly<{
@@ -16,8 +18,8 @@ export type ScanOptions = Readonly<{
 }>;
 export type ScanSourceOutcome = Readonly<{
   sourceId: string; sourceAlias: string; provider: InputRoot["provider"];
-  status: SourceIngestResult["status"] | "failed";
-  revisionRead: boolean; expectedRevision: number | null; committedRevision: number | null; staleActualRevision: number | null;
+  status: SourceIngestResult["status"] | "unchanged" | "failed";
+  revisionRead: boolean; expectedRevision: number | null; committedRevision: number | null; reusedRevision: number | null; staleActualRevision: number | null;
   rejectionReason: Extract<SourceIngestResult, { status: "rejected" }>["reason"] | null;
   errorCode: DiagnosticCode | null;
   ingestionScope: SourceIngestResult["persistedScope"] | null;
@@ -28,7 +30,7 @@ export type ScanResult = Readonly<{
   stopReason: "aborted" | "storage_failure" | "discovery_limit" | null;
   discoveryTruncated: boolean;
   sources: readonly ScanSourceOutcome[];
-  counts: Readonly<{ discovered: number; attempted: number; committed: number; rejected: number; stale: number; failed: number; aborted: number; duplicates: number }>;
+  counts: Readonly<{ discovered: number; attempted: number; committed: number; unchanged: number; rejected: number; stale: number; failed: number; aborted: number; duplicates: number }>;
   diagnostics: Readonly<{ observedCount: number; adapterDroppedCount: number; sampleDroppedCount: number; samples: readonly SafeDiagnostic[] }>;
   aggregationReady: false; parserResumeReady: false;
 }>;
@@ -54,6 +56,16 @@ function explicitRoots(value: readonly InputRoot[]): readonly InputRoot[] {
   return Object.freeze(result);
 }
 
+// Retain only the small validated candidate, releasing initial event/metric payload arrays.
+function cacheCandidate(source: StoredSource | null, context: IdentityContext, parserVersion: number): SourceCacheToken | null {
+  if (!source || !source.cacheEvidence || !source.evidence || source.availability !== "available" || source.persistedScope !== "events_and_metric_evidence"
+    || source.parserVersion !== parserVersion || source.normalizationVersion !== context.normalizationVersion || source.keyVersion !== context.keyVersion || source.keyId !== context.keyId
+    || source.evidence.capabilities.stateLimited || source.evidence.capabilities.diagnosticsDropped !== 0) return null;
+  return Object.freeze({ sourceId: source.sourceId, provider: source.provider, revision: source.revision, parserVersion: source.parserVersion,
+    normalizationVersion: source.normalizationVersion, keyVersion: source.keyVersion, keyId: source.keyId, completedOffset: source.completedOffset,
+    observedSize: source.observedSize, boundaryFingerprint: source.boundaryFingerprint, cacheEvidence: source.cacheEvidence });
+}
+
 /** Bounded serial coordination only. Source commits are independent, never a whole-run transaction. */
 export async function scanSources(store: ReturnType<typeof createSourceStore>, context: IdentityContext, roots: readonly InputRoot[], options: ScanOptions = {}): Promise<ScanResult> {
   const selectedRoots = explicitRoots(roots);
@@ -64,7 +76,7 @@ export async function scanSources(store: ReturnType<typeof createSourceStore>, c
     maxLineBytes: v["maxLineBytes"], chunkBytes: v["chunkBytes"], signal: v["signal"] });
   const { signal } = prefix;
   const outcomes: ScanSourceOutcome[] = [], seen = new Set<string>(), samples: SafeDiagnostic[] = [];
-  const counts = { discovered: 0, attempted: 0, committed: 0, rejected: 0, stale: 0, failed: 0, aborted: 0, duplicates: 0 };
+  const counts = { discovered: 0, attempted: 0, committed: 0, unchanged: 0, rejected: 0, stale: 0, failed: 0, aborted: 0, duplicates: 0 };
   let observedCount = 0, adapterDroppedCount = 0, yieldedEntries = 0, partial = false, aborted = false, discoveryTruncated = false;
   let stopReason: ScanResult["stopReason"] = null;
   const record = (value: SafeDiagnostic, alias?: string) => {
@@ -93,7 +105,34 @@ export async function scanSources(store: ReturnType<typeof createSourceStore>, c
     let expectedRevision: number | null = null, revisionRead = false;
     const common = { sourceId, sourceAlias: source.sourceAlias, provider: source.provider };
     try {
-      expectedRevision = store.readSource(sourceId)?.revision ?? null; revisionRead = true;
+      let candidate: SourceCacheToken | null;
+      const currentParserVersion = (source.provider === "codex" ? createCodexAdapter(context) : createClaudeAdapter(context)).snapshot().capabilities.parserVersion;
+      {
+        const stored = store.readSource(sourceId);
+        expectedRevision = stored?.revision ?? null; revisionRead = true;
+        candidate = cacheCandidate(stored, context, currentParserVersion);
+      }
+      if (candidate) {
+        const probe = await probeSourceFile(path, context, { sourceId, provider: source.provider, parserVersion: currentParserVersion,
+          observedSize: candidate.observedSize, contentFingerprint: candidate.cacheEvidence.contentFingerprint },
+          { maxFileBytes: prefix.maxFileBytes, maxRecords: prefix.maxRecords, maxLineBytes: prefix.maxLineBytes, chunkBytes: prefix.chunkBytes, ...(signal === undefined ? {} : { signal }) });
+        if (probe.status !== "mismatch") {
+          // Final successful generation confirmation is synchronous; no await before recording it.
+          const confirmed = probe.status === "matched" ? store.confirmUnchangedSource(candidate, signal) : probe;
+          const capabilities = confirmed.status === "unchanged" ? confirmed.capabilities : null;
+          if (confirmed.status === "unchanged") for (const value of confirmed.diagnostics) record(value, source.sourceAlias);
+          if (confirmed.status === "rejected" && confirmed.diagnostic) record(confirmed.diagnostic, source.sourceAlias);
+          counts[confirmed.status]++;
+          outcomes.push(Object.freeze({ ...common, revisionRead, expectedRevision, status: confirmed.status, committedRevision: null,
+            reusedRevision: confirmed.status === "unchanged" ? confirmed.reusedRevision : null,
+            staleActualRevision: confirmed.status === "stale" ? confirmed.actualRevision : null,
+            rejectionReason: confirmed.status === "rejected" ? confirmed.reason : null, errorCode: null,
+            ingestionScope: confirmed.status === "unchanged" ? "events_and_metric_evidence" : null, capabilities }));
+          if (confirmed.status !== "unchanged" || capabilities?.coverage === "partial") partial = true;
+          if (confirmed.status === "aborted" || signal?.aborted) { aborted = true; stopReason = "aborted"; break; }
+          continue;
+        }
+      }
       const result = await ingestSourceFile(store, context, { path, provider: source.provider, expectedRevision,
         maxFileBytes: prefix.maxFileBytes, maxRecords: prefix.maxRecords, maxLineBytes: prefix.maxLineBytes, chunkBytes: prefix.chunkBytes,
         ...(signal === undefined ? {} : { signal }) });
@@ -101,14 +140,14 @@ export async function scanSources(store: ReturnType<typeof createSourceStore>, c
       adapterDroppedCount += result.capabilities.diagnosticsDropped;
       counts[result.status]++;
       outcomes.push(Object.freeze({ ...common, revisionRead, expectedRevision, status: result.status,
-        committedRevision: result.status === "committed" ? result.revision : null, staleActualRevision: result.status === "stale" ? result.actualRevision : null,
+        reusedRevision: null, committedRevision: result.status === "committed" ? result.revision : null, staleActualRevision: result.status === "stale" ? result.actualRevision : null,
         rejectionReason: result.status === "rejected" ? result.reason : null, errorCode: null, ingestionScope: result.persistedScope, capabilities: result.capabilities }));
       if (result.status !== "committed" || result.capabilities.coverage === "partial" || result.capabilities.stateLimited || result.capabilities.diagnosticsDropped > 0) partial = true;
       if (result.status === "aborted" || signal?.aborted) { aborted = true; stopReason = "aborted"; break; }
     } catch (error) {
       const code = safeErrorEnvelope(error).error.code;
       record(diagnostic(code, source.sourceAlias)); partial = true; counts.failed++;
-      outcomes.push(Object.freeze({ ...common, revisionRead, expectedRevision, status: "failed", committedRevision: null, staleActualRevision: null,
+      outcomes.push(Object.freeze({ ...common, revisionRead, expectedRevision, status: "failed", committedRevision: null, reusedRevision: null, staleActualRevision: null,
         rejectionReason: null, errorCode: code, ingestionScope: null, capabilities: null }));
       if (signal?.aborted) { aborted = true; stopReason = "aborted"; break; }
       if (!revisionRead || code.startsWith("DATABASE_") || code === "INVALID_IDENTITY_KEY" || code === "INTERNAL_ERROR") { stopReason = "storage_failure"; break; }

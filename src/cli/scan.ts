@@ -40,7 +40,7 @@ export function validateScanArguments(options: ScanArguments): { dataDir: string
 export function abortedBeforeScan(): ScanResult {
   return {
     status: "aborted", stopReason: "aborted", discoveryTruncated: false, sources: [],
-    counts: { discovered: 0, attempted: 0, committed: 0, rejected: 0, stale: 0, failed: 0, aborted: 0, duplicates: 0 },
+    counts: { discovered: 0, attempted: 0, committed: 0, unchanged: 0, rejected: 0, stale: 0, failed: 0, aborted: 0, duplicates: 0 },
     diagnostics: { observedCount: 0, adapterDroppedCount: 0, sampleDroppedCount: 0, samples: [] },
     aggregationReady: false, parserResumeReady: false,
   };
@@ -85,7 +85,7 @@ export function formatScanResult(result: ScanResult, json: boolean): string {
   const c = result.counts, d = result.diagnostics;
   const lines = [
     `Scan: ${result.status} (bounded collection)`,
-    `Sources: discovered=${c.discovered} attempted=${c.attempted} committed=${c.committed} rejected=${c.rejected} stale=${c.stale} failed=${c.failed} aborted=${c.aborted} duplicates=${c.duplicates}`,
+    `Sources: discovered=${c.discovered} attempted=${c.attempted} committed=${c.committed} unchanged=${c.unchanged} rejected=${c.rejected} stale=${c.stale} failed=${c.failed} aborted=${c.aborted} duplicates=${c.duplicates}`,
     `Stop reason: ${result.stopReason ?? "none"}; discovery truncated=${result.discoveryTruncated}`,
     `Diagnostics: observed=${d.observedCount} adapter-dropped=${d.adapterDroppedCount} sample-dropped=${d.sampleDroppedCount}`,
     "Aggregation: unsupported; parser resume: unsupported. Earlier source commits are retained.",

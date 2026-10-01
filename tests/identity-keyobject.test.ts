@@ -72,7 +72,7 @@ describe("identity key representation compatibility", () => {
     backing.fill(0);
     expect(context.fingerprint("event", ["private"])).toBe(before);
     expect(Object.isFrozen(context)).toBe(true);
-    expect(Reflect.ownKeys(context).sort()).toEqual(["fingerprint", "keyId", "keyVersion", "normalizationVersion"]);
+    expect(Reflect.ownKeys(context).sort()).toEqual(["fingerprint", "keyId", "keyVersion", "normalizationVersion", "startSourceFileProof"]);
     expect(JSON.stringify(context)).toBe(JSON.stringify({ normalizationVersion: 1, keyVersion: 1, keyId }));
   });
 

@@ -3,7 +3,7 @@ import type { BigIntStats } from "node:fs";
 import { lstat, open } from "node:fs/promises";
 import type { FileHandle } from "node:fs/promises";
 import { resolve } from "node:path";
-import type { IdentityContext } from "../normalize/identity.js";
+import type { IdentityContext, SourceFileProofWriter } from "../normalize/identity.js";
 import { diagnostic, SafeError } from "../privacy/diagnostics.js";
 import type { SafeDiagnostic } from "../privacy/diagnostics.js";
 import { assertNoSymlink } from "../privacy/paths.js";
@@ -20,6 +20,9 @@ export type SourcePrefixResult = Readonly<
   | { status: "aborted" }
   | { status: "rejected"; reason: "file_limit" | "record_limit" | "reader_error" | "input_changed" | "consumer_stopped"; diagnostic: SafeDiagnostic | null }
 >;
+type ProofContract = Readonly<{ sourceId: string; provider: "codex" | "claude"; parserVersion: number }>;
+export type ProvenSourcePrefixResult = (Extract<SourcePrefixResult, { status: "observed" }> & Readonly<{ contentFingerprint: string }>) | Exclude<SourcePrefixResult, { status: "observed" }>;
+export type SourceProbeResult = Readonly<{ status: "matched" }> | Readonly<{ status: "mismatch" }> | Exclude<SourcePrefixResult, { status: "observed" }>;
 type RecordEntry = Extract<JsonLineEntry, { kind: "record" }>;
 
 /** Read only known own data properties; API options cannot add fixture evidence or accessors. */
@@ -54,17 +57,27 @@ export function validSourcePath(path: unknown): asserts path is string {
 function sameFile(a: BigIntStats, b: BigIntStats): boolean {
   return b.isFile() && a.dev === b.dev && a.ino === b.ino && a.size === b.size && a.mtimeNs === b.mtimeNs && a.ctimeNs === b.ctimeNs;
 }
-const rejected = (reason: Extract<SourcePrefixResult, { status: "rejected" }>["reason"], value: SafeDiagnostic | null = null): SourcePrefixResult => Object.freeze({ status: "rejected", reason, diagnostic: value });
+const rejected = (reason: Extract<SourcePrefixResult, { status: "rejected" }>["reason"], value: SafeDiagnostic | null = null): Extract<SourcePrefixResult, { status: "rejected" }> => Object.freeze({ status: "rejected", reason, diagnostic: value });
 const changed = () => rejected("input_changed", diagnostic("INPUT_CHANGED", "source-1"));
 
 /** Observe one bounded completed prefix. This is not a filesystem snapshot or a resume token. */
 export async function readSourcePrefix(path: string, context: IdentityContext, consume: (entry: RecordEntry) => boolean | Promise<boolean>, options: SourcePrefixOptions = {}): Promise<SourcePrefixResult> {
+  return readPrefix(path, context, consume, options);
+}
+
+/** Internal ingestion path. Its proof observes the parsing read, never a later reread. */
+export async function readSourcePrefixWithProof(path: string, context: IdentityContext, contract: ProofContract, consume: (entry: RecordEntry) => boolean | Promise<boolean>, options: SourcePrefixOptions = {}): Promise<ProvenSourcePrefixResult> {
+  return readPrefix(path, context, consume, options, contract) as Promise<ProvenSourcePrefixResult>;
+}
+
+async function readPrefix(path: string, context: IdentityContext, consume: (entry: RecordEntry) => boolean | Promise<boolean>, options: SourcePrefixOptions, contract?: ProofContract): Promise<SourcePrefixResult | ProvenSourcePrefixResult> {
   validSourcePath(path);
   path = resolve(path);
   if (typeof consume !== "function") throw new SafeError("INVALID_ARGUMENT");
   const selected = sourcePrefixOptions(options), signal = selected.signal;
   if (signal?.aborted) return Object.freeze({ status: "aborted" });
   let file: FileHandle | undefined;
+  let writer: SourceFileProofWriter | undefined;
   let result: SourcePrefixResult;
   try {
     await assertNoSymlink(path);
@@ -82,12 +95,17 @@ export async function readSourcePrefix(path: string, context: IdentityContext, c
     // Cleanup finishes before the caller can mutate SQLite; a close error is never post-commit.
     if (file) try { await file.close(); } catch { result = rejected("reader_error", diagnostic("INPUT_ACCESS_FAILED", "source-1")); }
   }
-  return signal?.aborted ? Object.freeze({ status: "aborted" }) : result;
+  try {
+    if (signal?.aborted) return Object.freeze({ status: "aborted" });
+    if (result.status === "observed" && writer) return Object.freeze({ ...result, contentFingerprint: writer.finish() });
+    return result;
+  } finally { writer?.discard(); }
 
   async function observe(handle: FileHandle, opening: BigIntStats): Promise<SourcePrefixResult> {
     const observedSize = Number(opening.size);
+    if (contract) writer = context.startSourceFileProof({ ...contract, maxFileBytes: selected.maxFileBytes, maxRecords: selected.maxRecords, maxLineBytes: selected.maxLineBytes, observedSize });
     let checkpoint: Extract<JsonLineEntry, { kind: "checkpoint" }> | undefined, records = 0;
-    for await (const entry of readJsonLinesFromFile(handle, observedSize, { maxLineBytes: selected.maxLineBytes, chunkBytes: selected.chunkBytes, sourceAlias: "source-1" }, signal)) {
+    for await (const entry of readJsonLinesFromFile(handle, observedSize, { maxLineBytes: selected.maxLineBytes, chunkBytes: selected.chunkBytes, sourceAlias: "source-1" }, signal, writer?.update)) {
       if (signal?.aborted) return Object.freeze({ status: "aborted" });
       if (entry.kind === "diagnostic") return rejected(entry.diagnostic.code === "INPUT_CHANGED" ? "input_changed" : "reader_error", entry.diagnostic);
       if (entry.kind === "checkpoint") checkpoint = entry;
@@ -119,4 +137,53 @@ export async function readSourcePrefix(path: string, context: IdentityContext, c
     } catch { return changed(); }
     return Object.freeze({ status: "observed", completedOffset, observedSize, pendingBytes: checkpoint.pendingBytes, records, boundaryFingerprint });
   }
+}
+
+/** Read all bounded current bytes without decoding. A match is only a file observation. */
+export async function probeSourceFile(path: string, context: IdentityContext, candidate: ProofContract & Readonly<{ observedSize: number; contentFingerprint: string }>, options: SourcePrefixOptions = {}): Promise<SourceProbeResult> {
+  validSourcePath(path); path = resolve(path);
+  const selected = sourcePrefixOptions(options), signal = selected.signal;
+  if (signal?.aborted) return Object.freeze({ status: "aborted" });
+  let file: FileHandle | undefined, writer: SourceFileProofWriter | undefined, complete = false;
+  let result: SourceProbeResult;
+  try {
+    await assertNoSymlink(path);
+    const beforeOpen = await lstat(path, { bigint: true });
+    if (!beforeOpen.isFile()) throw new SafeError("INPUT_ACCESS_FAILED");
+    file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    const opening = await file.stat({ bigint: true });
+    if (!sameFile(beforeOpen, opening)) result = changed();
+    else if (opening.size < 0n || opening.size > BigInt(selected.maxFileBytes)) result = rejected("file_limit");
+    else {
+      result = Object.freeze({ status: "mismatch" });
+      if (opening.size === BigInt(candidate.observedSize)) {
+        writer = context.startSourceFileProof({ sourceId: candidate.sourceId, provider: candidate.provider, parserVersion: candidate.parserVersion,
+          maxFileBytes: selected.maxFileBytes, maxRecords: selected.maxRecords, maxLineBytes: selected.maxLineBytes, observedSize: candidate.observedSize });
+        const bytes = Buffer.allocUnsafe(selected.chunkBytes); let received = 0;
+        while (received < candidate.observedSize) {
+          if (signal?.aborted) break;
+          const read = await file.read(bytes, 0, Math.min(bytes.length, candidate.observedSize - received), received);
+          if (read.bytesRead === 0) { result = changed(); break; }
+          writer.update(bytes.subarray(0, read.bytesRead)); received += read.bytesRead;
+        }
+        if (received === candidate.observedSize && !signal?.aborted) complete = true;
+      }
+      // Check even an immediate size-mismatch miss, before handing off to reparse.
+      try {
+        await assertNoSymlink(path);
+        const finalPath = await lstat(path, { bigint: true }), finalHandle = await file.stat({ bigint: true });
+        if (!sameFile(opening, finalPath) || !sameFile(opening, finalHandle)) result = changed();
+      } catch { result = changed(); }
+    }
+  } catch (error) {
+    const code = error instanceof SafeError && error.code === "UNSAFE_DATA_PATH" ? "SYMLINK_SKIPPED" : "INPUT_ACCESS_FAILED";
+    result = rejected("reader_error", diagnostic(code, "source-1"));
+  } finally {
+    if (file) try { await file.close(); } catch { result = rejected("reader_error", diagnostic("INPUT_ACCESS_FAILED", "source-1")); }
+  }
+  try {
+    if (signal?.aborted) return Object.freeze({ status: "aborted" });
+    if (result.status === "mismatch" && complete && writer) return Object.freeze({ status: writer.finish() === candidate.contentFingerprint ? "matched" : "mismatch" });
+    return result;
+  } finally { writer?.discard(); }
 }

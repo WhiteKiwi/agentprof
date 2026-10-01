@@ -6,7 +6,11 @@ This is the first bounded persistence slice of [P4](https://github.com/users/Whi
 
 Schema version 2 introduced one installation key binding, source headers and normalized event contributions. A source header and its entire event set are replaced in one synchronous transaction. Existing schema-1 settings are preserved. A database schema version is separate from normalization, key and parser versions.
 
-The current [metric evidence extension](P4-METRIC-STORAGE.md) upgrades to schema 3 and adds atomic turns, usage, source observations, capabilities and diagnostics. `replaceSourceSnapshot` writes both sets together. `replaceSource` remains event-only and clears prior evidence under the same revision; `readSource` exposes `evidence: null` for absent historical evidence and a bounded evidence object when present. Both readiness flags remain false. The initial version-2 evidence below is historical; the extension document owns its new contract and verification.
+The [metric evidence extension](P4-METRIC-STORAGE.md) introduced schema 3 and added atomic turns, usage, source observations, capabilities and diagnostics. `replaceSourceSnapshot` writes both sets together. `replaceSource` remains event-only and clears prior evidence under the same revision; `readSource` exposes `evidence: null` for absent historical evidence and a bounded evidence object when present. Both readiness flags remain false. The initial version-2 evidence below is historical; the extension document owns its new contract and verification.
+
+## Current schema and reuse contract (2026-10-01)
+
+[Unchanged-source reuse](P4-UNCHANGED-SCAN.md) advances the writable store to schema 4, preserving schema-3 generations and settings. Optional whole-byte keyed `cacheEvidence` belongs to the same revision as the header/events/metric evidence. Full replacement without proof and event-only replacement clear it; `markUnavailable` clears it while preserving historical contributions. Missing proof is a cache miss; present invalid proof is a safe storage failure. A successful `confirmUnchangedSource` validates the entire generation in a fresh owned synchronous read transaction and leaves all data/revisions unchanged. Unlike general `readSource`, it rejects a caller-owned transaction untouched. The original event-storage verification below remains historical.
 
 ## Source and privacy contract
 

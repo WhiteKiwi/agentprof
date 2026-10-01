@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { createIdentityContext } from "../src/normalize/identity.js";
 import { MAX_LINE_BYTES, READER_CHUNK_BYTES } from "../src/scanner/jsonl.js";
-import { MAX_SOURCE_FILE_BYTES, MAX_SOURCE_RECORDS, readSourcePrefix } from "../src/scanner/source-prefix.js";
+import { MAX_SOURCE_FILE_BYTES, MAX_SOURCE_RECORDS, readSourcePrefix, readSourcePrefixWithProof, probeSourceFile } from "../src/scanner/source-prefix.js";
 import { temporaryDirectory } from "./helpers.js";
 
 const context = createIdentityContext(new Uint8Array(32).fill(31), "3".repeat(32));
@@ -191,5 +191,81 @@ describe("file descriptor ownership", () => {
         await expect(handles.at(-1)!.stat()).rejects.toMatchObject({ code: "EBADF" });
       }
     } finally { spy.mockRestore(); syncBuiltinESMExports(); for (const handle of handles) await handle.close(); }
+  });
+});
+
+describe("same-read whole-byte proof and bounded raw probe", () => {
+  function contract(path: string) { return { sourceId: context.fingerprint("source", ["codex", path]), provider: "codex" as const, parserVersion: 1 }; }
+  it.each([Buffer.alloc(0), Buffer.from([0xf0, 0x9f]), Buffer.from('\ufeff{"word":"한"}\r\n{"tail":')])("covers every actual parsing byte including zero-record and unfinished sources", async bytes => {
+    const path = await source(bytes), c = contract(path);
+    const prefix = await readSourcePrefixWithProof(path, context, c, accept, { chunkBytes: 1 }); expect(prefix.status).toBe("observed");
+    if (prefix.status !== "observed") throw new Error();
+    const writer = context.startSourceFileProof({ ...c, maxFileBytes: MAX_SOURCE_FILE_BYTES, maxRecords: MAX_SOURCE_RECORDS, maxLineBytes: MAX_LINE_BYTES, observedSize: bytes.length }); writer.update(bytes);
+    expect(prefix.contentFingerprint).toBe(writer.finish());
+    expect(await probeSourceFile(path, context, { ...c, observedSize: bytes.length, contentFingerprint: prefix.contentFingerprint }, { chunkBytes: 7 })).toEqual({ status: "matched" });
+    expect(JSON.stringify(prefix)).not.toContain(path);
+  });
+  it("mints proof from the exact decoder bytes rather than a later separate read", async () => {
+    const bytes = Buffer.from('{"value":1}\n'), returned = Buffer.from('{"value":2}\n'), path = await source(bytes), c = contract(path), opening = fileSystem.open;
+    let changed = false; const values: unknown[] = [];
+    const spy = vi.spyOn(fileSystem, "open").mockImplementation(async (...args) => {
+      const handle = await opening(...args), read = handle.read.bind(handle);
+      handle.read = (async (...a: Parameters<typeof handle.read>) => { const result = await read(...a); if (!changed) { changed = true; (a[0] as Buffer).set(returned); } return result; }) as typeof handle.read;
+      return handle;
+    }); syncBuiltinESMExports();
+    let prefix;
+    try { prefix = await readSourcePrefixWithProof(path, context, c, entry => { values.push(entry.value); return true; }); }
+    finally { spy.mockRestore(); syncBuiltinESMExports(); }
+    expect(values).toEqual([{ value: 2 }]); if (prefix.status !== "observed") throw new Error();
+    const writer = context.startSourceFileProof({ ...c, maxFileBytes: MAX_SOURCE_FILE_BYTES, maxRecords: MAX_SOURCE_RECORDS, maxLineBytes: MAX_LINE_BYTES, observedSize: returned.length }); writer.update(returned);
+    expect(prefix.contentFingerprint).toBe(writer.finish());
+    expect(await probeSourceFile(path, context, { ...c, observedSize: returned.length, contentFingerprint: prefix.contentFingerprint })).toEqual({ status: "mismatch" });
+  });
+  it.each(["append", "truncate", "rewrite", "replace", "unlink", "symlink", "short", "abort", "read_error", "close_error"] as const)("rejects probe %s and closes the actual descriptor before returning", async change => {
+    const bytes = Buffer.from('{"value":1}\n{"value":2}\n'), path = await source(bytes), c = contract(path);
+    const parsed = await readSourcePrefixWithProof(path, context, c, accept); if (parsed.status !== "observed") throw new Error();
+    const opening = fileSystem.open, controller = new AbortController(), handles: FileHandle[] = []; let injected = false;
+    const spy = vi.spyOn(fileSystem, "open").mockImplementation(async (...args) => {
+      const handle = await opening(...args), read = handle.read.bind(handle), close = handle.close.bind(handle); handles.push(handle);
+      handle.read = (async (...a: Parameters<typeof handle.read>) => {
+        if (change === "short") return { bytesRead: 0, buffer: a[0] };
+        if (change === "read_error") throw new Error("FICTITIOUS_READ_SECRET");
+        const r = await read(...a);
+        if (!injected) {
+          injected = true;
+          if (change === "append") await appendFile(path, "x");
+          if (change === "truncate") await truncate(path, 0);
+          if (change === "rewrite") await writeFile(path, bytes.toString().replace('"value":1', '"value":9'));
+          if (change === "replace" || change === "symlink") { const newPath = path + ".tmp"; await writeFile(newPath, bytes); if (change === "replace") await rename(newPath, path); else { await unlink(path); await symlink(newPath, path); } }
+          if (change === "unlink") await unlink(path);
+          if (change === "abort") controller.abort();
+        }
+        return r;
+      }) as typeof handle.read;
+      if (change === "close_error") handle.close = async () => { await close(); throw new Error("FICTITIOUS_CLOSE_SECRET"); };
+      return handle;
+    }); syncBuiltinESMExports();
+    try {
+      const result = await probeSourceFile(path, context, { ...c, observedSize: bytes.length, contentFingerprint: parsed.contentFingerprint }, { chunkBytes: 5, signal: controller.signal });
+      expect(result.status).toBe(change === "abort" ? "aborted" : "rejected"); expect(JSON.stringify(result)).not.toContain("FICTITIOUS");
+      await expect(handles[0]!.stat()).rejects.toMatchObject({ code: "EBADF" });
+    } finally { spy.mockRestore(); syncBuiltinESMExports(); }
+  });
+  it("does not read a size mismatch and still enforces file cap/nonregular/no-follow policy", async () => {
+    const path = await source('{}\n'), c = contract(path), candidate = { ...c, observedSize: 0, contentFingerprint: context.fingerprint("content", ["not-used"]) };
+    expect(await probeSourceFile(path, context, candidate)).toEqual({ status: "mismatch" });
+    expect(await probeSourceFile(path, context, candidate, { maxFileBytes: 2 })).toMatchObject({ status: "rejected", reason: "file_limit" });
+    const fifo = path + ".fifo"; execFileSync("mkfifo", [fifo]); expect(await probeSourceFile(fifo, context, candidate)).toMatchObject({ status: "rejected", reason: "reader_error" });
+    const link = path + ".link"; await symlink(path, link); expect(await probeSourceFile(link, context, candidate)).toMatchObject({ status: "rejected", reason: "reader_error", diagnostic: { code: "SYMLINK_SKIPPED" } });
+    const controller = new AbortController(); controller.abort(); expect(await probeSourceFile(path, context, candidate, { signal: controller.signal })).toEqual({ status: "aborted" });
+  });
+  it("discards parsing proof on close failure and never accepts raw observer options", async () => {
+    const path = await source('{}\n'), c = contract(path), opening = fileSystem.open; let finishes = 0, discarded = 0;
+    const instrumented = { ...context, startSourceFileProof(input: Parameters<typeof context.startSourceFileProof>[0]) { const w = context.startSourceFileProof(input); return { update: w.update, finish() { finishes++; return w.finish(); }, discard() { discarded++; w.discard(); } }; } };
+    const spy = vi.spyOn(fileSystem, "open").mockImplementation(async (...args) => { const h = await opening(...args), close = h.close.bind(h); h.close = async () => { await close(); throw new Error("private"); }; return h; }); syncBuiltinESMExports();
+    try { expect(await readSourcePrefixWithProof(path, instrumented, c, accept)).toMatchObject({ status: "rejected", reason: "reader_error" }); }
+    finally { spy.mockRestore(); syncBuiltinESMExports(); }
+    expect(finishes).toBe(0); expect(discarded).toBe(1);
+    await expect(readSourcePrefixWithProof(path, context, c, accept, { observeRaw() { throw new Error(); } } as never)).rejects.toMatchObject({ code: "INVALID_ARGUMENT" });
   });
 });
