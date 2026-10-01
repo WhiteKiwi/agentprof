@@ -4,13 +4,15 @@
 
 This is the first bounded persistence slice of [P4](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833059), reviewed by the coordinator before implementation. It advances the existing [SPEC](SPEC.md) and [normalization/privacy contract](NORMALIZATION.md) without exposing a partially working scan command. P2 and P3 adapters are merged; their in-memory inspection APIs are not durable restore APIs.
 
-Schema version 2 adds one installation key binding, source headers and normalized event contributions. A source header and its entire event set are replaced in one synchronous transaction. Existing schema-1 settings are preserved. A database schema version is separate from normalization, key and parser versions.
+Schema version 2 introduced one installation key binding, source headers and normalized event contributions. A source header and its entire event set are replaced in one synchronous transaction. Existing schema-1 settings are preserved. A database schema version is separate from normalization, key and parser versions.
+
+The current [metric evidence extension](P4-METRIC-STORAGE.md) upgrades to schema 3 and adds atomic turns, usage, source observations, capabilities and diagnostics. `replaceSourceSnapshot` writes both sets together. `replaceSource` remains event-only and clears prior evidence under the same revision; `readSource` exposes `evidence: null` for absent historical evidence and a bounded evidence object when present. Both readiness flags remain false. The initial version-2 evidence below is historical; the extension document owns its new contract and verification.
 
 ## Source and privacy contract
 
 The caller supplies a complete event contribution set for exactly one source prefix, produced by a separate single-source adapter instance. Every event's keyed source reference must equal the header source ID. Multiple-source adapter snapshots have already selected canonical values; splitting them by sourceRef cannot recover original contributions and is unsupported.
 
-Different sources may hold the same canonical event ID. The store keeps both contributions and chooses no winner, sums no metrics and does not claim to resolve archive/fork provenance. Duplicate event IDs within one submitted source are rejected. Readback explicitly reports that it is neither aggregation-ready nor parser-resume-ready. Turns, usage, diagnostics, provenance and durable parser state remain later P4 integration work.
+Different sources may hold the same canonical event ID. The store keeps both contributions and chooses no winner, sums no metrics and does not claim to resolve archive/fork provenance. Duplicate event IDs within one submitted source are rejected. Readback explicitly reports that it is neither aggregation-ready nor parser-resume-ready. The extension stores metric evidence; complete provenance graphs, cross-source interpretation and durable parser state remain later P4 work.
 
 Inputs are read through own data properties and validated into fresh allowlist objects before serialization. Unknown fields, getters, custom prototypes and `toJSON` are rejected without execution. All identity domains and key IDs, provider/version fields, finite numeric values, UTC timestamps, lookup ranges and source offsets are checked. Tool names and command patterns use closed safe vocabularies matching normalization version 1; arbitrary strings in those fields are not accepted. Existing normalized identities are never regenerated. No paths, raw records, prompts, command arguments, outputs or secrets are stored.
 
@@ -18,13 +20,13 @@ The installation key ID is non-secret and binds the store on its first successfu
 
 ## Atomicity, revisions and lifecycle
 
-- Migration reads and validates the current schema version after acquiring `BEGIN IMMEDIATE`. Concurrent first opens/upgrades serialize: a connection whose peer already completed version 2 observes that version under the lock and does not repeat DDL. Unsupported/future versions keep their existing safe error codes; failed migrations preserve the prior schema and settings.
+- Migration reads and validates the current schema version after acquiring `BEGIN IMMEDIATE`. Concurrent first opens/upgrades serialize: a connection whose peer already completed the target version observes it under the lock and does not repeat DDL. Unsupported/future versions keep their existing safe error codes; failed migrations preserve the prior schema and settings.
 - A new source uses `expectedRevision: null`; an existing source requires its positive current revision. Compare-and-swap runs inside `BEGIN IMMEDIATE`, before any mutation. A stale writer receives a distinct safe result and makes no change.
 - Each successful replacement increments the source revision, even for equal content. Revisions are never reused. An empty replacement clears that source's events atomically. Revision overflow is rejected.
 - Marking a source unavailable retains the header, checkpoint and event history while incrementing its revision. A later successful full replacement makes it available again. The API does not automatically delete missing input history or remove source headers.
 - SQL failures roll back source identity binding, event rows, header/checkpoint and revision together. No caller-owned transaction is committed or rolled back after a nested BEGIN rejection.
 - An optional AbortSignal is checked before work, within the write loop and before commit. A detected pre-commit abort rolls back. Synchronous SQLite work cannot promise immediate delivery of asynchronous abort notifications; after commit the write is successful.
-- Readback obtains the header and ordered event rows in one SQL statement/snapshot, so another connection cannot mix generations between separate header and event queries. An iterator stops at the byte/count limit and closes on every return or failure; it does not materialize all rows before checking the total.
+- Readback obtains the header, events and any metric evidence from one pinned SQLite transaction snapshot, so another connection cannot mix generations between queries. Actual count/byte preflight runs before payload selection and ordered iterators check again while reading. Cursors close on every outcome; the store ends only a read transaction it owns. The [extension contract](P4-METRIC-STORAGE.md) specifies limits that also protect against SQLite sorting before the first payload row reaches JavaScript.
 
 ## Completed-line observation boundary
 

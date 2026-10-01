@@ -6,7 +6,7 @@ import { types } from "node:util";
 import { SafeError } from "../privacy/diagnostics.js";
 import { ensurePrivateDirectory, fileCode, openPrivateFile } from "../privacy/paths.js";
 
-export const DATABASE_SCHEMA_VERSION = 2;
+export const DATABASE_SCHEMA_VERSION = 3;
 
 export function transaction<T>(database: DatabaseSync, operation: (() => T) & (T extends PromiseLike<unknown> ? never : unknown)): T {
   if (types.isAsyncFunction(operation)) throw new SafeError("DATABASE_TRANSACTION_FAILED");
@@ -46,7 +46,8 @@ export function migrate(database: DatabaseSync): void {
         || settings.some((row) => row["value"] !== 1) || database.prepare("SELECT version FROM schema_migrations WHERE version = 1").get() === undefined) {
         throw new SafeError("DATABASE_MIGRATION_FAILED");
       }
-      database.exec(`
+      if (current === 2 && database.prepare("SELECT version FROM schema_migrations WHERE version = 2").get() === undefined) throw new SafeError("DATABASE_MIGRATION_FAILED");
+      if (current < 2) database.exec(`
         CREATE TABLE source_store_identity (
           singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
           key_id TEXT NOT NULL UNIQUE CHECK(length(key_id) = 32)
@@ -74,6 +75,28 @@ export function migrate(database: DatabaseSync): void {
         ) STRICT;
         INSERT INTO schema_migrations(version) VALUES (2);
         PRAGMA user_version = 2;
+      `);
+      database.exec(`
+        CREATE TABLE source_metric_headers (
+          source_id TEXT PRIMARY KEY REFERENCES source_event_headers(source_id),
+          contract_version INTEGER NOT NULL CHECK(contract_version = 1),
+          turn_count INTEGER NOT NULL CHECK(turn_count BETWEEN 0 AND 4096),
+          usage_count INTEGER NOT NULL CHECK(usage_count BETWEEN 0 AND 4096),
+          observation_count INTEGER NOT NULL CHECK(observation_count BETWEEN 0 AND 8192),
+          diagnostic_count INTEGER NOT NULL CHECK(diagnostic_count BETWEEN 0 AND 8192),
+          metric_bytes INTEGER NOT NULL CHECK(metric_bytes BETWEEN 0 AND 16777216)
+        ) STRICT;
+        CREATE TABLE source_metric_contributions (
+          source_id TEXT NOT NULL REFERENCES source_metric_headers(source_id),
+          kind TEXT NOT NULL CHECK(kind IN ('turn', 'usage', 'observation', 'diagnostic', 'capabilities')),
+          ordinal INTEGER NOT NULL CHECK(ordinal BETWEEN 0 AND 8191),
+          row_id TEXT,
+          row_json TEXT NOT NULL CHECK(length(CAST(row_json AS BLOB)) <= 65536),
+          PRIMARY KEY(source_id, kind, ordinal),
+          UNIQUE(source_id, kind, row_id)
+        ) STRICT;
+        INSERT INTO schema_migrations(version) VALUES (3);
+        PRAGMA user_version = 3;
       `);
     }
     database.exec("COMMIT");

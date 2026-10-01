@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { migrate, openDatabase } from "../src/db/database.js";
 import { createSourceStore } from "../src/db/source-store.js";
-import type { SourceInput, StoredSource } from "../src/db/source-store.js";
+import type { SourceInput, SourceSnapshotInput, StoredSource } from "../src/db/source-store.js";
 import { createIdentityContext } from "../src/normalize/identity.js";
 import { ClaudeAdapter, createClaudeAdapter } from "../src/parsers/claude/index.js";
 import { CodexAdapter, createCodexAdapter } from "../src/parsers/codex/index.js";
@@ -25,10 +25,10 @@ const databases: DatabaseSync[] = [];
 afterEach(() => { vi.restoreAllMocks(); syncBuiltinESMExports(); for (const db of databases.splice(0)) db.close(); });
 function memory() { const db = new DatabaseSync(":memory:"); migrate(db); databases.push(db); return db; }
 function rows(db: DatabaseSync) {
-  return { headers: db.prepare("SELECT * FROM source_event_headers ORDER BY source_id").all(), events: db.prepare("SELECT * FROM source_event_contributions ORDER BY source_id,event_id").all(), identity: db.prepare("SELECT * FROM source_store_identity").all() };
+  return { headers: db.prepare("SELECT * FROM source_event_headers ORDER BY source_id").all(), events: db.prepare("SELECT * FROM source_event_contributions ORDER BY source_id,event_id").all(), identity: db.prepare("SELECT * FROM source_store_identity").all(), metricHeaders: db.prepare("SELECT * FROM source_metric_headers ORDER BY source_id").all(), metrics: db.prepare("SELECT * FROM source_metric_contributions ORDER BY source_id,kind,ordinal").all() };
 }
 function asInput(source: StoredSource): SourceInput {
-  const { revision: _revision, availability: _availability, aggregationReady: _aggregationReady, parserResumeReady: _parserResumeReady, ...input } = source;
+  const { revision: _revision, availability: _availability, aggregationReady: _aggregationReady, parserResumeReady: _parserResumeReady, evidence: _evidence, persistedScope: _persistedScope, ...input } = source;
   return input;
 }
 const metadata = { type: "session_meta", payload: { id: "FICTITIOUS_SESSION", cli_version: "0.159.0", cwd: "/FICTITIOUS_PROJECT" } };
@@ -61,7 +61,7 @@ async function seed(db: DatabaseSync, path: string) {
   return { store, result, saved: store.readSource(result.sourceId)! };
 }
 
-describe("actual provider adapters through durable event-only ingestion", () => {
+describe("actual provider adapters through durable event and metric-evidence ingestion", () => {
   it("keeps the ten fixture oracle cases in the exercised set", () => { expect(providerFixtures).toHaveLength(10); });
 
   it.each(providerFixtures)("stores exactly the final independent adapter snapshot for %s and reopens", async (name) => {
@@ -74,11 +74,12 @@ describe("actual provider adapters through durable event-only ingestion", () => 
       expect(expected.snapshot.capabilities.stateLimited).toBe(false);
       const result = await ingestSourceFile(store, context, { path, provider, expectedRevision: null, chunkBytes: 17 });
       expect(result).toEqual({ status: "committed", revision: 1, sourceId: context.fingerprint("source", [provider, resolve(path)]),
-        persistedScope: "events_only", aggregationReady: false, parserResumeReady: false,
+        persistedScope: "events_and_metric_evidence", aggregationReady: false, parserResumeReady: false,
         capabilities: expected.snapshot.capabilities, diagnostics: expected.snapshot.diagnostics, readerDiagnostics: [] });
       const stored = store.readSource(result.sourceId)!;
       expect(stored).toMatchObject({ completedOffset: expected.completedOffset, observedSize: bytes.length, boundaryFingerprint: expectedBoundary(bytes, expected.completedOffset),
         aggregationReady: false, parserResumeReady: false, events: [...expected.snapshot.events].sort((a, b) => a.id.localeCompare(b.id)) });
+      expect(stored.evidence).toEqual({ turns: expected.snapshot.turns, usage: expected.snapshot.usage, observations: expected.snapshot.observations, diagnostics: expected.snapshot.diagnostics, capabilities: expected.snapshot.capabilities });
       const exposed = JSON.stringify({ result, stored, rows: rows(db) });
       expect(exposed).not.toContain("FICTITIOUS_"); expect(exposed).not.toContain(path);
       expect(exposed).not.toContain(createHash("sha256").update(bytes).digest("hex"));
@@ -129,7 +130,7 @@ describe("actual provider adapters through durable event-only ingestion", () => 
     expect(oracle.capabilities.coverage).toBe("partial"); expect(oracle.diagnostics.length).toBeGreaterThan(0);
     const store = createSourceStore(memory(), context.keyId);
     const result = await ingestSourceFile(store, context, { path, provider, expectedRevision: null });
-    expect(result).toMatchObject({ status: "committed", capabilities: oracle.capabilities, diagnostics: oracle.diagnostics, aggregationReady: false, parserResumeReady: false, persistedScope: "events_only" });
+    expect(result).toMatchObject({ status: "committed", capabilities: oracle.capabilities, diagnostics: oracle.diagnostics, aggregationReady: false, parserResumeReady: false, persistedScope: "events_and_metric_evidence" });
     expect(store.readSource(result.sourceId)!.events).toEqual([...oracle.events].sort((a, b) => a.id.localeCompare(b.id)));
   });
 });
@@ -199,10 +200,10 @@ describe("rejected observations preserve the entire prior generation", () => {
       expect(safeErrorEnvelope(failure).error.code).toBe("INVALID_ARGUMENT");
       expect(JSON.stringify(safeErrorEnvelope(failure))).not.toContain("FICTITIOUS_");
     }
-    expect(invoked).toBe(0); expect(rows(db)).toEqual({ headers: [], events: [], identity: [] });
+    expect(invoked).toBe(0); expect(rows(db)).toEqual({ headers: [], events: [], identity: [], metricHeaders: [], metrics: [] });
     await writeFile(path, "FICTITIOUS_INVALID\n");
     expect(await ingestSourceFile(store, context, { path, provider: "codex", expectedRevision: null })).toMatchObject({ status: "rejected" });
-    expect(rows(db)).toEqual({ headers: [], events: [], identity: [] });
+    expect(rows(db)).toEqual({ headers: [], events: [], identity: [], metricHeaders: [], metrics: [] });
   });
 });
 
@@ -248,8 +249,8 @@ describe("cancellation and the original optimistic revision", () => {
     expect(await ingestSourceFile(store, context, { path, provider: "codex", expectedRevision: 1, signal: during.signal })).toMatchObject({ status: "aborted" });
     expect(rows(db)).toEqual(before); db.exec("DROP TRIGGER abort_ingest");
     const after = new AbortController();
-    const wrapped = { ...store, replaceSource(input: SourceInput, revision: number | null, signal?: AbortSignal) {
-      const result = store.replaceSource(input, revision, signal); after.abort(); return result;
+    const wrapped = { ...store, replaceSourceSnapshot(input: SourceSnapshotInput, revision: number | null, signal?: AbortSignal) {
+      const result = store.replaceSourceSnapshot(input, revision, signal); after.abort(); return result;
     } };
     expect(await ingestSourceFile(wrapped, context, { path, provider: "codex", expectedRevision: 1, signal: after.signal })).toMatchObject({ status: "committed", revision: 2 });
     expect(store.readSource(context.fingerprint("source", ["codex", path]))!.events[0]!.status).toBe("completed");
@@ -268,7 +269,7 @@ describe("cancellation and the original optimistic revision", () => {
       });
       const stale = await ingestSourceFile(store, context, { path, provider: "codex", expectedRevision: 1 });
       expect(won).toBe(true); expect(stale).toMatchObject({ status: "stale", actualRevision: 2 });
-      expect(store.readSource(result.sourceId)).toMatchObject({ revision: 2, completedOffset: saved.completedOffset, observedSize: saved.observedSize, events: [] });
+      expect(store.readSource(result.sourceId)).toMatchObject({ revision: 2, completedOffset: saved.completedOffset, observedSize: saved.observedSize, events: [], evidence: null, persistedScope: "events_only" });
       const before = rows(a);
       expect(await ingestSourceFile(store, context, { path, provider: "codex", expectedRevision: null })).toMatchObject({ status: "stale", actualRevision: 2 });
       expect(rows(a)).toEqual(before);
