@@ -49,7 +49,7 @@ The result contains only safe keyed identities, fixed status/reason values, coun
 
 The initial per-call ceiling is 64 MiB of observed file bytes and 32,768 complete records; callers may lower these limits. Existing 1 MiB line, 64 KiB read chunk and provider/store state limits remain in force. Oversize inputs reject safely. These are bounded integration limits, not a process-RSS or full-history performance guarantee. Large-history streaming persistence and the previously proposed 1 GiB product acceptance remain separate work.
 
-## Execution evidence
+## Initial implementation evidence
 
 The first implementation check on 2026-10-01 used Node 24.19.0, Linux x64 and built-in SQLite, on merged base `adb8bb6e4b0dfeb94f417f91fe234bfa6fdcea5d`. Inputs were existing synthetic fixtures and synthetic temporary files; no user logs were read.
 
@@ -64,4 +64,15 @@ The first implementation check on 2026-10-01 used Node 24.19.0, Linux x64 and bu
 
 PASS: an independent final static code review found no blocking defect in the shared decoder, observed-file checks, privacy boundary, original-revision CAS, cleanup/cancellation ordering or tests. The reviewer inspected the recorded check result and did not rerun the suite.
 
-Product scan/CLI, large-history resource acceptance, durable parser resume and aggregation are NOT RUN and are not completed by this bounded API. This slice has not been tested locally on macOS or on every supported Node version.
+Product scan/CLI, large-history resource acceptance, durable parser resume and aggregation are NOT RUN and are not completed by this bounded API. The initial implementation evidence above covers Linux Node 24.19.0; supported macOS coordinator results follow below.
+
+## Coordinator verification (2026-10-01)
+
+The coordinator reviewed all eight PR files on source/test head `e615a40dc2b7b18c320f6b4c5b8eb389b63f0ed8`, base `adb8bb6e4b0dfeb94f417f91fe234bfa6fdcea5d`, and found no additional blocking defect. Only this documentation evidence changed after local verification.
+
+- PASS: clean `npm ci --ignore-scripts` followed by macOS arm64 Node 24.15.0, 24.21.0 and 26.7.0, each full `npm run check`: TypeScript, build, 288 tests in 15 files and the 29-file production artifact. Isolated npm exec/global-prefix install and help/version checks passed with lifecycle scripts disabled.
+- PASS: Node 22.16.0 rejects the built CLI before unsupported imports with `UNSUPPORTED_RUNTIME` and exit 2. Documentation validation checked 29 Markdown documents, 215 local links and 23 anchors without failures.
+- Review included same-descriptor ownership, original opening-size behavior, bigint path/handle observations, safe resource bounds, physical LF/tail boundaries, unchanged provider identities and semantics, final-event snapshots, direct capability-limit rejection, original-revision CAS, SQL rollback and cancellation/cleanup ordering. All ten provider fixture comparisons and the existing independent semantic/privacy oracles passed.
+- The original published source head passed [Linux CI](https://github.com/WhiteKiwi/agentprof/actions/runs/36835271091) for Node 24.15.0, 24.21.0 and 26.7.0, including tests/artifact, plus the Node 22.16.0 rejection guard. Merge requires successful CI for the final published head including this evidence update; exact head, run URLs and merge evidence are recorded in [PR #20](https://github.com/WhiteKiwi/agentprof/pull/20) and the [P4 Project item](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833059).
+
+This completes only bounded event-only ingestion of one explicit file. Observed stability remains weaker than a filesystem snapshot, saved boundaries do not authorize parser resume, and both readiness flags remain false. Full P4 still needs durable parser state and diagnostic/provenance/usage/turn persistence, cross-source integration, discovery/move/archive handling, incremental resume, scan CLI, aggregation and full-history resource acceptance.
