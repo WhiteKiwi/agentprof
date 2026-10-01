@@ -1,6 +1,6 @@
 # AgentProf: bounded read-only selected-source stats
 
-Reviewed implementation contract, 2026-10-01 13:48 UTC. Separate developer: /root/implement_agentprof_readonly_stats; coordinator: /root. Implementation and verification pending. PR24 remains unmerged at its approved exact head. Supported concurrency is existing-product DELETE transactions; unrelated external mode changes are explicitly outside this contract.
+Planning record, 2026-10-01 13:48 UTC. Separate developer: /root/implement_agentprof_readonly_stats; coordinator: /root. At that handoff, implementation/verification were pending and PR24 was unmerged at its approved exact head. The repository-owner review below records the subsequent merged dependency and completed macOS verification. Supported concurrency is existing-product DELETE transactions; unrelated external mode changes are explicitly outside this contract.
 
 ## Recommendation and outcome
 
@@ -8,7 +8,7 @@ Ship `agentprof stats --list-sources` and `agentprof stats --source <full-source
 
 Return source inventory, measured same-stream/category/pattern/scope/evidence duration cohorts, and observed eligible final-response usage with the existing exclusions, suppression and null/zero behavior. Retain `scope: source_prefix`, `crossSourceReconciled: false`, `aggregationReady: false`, `parserResumeReady: false`. No global/session/history totals, intervals, shares, inferred elapsed/idle time, retry/waste rules, cost or savings. No raw inputs are opened.
 
-## Verified dependencies and claim boundaries
+## Verified dependencies and claim boundaries at planning
 
 - GitHub main read through the connector at 13:38 UTC: `62e4a7b27fac212292a952403d464ab63d653a6e` (PR23 merged).
 - PR24 exact dependency: `9cb0b19675cb8f695ceee3b6860780e5ccdab932`, tree `1220d05a34eb6045e6e2f7aa278ede6c49548754`. At the planning read it is draft/unmerged, nine successful checks, seven remote files verified. Summary Project item 259630371 visibly records all four bounded Verify entries satisfied and all source-summary reservations released. Status remains In Progress for repository-owner review/merge.
@@ -148,7 +148,7 @@ Coordinator review found that null cohorts mean either suppression or no eligibl
 
 Root approved explicit INDEXED BY on both known product-schema primary-key autoindexes after review: sqlite_autoindex_source_event_headers_1 and sqlite_autoindex_source_metric_headers_1, verified from a synthetic schema-3 store. Missing canonical indexes fail safely rather than allowing an automatic index or temporary sort. This is not an authentication of arbitrary malicious recreated index columns/collation, and does not widen the supported product-schema contract. Tests recreate each table without its index and expect fixed failure.
 
-## Final local verification — 2026-10-01 14:11 UTC
+## Implementation handoff verification — 2026-10-01 14:11 UTC
 
 - PASS: Linux x64, Node 24.19.0, `npm run check` with an explicit writable npm cache: typecheck, build, 488 tests across 23 files, and 35-file artifact. The initial run's default home-cache ENOENT was an environment failure; the explicit-cache final run passed all stages.
 - PASS: 32 new opener cases, 14 catalogue cases, 16 stats CLI cases. One obsolete stats-pending test was replaced. Existing PR24 summary, parser, scanner, store and privacy suites remain unchanged and pass.
@@ -169,3 +169,79 @@ Root final read found that a recreated non-STRICT settings table could return ov
 Final metadata correction full check attempt at 14:14 UTC was interrupted: Vitest read-only worker received SIGKILL, with 22 files/473 tests completed and artifact not reached. This is not a final pass. Oversized corruption fixtures are reduced to 64 KiB (still far above scalar contract) to keep test memory bounded, then all gates are rerun.
 
 Final metadata correction gate at 2026-10-01 14:16 UTC: Linux Node24.19 full check PASS 490 tests / 23 files / 35-file artifact. Both oversized settings fixtures reject with integer-only SQL projection and unchanged bytes. The earlier SIGKILL attempt is superseded by the successful full rerun; it is not attributed to a proven root cause. Opener suite is now 34 tests. Seven inotify scenarios rerun against the final product build PASS.
+
+## Repository-owner macOS verification correction plan (2026-10-01)
+
+PR #24 is now merged at main
+`b96bda476042b41a3b60507376b781c677e6997d`. PR #25 was retargeted to main;
+local integration head `456b3d24b8d98c4e8d24be187353ef2b0be076cd` preserves
+all 16 original slice files and the unchanged source-summary implementation.
+Only PR #24's reviewed verification document is added by that integration.
+
+The first macOS arm64 Node 24.15.0 full check passed typecheck/build, but
+34 opener tests failed before their test bodies: the new fixture uses the
+logical `/var/...` temporary path, which existing private-path validation
+correctly rejects as a symbolic-link parent. The other 22 files/456 tests
+passed; artifact verification was not reached. This is not a complete pass.
+
+Before changing tests, the correction plan is to canonicalize only the newly
+created synthetic fixture directory, using the existing test-helper convention
+or an explicit realpath. Preserve intentional symlink/FIFO/directory swap
+fixtures, strict production path validation, all safety assertions and cleanup.
+No production helper, schema or summary change is authorized by this correction.
+
+Verify the original 34 failures against the corrected focused opener suite,
+then rerun full checks on macOS Node 24.15.0/24.21.0/26.7.0, the Node 22 guard,
+documentation and exact final-head Linux CI. Preserve the failed-run receipt.
+Existing Linux inotify evidence remains scoped to its recorded environment;
+no macOS transient-mutation observer or syscall trace is claimed by snapshots.
+
+Focused correction gate at 2026-10-01 14:58 UTC: macOS arm64 Node 24.15.0,
+`node node_modules/vitest/vitest.mjs run tests/read-only-database.test.ts`, with
+the pinned runtime and an isolated writable npm cache, PASS: 34 tests / 1 file,
+exit 0. Only the newly created synthetic fixture directory is resolved with
+`realpath`; all existing safety assertions, intentional FIFO/symlink/directory
+swaps and cleanup remain unchanged. No newly exposed failure was observed.
+At the focused-check handoff, full integration checks were pending; that
+focused pass does not replace the preserved failed full-check receipt or claim
+a macOS transient-mutation trace. Completed integration results follow.
+
+
+## Repository-owner review and integrated verification (2026-10-01)
+
+- Reviewed all 16 files beyond merged main, with no omitted files: eight
+  product/script files selected with OCR delegate rules and eight document/test
+  files inspected manually. The only new actionable finding was the macOS
+  synthetic fixture path failure described above; it is corrected. All product
+  code is unchanged from original PR25 head
+  `7a5570bf88446b1e3580b6d8039458d960f57df9`.
+- PR24 is merged at main `b96bda476042b41a3b60507376b781c677e6997d`.
+  Integration commit `456b3d24b8d98c4e8d24be187353ef2b0be076cd` preserves
+  the exact summary implementation and all original slice files. PR25 now
+  targets main; no summary dependency file is counted as a new slice change.
+- Independent correction commit
+  `c699a4545365abc7798e706a2bec1beb7bdacc55` changes only the newly created
+  test fixture's realpath/import and this correction evidence. The other 14
+  original slice files, every production path rule, intentional swap fixture,
+  safety assertion and cleanup are unchanged. No test is skipped.
+- PASS at that correction commit: macOS arm64 Node 24.15.0, 24.21.0 and 26.7.0,
+  each running full `npm run check`: typecheck/build, 490 tests across 23 files,
+  and 35-file artifact verification. The 34 opener tests now pass as part of
+  each complete suite. Packed synthetic scan/list/select, npm-exec/global
+  installation and unchanged stored DB/key snapshots are included.
+- PASS: Node 22.16.0 exits 2 with fixed `UNSUPPORTED_RUNTIME` and no stdout.
+  Documentation check: 34 documents, 234 local links and 23 anchors; no broken
+  references. Diff whitespace passes. The final evidence follow-up edits only
+  this document; all other 15 verified file hashes are retained and document
+  links are checked again before publication.
+- Existing Linux inotify evidence above remains scoped to the original
+  unchanged product implementation and its recorded Linux environment. Mac
+  checks do not claim a transient-mutation observer or syscall trace. Actual
+  user logs/full-history resource checks remain unperformed; only synthetic
+  fixtures are used.
+- Exact final-head/base Linux CI, remote 16-file byte verification and merge
+  receipts are final publication gates recorded on
+  [PR25](https://github.com/WhiteKiwi/agentprof/pull/25) and its
+  [Project ticket](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=259694583).
+  Full P5/P6, global/history aggregation, insights, report/open and report
+  presentation remain outside this completed implementation slice.
