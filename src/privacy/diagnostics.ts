@@ -1,6 +1,6 @@
 export const MESSAGES = {
   INVALID_ARGUMENT: "Invalid arguments. Run agentprof --help for usage.",
-  NOT_IMPLEMENTED: "This command is not implemented in this development build. Only help and version are available.",
+  NOT_IMPLEMENTED: "This command is not implemented in this development build.",
   UNSUPPORTED_RUNTIME: "AgentProf requires Node.js >=24.15.0.",
   UNSUPPORTED_PLATFORM: "AgentProf currently supports macOS and Linux.",
   INTERNAL_ERROR: "The operation could not be completed.",

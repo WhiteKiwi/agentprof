@@ -80,7 +80,7 @@ P0에서 허용된 로컬 실로그의 소규모 층화 표본을 수작업으�
 
 2026-10-01 사용자의 초기 npm 공개 요청에 따라 이미 검증된 main의 Codex parser/JSONL reader API를 `agentprof@alpha`·`0.1.0-dev.0`로 공개했다. [NPM-ALPHA](NPM-ALPHA.md)에 고정 source archive·정확한 tarball 검토·게시·fresh registry SDK/npx 실행 결과를 기록했다. 원본 package/README의 공개 guard는 유지했다. 빈 이름 예약과 전체 제품 출시를 구분하며 후속 P7 설치·파일럿·라이선스·정식 배포 검증은 계속 필요하다.
 
-P1 구현 경계는 [NORMALIZATION.md](NORMALIZATION.md)다. CLI help/version과 원문 없는 오류, inert 정규화, bounded reader, private key·SQLite migration/동기 transaction만 포함한다. `scan`, `stats`, `insights`, `report`, `open`은 exit 2의 `NOT_IMPLEMENTED`로 처리한다. 이벤트/checkpoint 저장은 P4이며 리포트·대시보드 디자인 시스템은 별도 작업이다. CI는 Ubuntu 24.04에서 Node 24.15.0·24.21.0·26.7.0의 동일 check와 Node 22.16.0의 실행 전 거부를 수행한다. 실제 실행 결과는 [ACCEPTANCE.md](ACCEPTANCE.md)에 기록한다.
+역사적인 P1 구현 경계는 [NORMALIZATION.md](NORMALIZATION.md)다. CLI help/version과 원문 없는 오류, inert 정규화, bounded reader, private key·SQLite migration/동기 transaction만 포함한다. `scan`, `stats`, `insights`, `report`, `open`은 exit 2의 `NOT_IMPLEMENTED`로 처리한다. 이벤트/checkpoint 저장은 P4이며 리포트·대시보드 디자인 시스템은 별도 작업이다. CI는 Ubuntu 24.04에서 Node 24.15.0·24.21.0·26.7.0의 동일 check와 Node 22.16.0의 실행 전 거부를 수행한다. 실제 실행 결과는 [ACCEPTANCE.md](ACCEPTANCE.md)에 기록한다.
 
 ### P2 / P3 — Provider Adapters
 
@@ -179,3 +179,8 @@ Homebrew tap·formula 게시, npm 공개와 license 선택은 이 계획의 구�
 ## P4 metric evidence storage supplement (2026-10-01)
 
 [P4-METRIC-STORAGE.md](P4-METRIC-STORAGE.md) defines the next reviewed storage extension: final source turns, usage, observations, capabilities and safe diagnostics committed with events and completed-prefix metadata in one generation. Schema 3 preserves absent historical evidence; legacy event-only replacement clears stale evidence. Readback stays bounded and neither aggregation-ready nor parser-resume-ready. Provider interpretation, graph/recovery state and report integration are separate gates.
+
+
+## P4 bounded scan CLI supplement (2026-10-01)
+
+[P4-SCAN-CLI.md](P4-SCAN-CLI.md) connects only explicit provider roots to the merged bounded coordinator. Validate all arguments before lazy storage bootstrap; retain existing private identity, schema 3 store, per-source CAS and unchanged result evidence. A temporary SIGINT listener covers asynchronous startup and scan, with typed zero-work pre-scan cancellation, database closure and exact listener removal. Fatal error envelopes remain exit 2; returned completed/partial/aborted results use 0/1/130. No default roots, aggregate/report activation, schema/dependency changes or parser resume. Earlier P1/NORMALIZATION foundation-only statements describe that historical boundary. The coordinator approved this plan before the separate development session; the Project owns the live claim.

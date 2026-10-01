@@ -20,9 +20,12 @@ it("runs built help/version without creating private data or importing SQLite", 
   expect(help.status).toBe(0); expect(help.stdout).toContain("Usage: agentprof");
   expect(help.stderr).toBe(""); expect(existsSync(data)).toBe(false);
 });
-it.each(["scan", "stats", "insights", "report", "open"])("returns honest pending command errors: %s", (command) => {
+it.each(["stats", "insights", "report", "open"])("returns honest pending command errors: %s", (command) => {
   const args = command === "open" ? [command, "FICTITIOUS_AGENTPROF_ARG_SENTINEL.html"] : [command];
-  const result = run([...args, "--json"]);
+  const data = join(temporaryDirectory(), "must-not-create");
+  const result = run([...args, "--json", "--data-dir", data]);
+  expect(existsSync(data)).toBe(false);
+  expect(result.stderr).not.toContain("SQLite");
   expect(result.status).toBe(2);
   expect(result.stdout).toBe("");
   expect(JSON.parse(result.stderr).error.code).toBe("NOT_IMPLEMENTED");
