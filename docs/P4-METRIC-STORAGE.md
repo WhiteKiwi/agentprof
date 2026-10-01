@@ -58,6 +58,17 @@ The coordinator's 2026-10-01 implementation review identified possible payload s
 - PASS: exactly 8,192 ordered diagnostics read back unchanged; valid-shaped combined evidence exceeding 16 MiB rejects atomically. Corrupt payloads, ordinals, missing/extra rows and byte descriptors fail safely. A hostile 128 KiB row rejects during metadata preflight before either payload query runs. Owned read transactions and cursors close on failure; caller-owned transactions survive success and failure. A real WAL peer writing between header and payload statements cannot mix read generations; this test-only WAL setting does not change the product's DELETE journal mode.
 - PASS: strict own-property/privacy/domain/version/number/enum checks, no caller getters/toJSON execution, and no synthetic secret/path sentinels in rows or safe error envelopes. All 59 local documentation links checked for this slice resolve; `git diff --check` passes.
 - Review: independent coordinator review identified the initial SQLite sorting-bound gap, which was corrected with a preflight regression and repeated full check. Revised read ownership, allowlists, CAS, migration and differential evidence received no further blocking finding; final frozen-content review and publication belong to the coordinator.
-- NOT RUN for this slice: macOS, exact published-head CI and full-history performance acceptance. No scan CLI, durable parser restore, complete provenance graph, aggregate or report integration is claimed. Both readiness flags remain false.
+- At the implementation handoff, macOS, exact published-head CI and full-history performance acceptance had not run. The parent verification below adds supported-runtime evidence; full-history performance acceptance remains unverified. No scan CLI, durable parser restore, complete provenance graph, aggregate or report integration is claimed. Both readiness flags remain false.
+
+### Supported-runtime parent verification — 2026-10-01
+
+The parent reviewed all 14 published files at `94ffeaa1c7d204a28311b9dcbbddf3f631668cd7`: five product files, four test files and five documents. OCR supplied deterministic file selection and rules; the parent also reviewed every excluded test and document. No additional actionable finding remained after the corrected metadata preflight.
+
+- PASS: clean `npm ci --ignore-scripts` in an isolated macOS arm64 checkout, followed by full `npm run check` on Node 24.15.0, 24.21.0 and 26.7.0. Each runtime passed typecheck, build, 323 tests across 16 files and the 30-file artifact check, including isolated npm-exec/global-install help/version with installation scripts disabled.
+- PASS: Node 22.16.0 rejects before the CLI imports SQLite, returning `UNSUPPORTED_RUNTIME`, exit 2 and no stdout.
+- PASS: repository documentation validation checked 30 Markdown documents, 222 local links and 23 anchors with no failures; `git diff --check` passed.
+- The source and test files exercised above are unchanged by this verification-document update. Final published-head CI, remote file hashes and merge-tree equality are recorded in [PR #21](https://github.com/WhiteKiwi/agentprof/pull/21) and the Project draft before the merge is treated as verified.
+
+This verifies bounded source metric persistence and its provider evidence. Full P4 recovery/integration and full-history resource acceptance remain open; neither readiness flag is promoted.
 
 The [P4 Project draft](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833059) owns execution status and claims. Full P4 remains incomplete until its later recovery, integration and acceptance gates pass.
