@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as fsPromises from "node:fs/promises";
-import { chmod, mkdtemp, readFile, readdir, rm, writeFile, lstat, rename, symlink, mkdir } from "node:fs/promises";
+import { chmod, mkdtemp, realpath, readFile, readdir, rm, writeFile, lstat, rename, symlink, mkdir } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -13,7 +13,7 @@ vi.mock("node:fs/promises", async (original) => { const actual = await original<
 const dirs: string[] = [];
 afterEach(async () => { vi.restoreAllMocks(); for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true }); });
 async function fixture() {
-  const dir = await mkdtemp(join(tmpdir(), "agentprof-readonly-")); dirs.push(dir);
+  const dir = await realpath(await mkdtemp(join(tmpdir(), "agentprof-readonly-"))); dirs.push(dir);
   const context = await loadOrCreateIdentityContext(dir), db = await openDatabase(dir);
   const sourceId = context.fingerprint("source", ["synthetic"]);
   const input = { sourceId, provider: "codex" as const, parserVersion: 1, normalizationVersion: 1 as const, keyVersion: 1 as const, keyId: context.keyId, completedOffset: 0, observedSize: 0, boundaryFingerprint: null, events: [] };

@@ -169,3 +169,38 @@ Root final read found that a recreated non-STRICT settings table could return ov
 Final metadata correction full check attempt at 14:14 UTC was interrupted: Vitest read-only worker received SIGKILL, with 22 files/473 tests completed and artifact not reached. This is not a final pass. Oversized corruption fixtures are reduced to 64 KiB (still far above scalar contract) to keep test memory bounded, then all gates are rerun.
 
 Final metadata correction gate at 2026-10-01 14:16 UTC: Linux Node24.19 full check PASS 490 tests / 23 files / 35-file artifact. Both oversized settings fixtures reject with integer-only SQL projection and unchanged bytes. The earlier SIGKILL attempt is superseded by the successful full rerun; it is not attributed to a proven root cause. Opener suite is now 34 tests. Seven inotify scenarios rerun against the final product build PASS.
+
+## Repository-owner macOS verification correction plan (2026-10-01)
+
+PR #24 is now merged at main
+`b96bda476042b41a3b60507376b781c677e6997d`. PR #25 was retargeted to main;
+local integration head `456b3d24b8d98c4e8d24be187353ef2b0be076cd` preserves
+all 16 original slice files and the unchanged source-summary implementation.
+Only PR #24's reviewed verification document is added by that integration.
+
+The first macOS arm64 Node 24.15.0 full check passed typecheck/build, but
+34 opener tests failed before their test bodies: the new fixture uses the
+logical `/var/...` temporary path, which existing private-path validation
+correctly rejects as a symbolic-link parent. The other 22 files/456 tests
+passed; artifact verification was not reached. This is not a complete pass.
+
+Before changing tests, the correction plan is to canonicalize only the newly
+created synthetic fixture directory, using the existing test-helper convention
+or an explicit realpath. Preserve intentional symlink/FIFO/directory swap
+fixtures, strict production path validation, all safety assertions and cleanup.
+No production helper, schema or summary change is authorized by this correction.
+
+Verify the original 34 failures against the corrected focused opener suite,
+then rerun full checks on macOS Node 24.15.0/24.21.0/26.7.0, the Node 22 guard,
+documentation and exact final-head Linux CI. Preserve the failed-run receipt.
+Existing Linux inotify evidence remains scoped to its recorded environment;
+no macOS transient-mutation observer or syscall trace is claimed by snapshots.
+
+Focused correction gate at 2026-10-01 14:58 UTC: macOS arm64 Node 24.15.0,
+`node node_modules/vitest/vitest.mjs run tests/read-only-database.test.ts`, with
+the pinned runtime and an isolated writable npm cache, PASS: 34 tests / 1 file,
+exit 0. Only the newly created synthetic fixture directory is resolved with
+`realpath`; all existing safety assertions, intentional FIFO/symlink/directory
+swaps and cleanup remain unchanged. No newly exposed failure was observed.
+Full integration checks remain pending; this focused pass does not replace the
+preserved failed full-check receipt or claim a macOS transient-mutation trace.
