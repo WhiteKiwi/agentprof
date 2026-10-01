@@ -20,7 +20,7 @@ it("runs built help/version without creating private data or importing SQLite", 
   expect(help.status).toBe(0); expect(help.stdout).toContain("Usage: agentprof");
   expect(help.stderr).toBe(""); expect(existsSync(data)).toBe(false);
 });
-it.each(["insights", "report", "open"])("returns honest pending command errors: %s", (command) => {
+it.each(["report", "open"])("returns honest pending command errors: %s", (command) => {
   const args = command === "open" ? [command, "FICTITIOUS_AGENTPROF_ARG_SENTINEL.html"] : [command];
   const data = join(temporaryDirectory(), "must-not-create");
   const result = run([...args, "--json", "--data-dir", data]);
@@ -43,4 +43,12 @@ it("parses source overrides/report flags while preserving the unimplemented boun
   expect(result.status).toBe(2);
   expect(JSON.parse(result.stderr).error.code).toBe("NOT_IMPLEMENTED");
   expect(result.stderr).not.toContain("FICTITIOUS_AGENTPROF_PROJECT");
+});
+
+it("insights requires explicit stored-source selection with helpful storage-free guidance", () => {
+  const data = join(temporaryDirectory(), "must-not-create"), result = run(["insights", "--json", "--data-dir", data]);
+  expect(result.status).toBe(2); expect(result.stdout).toBe(""); expect(existsSync(data)).toBe(false); expect(result.stderr).not.toContain("SQLite");
+  expect(JSON.parse(result.stderr).error).toMatchObject({ code: "INSIGHTS_SELECTION_REQUIRED" });
+  expect(result.stderr).toContain("agentprof stats --list-sources"); expect(result.stderr).toContain("agentprof insights --help");
+  const help = run(["insights", "--help", "--data-dir", data]); expect(help.status).toBe(0); expect(help.stdout).toContain("--source"); expect(help.stderr).toBe(""); expect(existsSync(data)).toBe(false);
 });

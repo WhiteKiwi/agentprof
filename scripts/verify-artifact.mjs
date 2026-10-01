@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -62,5 +62,42 @@ try {
     else assert.equal(selected.usage, null);
   }
   assert.deepEqual(snapshot(), before);
-  console.log(JSON.stringify({ status: "PASS", node: process.versions.node, platform: process.platform, arch: process.arch, artifactFiles: packed.files.length, tarballNpmExec: "help/version passed", isolatedGlobalInstall: "help/version passed", installScripts: "disabled", packedReadOnlyStats: "synthetic scan/list/select and unchanged store passed", published: false }));
+  // Verify the newly activated command through the installed package, against synthetic data only.
+  const insightsData = join(temporary, "private-insights"), insightsRoot = join(temporary, "insights-input");
+  mkdirSync(insightsRoot);
+  const epoch = Date.UTC(2026, 8, 20), timestamp = new Date(epoch).toISOString();
+  const records = [{ timestamp, type: "session_meta", payload: { id: "synthetic-insights" } }];
+  for (let i = 0; i < 6; i++) records.push({ timestamp, type: "event_msg", payload: { type: "item_completed", thread_id: "synthetic-insights", started_at_ms: epoch, completed_at_ms: epoch + 1000,
+    item: { type: "CommandExecution", id: `call-${i}`, source: "unified_exec_startup", command: i < 5 ? "npm test synthetic" : "cargo build", status: "completed", exit_code: 0, duration: { secs: 0, nanos: (i < 5 ? 4 : 80) * 1e6 } } } });
+  writeFileSync(join(insightsRoot, "positive.jsonl"), records.map(r => JSON.stringify(r)).join("\n") + "\n");
+  copyFileSync(join(root, "tests/fixtures/providers/codex-fork.jsonl"), join(insightsRoot, "suppressed.jsonl"));
+  const insightScan = spawnSync(installed, ["scan", "--codex-root", insightsRoot, "--data-dir", insightsData, "--json"], { cwd: execute, env: environment, encoding: "utf8" });
+  assert.equal(insightScan.status, 1); assert.equal(JSON.parse(insightScan.stdout).result.counts.committed, 2);
+  rmSync(insightsRoot, { recursive: true });
+  const insightSnapshot = () => readdirSync(insightsData).sort().map(name => ({ name, bytes: readFileSync(join(insightsData, name)), mode: statSync(join(insightsData, name)).mode }));
+  const insightBefore = insightSnapshot();
+  const invoke = args => execFileSync(installed, args, { cwd: execute, env: environment, encoding: "utf8" });
+  const insightItems = JSON.parse(invoke(["stats", "--list-sources", "--data-dir", insightsData, "--json"])).result.catalogue.items;
+  let positive = 0, suppressed = 0;
+  for (const item of insightItems) {
+    const args = ["insights", "--source", item.sourceId, "--data-dir", insightsData];
+    const json = invoke([...args, "--json"]), human = invoke(args), parsed = JSON.parse(json);
+    assert.equal(json, execFileSync(process.execPath, [join(root, "dist/agentprof.cjs"), ...args, "--json"], { env: environment, encoding: "utf8" }));
+    assert.equal(human, execFileSync(process.execPath, [join(root, "dist/agentprof.cjs"), ...args], { env: environment, encoding: "utf8" }));
+    assert.equal(parsed.ok, true); assert.equal(parsed.command, "insights"); assert.equal(parsed.result.mode, "selected_source");
+    const a = parsed.result.analysis; assert.equal(a.sourceId, item.sourceId); assert.equal(a.revision, item.revision); assert.equal(a.sourceFreshnessChecked, false);
+    if (a.candidates === null) { suppressed++; assert.equal(a.suppressionReason, "ambiguous_origin"); assert(human.includes("ambiguous_origin")); }
+    else {
+      positive++; assert.equal(a.candidates.length, 1); assert.equal(a.candidates[0].observedEligibleNativeToolDurationShare, 0.2);
+      assert.equal(a.candidates[0].denominatorN, 6); assert.equal(a.candidates[0].denominatorSumMs, 100);
+      assert(human.includes("Quality guardrail:")); assert(human.includes("Necessary-work counterexample:")); assert.equal(a.candidates[0].evidenceEventIds.length, 5);
+    }
+    assert(!/FICTITIOUS_|positive\.jsonl|suppressed\.jsonl|boundaryFingerprint|sourceRef|secret/.test(json + human));
+  }
+  assert.equal(positive, 1); assert.equal(suppressed, 1); assert.deepEqual(insightSnapshot(), insightBefore);
+  const absent = join(temporary, "absent-insights");
+  const selection = spawnSync(installed, ["insights", "--json", "--data-dir", absent], { env: environment, encoding: "utf8" });
+  assert.equal(selection.status, 2); assert.equal(selection.stdout, ""); assert.equal(JSON.parse(selection.stderr).error.code, "INSIGHTS_SELECTION_REQUIRED");
+  assert(invoke(["insights", "--help", "--data-dir", absent]).includes("--source")); assert(!existsSync(absent));
+  console.log(JSON.stringify({ status: "PASS", node: process.versions.node, platform: process.platform, arch: process.arch, artifactFiles: packed.files.length, tarballNpmExec: "help/version passed", isolatedGlobalInstall: "help/version passed", installScripts: "disabled", packedReadOnlyStats: "synthetic scan/list/select and unchanged store passed", packedReadOnlyInsights: "positive/suppressed exact JSON/human parity, selection/help and unchanged store passed", published: false }));
 } finally { rmSync(temporary, { recursive: true, force: true }); }
