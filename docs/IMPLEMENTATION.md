@@ -167,3 +167,7 @@ Homebrew tap·formula 게시, npm 공개와 license 선택은 이 계획의 구�
 ## Identity key performance supplement (2026-10-01)
 
 [IDENTITY-PERFORMANCE.md](IDENTITY-PERFORMANCE.md) records the reviewed, behavior-preserving KeyObject reuse change and its focused verification. The earlier component experiment found an avoidable Node key-representation cost; its full-path numbers also include batching/worker changes and are not product scan evidence. This slice preserves every HMAC and privacy check, adds no fingerprint cache, and leaves ordered byte-bounded ingestion batching behind the P4 pipeline/atomic-checkpoint contract. Its Project draft owns execution status; the supplement records actual evidence.
+
+## P4 source storage supplement (2026-10-01)
+
+[P4-STORAGE.md](P4-STORAGE.md) defines the first bounded persistence slice: versioned source event contributions and completed-line observation metadata replaced atomically under an optimistic revision. Source variants remain separate; readback is not yet aggregation-ready. Durable parser state, provenance/usage/turn persistence and scan integration remain explicit P4 gates. A saved byte offset alone never authorizes parser resume. The Project draft owns progress and the supplement owns actual evidence.
