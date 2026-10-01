@@ -18,6 +18,7 @@ The installation key ID is non-secret and binds the store on its first successfu
 
 ## Atomicity, revisions and lifecycle
 
+- Migration reads and validates the current schema version after acquiring `BEGIN IMMEDIATE`. Concurrent first opens/upgrades serialize: a connection whose peer already completed version 2 observes that version under the lock and does not repeat DDL. Unsupported/future versions keep their existing safe error codes; failed migrations preserve the prior schema and settings.
 - A new source uses `expectedRevision: null`; an existing source requires its positive current revision. Compare-and-swap runs inside `BEGIN IMMEDIATE`, before any mutation. A stale writer receives a distinct safe result and makes no change.
 - Each successful replacement increments the source revision, even for equal content. Revisions are never reused. An empty replacement clears that source's events atomically. Revision overflow is rejected.
 - Marking a source unavailable retains the header, checkpoint and event history while incrementing its revision. A later successful full replacement makes it available again. The API does not automatically delete missing input history or remove source headers.
@@ -35,7 +36,7 @@ These are caller-verified observations committed with the event contributions. S
 
 One replacement/readback is limited to 4,096 events, 64 KiB of serialized data per event and 16 MiB total event bytes. These bounds reject oversized inputs before writes and cap readback; they are not a process RSS or full-scan performance guarantee. Inputs limited by a provider adapter must not be presented as complete source coverage.
 
-Verify new 0→2, existing 1→2, idempotent 2→2 and failed/future/corrupt migrations; migration atomicity/settings preservation; two-connection stale revisions; pending/terminal and empty replacement; source unavailability; failure/cancellation rollback; exact reopened P2/P3 fixture event values; duplicate canonical IDs across sources; and inert, raw-free validation. Run full repository checks and independent contract/code review. Product scan/incremental recovery and large-history acceptance remain NOT RUN.
+Verify new 0→2, existing 1→2, idempotent 2→2 and failed/future/corrupt migrations; controlled two-connection first-open/upgrade interleavings before lock acquisition; migration atomicity/settings preservation; two-connection stale revisions; pending/terminal and empty replacement; source unavailability; failure/cancellation rollback; exact reopened P2/P3 fixture event values; duplicate canonical IDs across sources; and inert, raw-free validation. Run full repository checks and independent contract/code review. Product scan/incremental recovery and large-history acceptance remain NOT RUN.
 
 ## Execution evidence
 
@@ -48,3 +49,13 @@ Base: `9f85567a0810a9300daf1b0d26f4b81ce299cbf5`. Final local verification on 20
 - Earlier pre-review code passed the complete repository check, including the 27-file packed artifact, isolated npm exec/global install and help/version. After the final two corrections, the fresh-cache artifact install was BLOCKED by HTTP 403 from the npm registry while fetching Commander. The final typecheck/build/227 tests passed, but the final complete `npm run check` did not pass locally. No network workaround was attempted. CI must verify the exact published head, including this artifact step.
 
 The interrupted executor's last focused-test process could not be recovered, so its missing result is not counted. The final recorded tests above were run after recovery. macOS and the supported CI runtime matrix are not local results. No full-scan performance or incremental-resume acceptance is claimed. Product scan, durable parser recovery and aggregation remain NOT RUN.
+
+## Migration review correction evidence (2026-10-01)
+
+The correction was verified with actual Node 24.15.0 on macOS arm64 and built-in SQLite. Inputs were synthetic. The pre-correction implementation was published head `4573684b3d928cec90a3d8179a7f3cf9be05057a`.
+
+- BEFORE: `node node_modules/vitest/vitest.mjs run tests/source-store.test.ts -t peer-completed` failed both new controlled 0→2 and 1→2 cases with `DATABASE_MIGRATION_FAILED`. Each case first confirmed that both real connections retained valid schema 2, migration records, settings and unrelated data. Only the first connection's instance `exec` was interposed to finish its peer's real migration immediately before the actual `BEGIN IMMEDIATE`; SQLite version, data and DDL results were not mocked.
+- AFTER: the same two cases passed in `node node_modules/vitest/vitest.mjs run tests/source-store.test.ts tests/database.test.ts --reporter verbose`: 23 tests passed in two files, including 19 source-store tests. Explicit Node 24.15.0 typecheck (`node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit`) and build (`node scripts/build.mjs`) also passed.
+- PASS: future schema 99 retains `DATABASE_SCHEMA_TOO_NEW`; unsupported settings, schema -1 and failed DDL retain `DATABASE_MIGRATION_FAILED`, preserve prior state and leave no migration transaction active. Corrupt-file opening retains `DATABASE_ACCESS_FAILED`. Nested migrations at versions 0, 1 and 2 reject safely, preserve the caller's schema/work and allow the caller to commit its original row. The generic `transaction()` helper is unchanged.
+
+Schema-2 no-op migrations now acquire the same immediate lock before inspecting the version. They can therefore wait for a writer or fail safely when the lock cannot be acquired, including inside a caller-owned transaction. The deterministic cases verify the specified pre-lock interleaving, not arbitrary scheduling or lock-timeout performance. This developer evidence covers the targeted correction; full supported-runtime, artifact and corrected-head CI verification remain the coordinator's publication gate.

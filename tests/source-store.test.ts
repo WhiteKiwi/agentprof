@@ -48,7 +48,50 @@ describe("source-store migration", () => {
       } finally { db.close(); }
     }
   });
-  it("rolls back failed 1→2 DDL and rejects unsupported settings or future versions", () => {
+  it.each([0, 1])("observes a peer-completed %i→2 migration after acquiring its lock", (version) => {
+    const path = join(temporaryDirectory(), "interleaved.sqlite");
+    const first = new DatabaseSync(path), peer = new DatabaseSync(path);
+    const exec = first.exec.bind(first);
+    let peerMigrations = 0;
+    try {
+      if (version === 1) createV1(first);
+      first.exec("CREATE TABLE preserved (value INTEGER); INSERT INTO preserved VALUES (42)");
+      // Interpose only this connection's lock acquisition; both connections execute real SQLite.
+      first.exec = (sql) => {
+        if (sql === "BEGIN IMMEDIATE" && peerMigrations === 0) {
+          peerMigrations++;
+          migrate(peer);
+        }
+        exec(sql);
+      };
+      let failureCode: string | null = null;
+      try { migrate(first); } catch (error) { failureCode = safeErrorEnvelope(error).error.code; }
+      expect(peerMigrations).toBe(1);
+      for (const db of [first, peer]) {
+        expect(db.prepare("PRAGMA user_version").get()).toEqual({ user_version: 2 });
+        expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([{ version: 1 }, { version: 2 }]);
+        expect(db.prepare("SELECT * FROM settings ORDER BY key").all()).toEqual([{ key: "key_version", value: 1 }, { key: "normalization_version", value: 1 }]);
+        expect(db.prepare("SELECT value FROM preserved").get()).toEqual({ value: 42 });
+        expect(storedRows(db)).toEqual({ headers: [], events: [], identity: [] });
+      }
+      expect(failureCode).toBeNull();
+    } finally { first.exec = exec; first.close(); peer.close(); }
+  });
+  it.each([0, 1, 2])("leaves caller-owned work active when schema %i migration cannot begin", (version) => {
+    const db = new DatabaseSync(":memory:");
+    try {
+      if (version === 1) createV1(db);
+      if (version === 2) migrate(db);
+      db.exec("CREATE TABLE caller_owned (value INTEGER); BEGIN IMMEDIATE; INSERT INTO caller_owned VALUES (9)");
+      const schema = db.prepare("SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY name").all();
+      expect(() => migrate(db)).toThrowError(expect.objectContaining({ code: "DATABASE_MIGRATION_FAILED" }));
+      expect(db.prepare("PRAGMA user_version").get()).toEqual({ user_version: version });
+      expect(db.prepare("SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY name").all()).toEqual(schema);
+      db.exec("COMMIT");
+      expect(db.prepare("SELECT value FROM caller_owned").get()).toEqual({ value: 9 });
+    } finally { db.close(); }
+  });
+  it("rolls back failed 1→2 DDL and rejects unsupported settings, future or invalid versions", () => {
     const db = new DatabaseSync(":memory:");
     try {
       createV1(db);
@@ -60,8 +103,19 @@ describe("source-store migration", () => {
       db.exec("DROP TABLE source_event_contributions; UPDATE settings SET value=2 WHERE key='normalization_version'");
       expect(() => migrate(db)).toThrowError(expect.objectContaining({ code: "DATABASE_MIGRATION_FAILED" }));
       expect(db.prepare("PRAGMA user_version").get()).toEqual({ user_version: 1 });
+      const schema = db.prepare("SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY name").all();
+      const settings = db.prepare("SELECT * FROM settings ORDER BY key").all();
       db.exec("PRAGMA user_version = 99");
       expect(() => migrate(db)).toThrowError(expect.objectContaining({ code: "DATABASE_SCHEMA_TOO_NEW" }));
+      expect(db.prepare("PRAGMA user_version").get()).toEqual({ user_version: 99 });
+      expect(db.prepare("SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY name").all()).toEqual(schema);
+      expect(db.prepare("SELECT * FROM settings ORDER BY key").all()).toEqual(settings);
+      db.exec("BEGIN IMMEDIATE; COMMIT; PRAGMA user_version = -1");
+      expect(() => migrate(db)).toThrowError(expect.objectContaining({ code: "DATABASE_MIGRATION_FAILED" }));
+      expect(db.prepare("PRAGMA user_version").get()).toEqual({ user_version: -1 });
+      expect(db.prepare("SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY name").all()).toEqual(schema);
+      expect(db.prepare("SELECT * FROM settings ORDER BY key").all()).toEqual(settings);
+      db.exec("BEGIN IMMEDIATE; COMMIT");
     } finally { db.close(); }
   });
 });

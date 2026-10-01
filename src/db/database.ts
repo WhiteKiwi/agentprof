@@ -25,12 +25,15 @@ export function transaction<T>(database: DatabaseSync, operation: (() => T) & (T
 }
 
 export function migrate(database: DatabaseSync): void {
-  const current = database.prepare("PRAGMA user_version").get()?.["user_version"];
-  if (typeof current !== "number" || !Number.isSafeInteger(current) || current < 0) throw new SafeError("DATABASE_MIGRATION_FAILED");
-  if (current > DATABASE_SCHEMA_VERSION) throw new SafeError("DATABASE_SCHEMA_TOO_NEW");
-  if (current === DATABASE_SCHEMA_VERSION) return;
+  let began = false;
   try {
-    transaction(database, () => {
+    database.exec("BEGIN IMMEDIATE");
+    began = true;
+    // Observe the schema only after serializing with other openers.
+    const current = database.prepare("PRAGMA user_version").get()?.["user_version"];
+    if (typeof current !== "number" || !Number.isSafeInteger(current) || current < 0) throw new SafeError("DATABASE_MIGRATION_FAILED");
+    if (current > DATABASE_SCHEMA_VERSION) throw new SafeError("DATABASE_SCHEMA_TOO_NEW");
+    if (current < DATABASE_SCHEMA_VERSION) {
       if (current === 0) database.exec(`
         CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY) STRICT;
         CREATE TABLE settings (key TEXT PRIMARY KEY CHECK(key IN ('normalization_version', 'key_version')), value INTEGER NOT NULL) STRICT;
@@ -72,8 +75,13 @@ export function migrate(database: DatabaseSync): void {
         INSERT INTO schema_migrations(version) VALUES (2);
         PRAGMA user_version = 2;
       `);
-    });
-  } catch { throw new SafeError("DATABASE_MIGRATION_FAILED"); }
+    }
+    database.exec("COMMIT");
+  } catch (error) {
+    if (began) try { database.exec("ROLLBACK"); } catch { /* The transaction may already have ended. */ }
+    if (error instanceof SafeError && error.code === "DATABASE_SCHEMA_TOO_NEW") throw error;
+    throw new SafeError("DATABASE_MIGRATION_FAILED");
+  }
 }
 
 export async function openDatabase(dataDir: string): Promise<DatabaseSync> {
