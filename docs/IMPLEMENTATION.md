@@ -90,7 +90,7 @@ Codex는 검증된 구조화 `item_completed`를 우선하고 같은 response를
 
 pending 갱신, 취소·background·polling, 복사된 과거와 실제 새 실행, schema drift를 명시적으로 다룬다. 관계·scope가 불명확하면 capability와 coverage를 낮추고 raw 내용 없는 진단을 제공한다. 원문을 폐기하기 전에 commandPattern·operationKey·lookup/content/error fingerprint를 생성한다. 대상·플래그·편집/범위 차이와 비밀값 sentinel fixture를 통과해야 P4로 넘긴다. 각 공급자 단계에서 P0 실로그 표본의 수작업 의미와 정규화 출력을 로컬 대조하고 지원 행렬을 갱신한다. 권한/입력 부재는 NOT RUN으로 남긴다.
 
-P3 구현은 88개 Claude 검사를 기존 116개와 함께 실행한다. 고정 S1–S3 1,179개 레코드의 독립 keyed 대조·동일 source replay·RAM archive 재표현·privacy·기본 상한 결과는 [CLAUDE-EVIDENCE](CLAUDE-EVIDENCE.md)에 있다. 280개 실행·8개 duration-only turn·251개 usage를 보존하며 실제 usage eligible은 0이다. macOS 3개 지원 Node의 204개 테스트·25파일 artifact는 PASS이며 Linux와 PR 병합 결과는 [ACCEPTANCE](ACCEPTANCE.md)에 별도 기록한다. P4 durable checkpoint·scan 연결은 아직 구현하지 않았다.
+P3 구현은 88개 Claude 검사를 기존 116개와 함께 실행한다. 고정 S1–S3 1,179개 레코드의 독립 keyed 대조·동일 source replay·RAM archive 재표현·privacy·기본 상한 결과는 [CLAUDE-EVIDENCE](CLAUDE-EVIDENCE.md)에 있다. 280개 실행·8개 duration-only turn·251개 usage를 보존하며 실제 usage eligible은 0이다. macOS/Linux의 각 3개 지원 Node에서 204개 테스트·25파일 artifact는 PASS다. runtime과 [PR #18](https://github.com/WhiteKiwi/agentprof/pull/18) 검증 결과는 [ACCEPTANCE](ACCEPTANCE.md)에 기록한다. P4 durable checkpoint·scan 연결은 아직 구현하지 않았다.
 
 ### P4 — Transactional Incremental Scan
 

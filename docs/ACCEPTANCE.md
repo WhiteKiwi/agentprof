@@ -141,19 +141,22 @@ GitHub GraphQL의 draft 생성·본문 편집·상태 갱신은 [공식 Projects
 
 ## P3 Claude Adapter Verification — 2026-10-01 KST
 
-코드 commit은 `faeb057a3f937f09c5566a63048f0c9caac396c6`이며 P2/추적 규칙 main `baa384f779d5eab6d31a6c7099372f19a1d98496`에 기반한다. parser/normalization/key version 1, package `0.1.0-dev.0`, DB schema 1을 유지했다. 부모의 doc-first 검토 후 별도 개발 담당이 구현하고 독립 연구 담당이 frozen build를 대조했다. 구현 계약은 [CLAUDE-PARSER](CLAUDE-PARSER.md), 분모·공식 source·실제 필드·대조와 한계는 [CLAUDE-EVIDENCE](CLAUDE-EVIDENCE.md)에 있다. [P3 Project 티켓](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833029)에서 PR·최종 head·병합 결과를 추적한다.
+코드 commit은 `faeb057a3f937f09c5566a63048f0c9caac396c6`이며 P2/추적 규칙 main `baa384f779d5eab6d31a6c7099372f19a1d98496`에 기반한다. parser/normalization/key version 1, package `0.1.0-dev.0`, DB schema 1을 유지했다. 부모의 doc-first 검토 후 별도 개발 담당이 구현하고 독립 연구 담당이 frozen build를 대조했다. 구현 계약은 [CLAUDE-PARSER](CLAUDE-PARSER.md), 분모·공식 source·실제 필드·대조와 한계는 [CLAUDE-EVIDENCE](CLAUDE-EVIDENCE.md)에 있다. [PR #18](https://github.com/WhiteKiwi/agentprof/pull/18)·[P3 Project 티켓](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833029)에서 최종 head·병합 결과를 추적한다.
 
 | 환경·대상 | 실제 실행·결과 |
 | --- | --- |
 | macOS arm64, Node 24.15.0·24.21.0·26.7.0 | PASS: 각 `npm run check`, 타입/빌드·11파일 204개 테스트·25파일 production tarball allowlist·격리 npm exec/global install help/version |
 | macOS arm64, Node 22.16.0 | PASS: help/version 모두 CLI·SQLite import 전 `UNSUPPORTED_RUNTIME`, stderr safe JSON·stdout 없음·exit 2 |
-| Ubuntu 24.04 x64, 지원 Node 3개·Node 22.16.0 guard | NOT RUN: PR CI 게시 후 exact head 결과를 아래에 기록 |
+| Ubuntu 24.04 x64, Node 24.15.0·24.21.0·26.7.0 | PASS: clean scripts-disabled install·각 타입/빌드·11파일 204개 테스트·25파일 artifact npm exec/global install; 지원 runtime 3개 job success |
+| Ubuntu 24.04 x64, Node 22.16.0 | PASS: bootstrap만 복사한 guard에서 CLI·SQLite import 전 거부·UNSUPPORTED_RUNTIME·stdout 없음·exit 2 |
 | 고정 P0 S1–S3 prefix | PASS: reader eligible 1,179개 / 3,240,661bytes; 개별 3개·합본의 독립 keyed execution/turn/usage/message/metadata/source observation mismatch 0 |
 | Canonical 관측 | 실행 280개(completed180/failed12/unknown82/pending6), paired invocation interval·duration 274개, duration-only turn 8개, usage251개/source usage626개/eligible0개 |
 | Same-source replay·RAM archive 재표현 | PASS: replay의 snapshot·retained state·counter 불변. archive canonical 의미 불변, source observations3,552→7,104·metadata1,179→2,358. 실제 archive 파일의 지원 검증은 아님 |
 | 기본 상태 상한·privacy | PASS: 각 표본·합본·재표현 모두 기본 상한 내, STATE_LIMIT·dropped diagnostics0, usageProofReplays0. 16 UTF-16 code units 이상 민감 후보3,075개/archive3,078개의 exact leaf string/key 노출0 |
 
 macOS runtime check는 2026-10-01 10:47:44–10:47:54 KST에 npm 11.19.0을 사용했다. 앞선 환경 preflight에서 임시 Node 24.15/24.21 배포의 npm symlink가 `MODULE_NOT_FOUND('../lib/cli.js')`로 실패했으므로 제품 check를 시작하지 않았다. 원래 두 symlink를 private 임시 경로에 보존하고 이미 검증한 global npm CLI를 가리키도록 임시 링크만 고쳤다. global npm·Node 4개 바이너리와 제품 코드는 변경하지 않았고 실제 npm 진입의 Node version·바이너리 checksum을 전후 대조했다. 환경 복구를 제품 코드 수정이나 최초 preflight 통과로 기록하지 않는다. Linux CI는 별도 setup-node runtime과 npm을 사용한다.
+
+PR의 검증 head `148ffb9204a46d61054c8431166691c55d29fdbf`는 원격 main `00539409595fe17349cf68dd41c0f83cc0383e23`의 다른 세션 합성 report preview를 충돌 없이 포함한다. 이 head의 [Linux PR CI](https://github.com/WhiteKiwi/agentprof/actions/runs/36805094842)는 2026-10-01 11:17 KST에 4개 job 모두 success였다. setup-node 로그의 실제 npm은 Node24.15=11.12.1, Node24.21/26.7=11.19.0, Node22.16 guard=10.9.2다. 부모는 job 로그의 204 tests/11 files·artifactFiles25·help/version·scripts disabled와 guard를 대조했다. 원격 main 기준 PR diff는 P3 코드/fixture/문서 22파일이며 report/design/README/package/workflow 변경은 없다. 로컬 문서26개·링크206개·anchor23개와 whitespace를 통과했다. 이후 evidence 문서만 보완하며 최종 head check·merge/readback은 Project와 PR에 연결한다.
 
 기존 116개 검사에 Claude 88개를 더했다. P0 fixture/oracle와 기존 Codex, CLI/scanner/DB/package/workflow, README/design/brand의 보존 대상 29파일 checksum이 같았다. 25파일 tarball은 compiled JS·metadata·README만 포함하며 fixture·TS source/map·DB·brand 이미지·실제 데이터·sentinel을 제외한다. 설치 scripts는 비활성화했다. source/dist 22개 모듈과 독립 harness의 최종 연구 freeze도 유지했다.
 
