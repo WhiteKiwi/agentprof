@@ -159,10 +159,10 @@ credentials, user logs or invented memory evidence were used.
 
 ## Verification evidence (2026-10-01)
 
-The actual local results are recorded below. Coordinator source review approved
-the implementation and resolver correction; final manifest approval and remote
-publication/CI remain pending. All input fixtures are synthetic. No actual user
-logs were accessed.
+The development handoff results are recorded below. At that handoff, coordinator
+source review approved the implementation and resolver correction; final
+manifest approval and remote publication/CI were pending. All input fixtures
+are synthetic. No actual user logs were accessed.
 
 - PASS: Linux x64, Node 24.19.0, `npm run check` with a writable temporary
   npm cache: typecheck, build, 384 tests across 18 files, and 32-file artifact.
@@ -203,7 +203,38 @@ logs were accessed.
   initial packed-test attempt used an unwritable environment default cache; the
   test now selects its own isolated writable cache. Final gates pass with that
   correction; no package/lockfile/dependency changes were made.
-- Pending: independent final frozen-content approval, draft publication, remote
-  hashes and exact-head CI. macOS and full-history time/RSS acceptance for this
-  CLI slice are NOT RUN. Full P4/P5/P6 and parser/aggregation readiness are not
-  completed by these bounded checks.
+- At development handoff: independent frozen-content approval, draft
+  publication, remote hashes and exact-head CI were pending; macOS had not been
+  run. Full-history time/RSS acceptance remains NOT RUN. Full P4/P5/P6 and
+  parser/aggregation readiness are not completed by these bounded checks.
+
+## Independent integration review (2026-10-01)
+
+The publication reviewer inspected all eight changed files at implementation
+head `4259af6efb6cb377904972b8b1a44753e96332d5`. OCR delegate selected three
+production files for rule-based host review; the remaining five documentation
+and test files were reviewed manually. No additional actionable findings were
+identified. Review covered pre-I/O validation, omitted-provider isolation,
+safe output, private storage failures, cooperative cancellation and retention
+of earlier committed source generations.
+
+- PASS: macOS arm64, Node 24.15.0, 24.21.0 and 26.7.0; each full
+  `npm run check` passed typecheck, build, 384 tests across 18 files and the
+  32-file artifact check. Dependencies were installed with scripts disabled
+  and a private temporary npm cache.
+- PASS: Node 22.16.0 rejects execution with `UNSUPPORTED_RUNTIME`, exit 2 and
+  no stdout. The supported-runtime tests include the isolated packed scan,
+  reopened storage and the IPC-synchronized repeated-SIGINT subprocess.
+- PASS: repository documentation validation covers 32 documents, 229 local
+  links and 23 Markdown anchors. `git diff --check` passes. This follow-up
+  changes only this verification document; the seven other reviewed files
+  retain their verified content hashes.
+
+Exact publication-head hashes, CI run links and the final merge receipt are
+recorded in [PR #23](https://github.com/WhiteKiwi/agentprof/pull/23) and the
+[P4 Project item](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833059)
+after their respective checks finish. The local matrix above verifies the
+implementation head and applies unchanged to the documentation-only follow-up.
+Full-history resource acceptance, default-root collection, parser resume,
+aggregation and report readiness remain open. No npm release is part of this
+review.
