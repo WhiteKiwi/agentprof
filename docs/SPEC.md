@@ -151,3 +151,7 @@ Homebrew 배포는 npm 경로를 검증한 다음 단계다. 실시간 로컬 �
 - 각 패턴의 초기 기본 임계값과 낮은 표본 수의 표시 기준을 어떻게 조정할지. 초기 제안은 연구 문서에서 근거·판단을 구분한다.
 
 위 질문은 초기 로컬 분석 구현을 막지 않는다. 공개 배포와 새로운 범위에는 결정이 선행되어야 한다.
+
+## Bounded source-local summary (2026-10-01)
+
+One validated stored source prefix may expose an internal, read-only summary: record inventory, same-stream/scope/evidence duration distributions, and verified final-response token components. The result preserves source revision and byte-prefix bounds, unknown versus observed zero, eligibility/exclusion counts, and parser limitations. It is not a complete session, history or time-window total. Unavailable, evidence-absent, state-limited or ambiguous sources have no metric values. Optional token aggregates are null unless every selected response has that component; contradictory duplicate responses are excluded as whole groups. Cross-source reconciliation, active/busy time, percentages, cost and CLI/report integration remain out of scope. No provider support is promoted. See [P5-SOURCE-SUMMARY](P5-SOURCE-SUMMARY.md).
