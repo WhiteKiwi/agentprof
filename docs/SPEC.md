@@ -4,7 +4,7 @@
 
 Draft, 2026-09-30. 사용자 제공 AgentTrace 제안과 AgentProf metrics 제안을 통합한 초기 사양이다. 제품명·CLI·저장소 이름은 사용자 지정에 따라 `agentprof`, 제품 표시명은 **AgentProf**로 정한다.
 
-이 문서는 제품 목표와 관측 가능한 동작을 정한다. P0 조사·합성 계약 검토와 P1 실행 기반 검증을 마쳤다. 제품의 로그 분석·리포트 흐름은 후속 단계이며 현재 CLI는 help/version을 제공한다. 제품 범위나 동작을 바꾸면 먼저 이 문서를 갱신한다. 별도 디자인 기반의 토큰·컴포넌트와 합성 오프라인 견본은 [DESIGN-GUIDELINES](DESIGN-GUIDELINES.md)를 따른다. 이것은 실제 로그 분석·로컬 대시보드 구현이나 P5/P6 완료를 뜻하지 않는다.
+이 문서는 제품 목표와 관측 가능한 동작을 정한다. P0 조사·합성 계약 검토와 P1 실행 기반 검증을 마쳤다. 제품의 로그 분석·리포트 흐름은 후속 단계이며 현재 개발 CLI의 bounded scan 계약은 아래에 명시한다. 제품 범위나 동작을 바꾸면 먼저 이 문서를 갱신한다. 별도 디자인 기반의 토큰·컴포넌트와 합성 오프라인 견본은 [DESIGN-GUIDELINES](DESIGN-GUIDELINES.md)를 따른다. 이것은 실제 로그 분석·로컬 대시보드 구현이나 P5/P6 완료를 뜻하지 않는다.
 
 ## Goal
 
@@ -22,7 +22,7 @@ Draft, 2026-09-30. 사용자 제공 AgentTrace 제안과 AgentProf metrics 제�
 
 ### Capability snapshot (2026-10-01 KST)
 
-P1 통합 revision `c3856249bdc0a9c19b856ca32c97d3484e189176`에는 문서 PR #11과 기반 [PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)가 병합되었다. P0 표본·합성 계약과 P1 help/version·개인정보·bounded reader·SQLite 기반을 사용한다. P2는 [Codex 어댑터](CODEX-PARSER.md)의 호출·턴·usage 관측과 [bounded 대조](CODEX-EVIDENCE.md)를 추가한다. `scan/stats/insights/report/open`은 계속 `NOT_IMPLEMENTED`·exit 2이며 제품 분석·리포트와 개선 효과 검증은 후속 기능이다. P0 조사를 하지 않았다고 표현하거나 부분 테스트 통과를 제품 분석 완료로 표현하지 않는다. [검토 근거](FINDINGS.md#2026-09-30-측정에서-개선으로-검토)와 [실행 evidence](ACCEPTANCE.md)를 참조한다.
+P1 통합 revision `c3856249bdc0a9c19b856ca32c97d3484e189176`에는 문서 PR #11과 기반 [PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)가 병합되었다. P0 표본·합성 계약과 P1 help/version·개인정보·bounded reader·SQLite 기반을 사용한다. P2는 [Codex 어댑터](CODEX-PARSER.md)의 호출·턴·usage 관측과 [bounded 대조](CODEX-EVIDENCE.md)를 추가한다. 이 P1/P2 기록의 명령 미구현 경계는 역사적 상태다. 현재 `stats/insights/report/open`은 `NOT_IMPLEMENTED`·exit 2이며 제품 분석·리포트와 개선 효과 검증은 후속 기능이다. P0 조사를 하지 않았다고 표현하거나 부분 테스트 통과를 제품 분석 완료로 표현하지 않는다. [검토 근거](FINDINGS.md#2026-09-30-측정에서-개선으로-검토)와 [실행 evidence](ACCEPTANCE.md)를 참조한다.
 
 P3는 [Claude 어댑터](CLAUDE-PARSER.md)의 원문 없는 execution·turn·usage 관측을 추가한다. [고정 prefix 대조](CLAUDE-EVIDENCE.md)는 명시한 bounded 범위에서 PASS다. 호출·결과 시각 차이는 invocation latency이며 background acknowledgement는 pending으로 보존한다. 직접 turn duration은 scope·구간 불명, 실제 usage는 finality unknown/provisional이다. 이 관측을 검증된 Active Time·최종 토큰 총계로 올리지 않는다.
 
@@ -39,7 +39,22 @@ P4의 다음 저장 확장은 [metric evidence 계약](P4-METRIC-STORAGE.md)을 
 - 반복 실행은 필요한 작업일 수도 있다. 관측 패턴과 개선 가능성, 실제 절감 시간·인과 효과를 구분한다.
 - 각 진단에 근거 이벤트, 관련 세션, 규칙·임계값과 개선 제안을 연결한다.
 
-## First User Flow
+## Bounded scan CLI (2026-10-01)
+
+개발 빌드의 `scan`은 명시적 `--codex-root` 또는 `--claude-root`가 하나 이상 필요하다. 생략한 공급자의 기본 홈 로그는 읽지 않는다. root와 `--data-dir` 옵션은 명령 앞뒤에서 쓸 수 있으며 상대 경로는 현재 작업 디렉터리를 기준으로 한다. 빈 값·공백만인 값·NUL/CR/LF 및 공급자 합계 16개 초과 root는 로컬 파일 생성/입력 접근 전에 `INVALID_ARGUMENT`·exit 2다. 실제 공백이 포함된 유효 경로는 보존한다.
+
+```bash
+agentprof scan --codex-root ./synthetic-codex --data-dir ./private-agentprof
+agentprof --json --data-dir ./private-agentprof scan --codex-root ./synthetic-codex --claude-root ./synthetic-claude
+```
+
+수집 상한은 64 sources, 256 directories, 내부 nodes와 yielded entries 각각 4,096, source당 16 MiB/32,768 records, diagnostic samples 256개다. 기존 line/parser/store 상한도 적용된다. 전체 이력·성능 보장이 아니며 같은 입력도 매번 byte zero부터 재해석한다. 원자적 source 교체는 중복 행을 만들지 않지만 revision은 증가할 수 있다. 자동 삭제/이동 정합화·집계·증분 parser 복구는 없다.
+
+결과는 stdout에 한 번 출력한다. JSON은 `{schema:"agentprof.cli/v1",ok:<completed 여부>,command:"scan",result:<ScanResult>}`이며 human도 같은 status/counts/stop reason/diagnostic drop 수를 사용한다. `completed` exit 0, `partial` exit 1, 협력적 SIGINT/`aborted` exit 130이다. 부분 실행의 이전 commit은 유지된다. 결과 이전 argument/bootstrap/store 오류는 기존 안전한 stderr error envelope와 exit 2를 보존한다. 내부 예상 밖 오류는 `INTERNAL_ERROR`다. 경로·원문·secret·arbitrary exception text는 출력하지 않는다. Node 자체 SQLite warning은 별개 stderr일 수 있다.
+
+SIGINT는 시작 단계 사이와 수집 중 협력적으로 확인한다. scan 시작 전 취소는 모든 count/drop이 0인 aborted 결과이며 이미 만든 private bootstrap 파일은 남을 수 있다. 열린 DB와 해당 임시 signal listener는 닫고 제거한다. SIGTERM/SIGKILL의 crash rollback이나 즉시 중단은 보장하지 않는다. `aggregationReady=false`, `parserResumeReady=false`이며 저장 source 수는 검증된 세션/토큰/시간 총계가 아니다. help/version 및 미구현 명령은 storage-free다. 로컬 key/DB 오류는 기존 파일을 보존하며 자동 key 회전/DB 초기화를 하지 않는다. 상세 구현·실행 근거는 [P4-SCAN-CLI](P4-SCAN-CLI.md)를 따른다.
+
+## First User Flow (planned full product)
 
 ```bash
 agentprof scan
