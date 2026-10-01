@@ -262,3 +262,21 @@ P1에 필요한 prepared binding·migration·동기 transaction·rollback·reope
 5. **효과 없음도 결과다.** 실패/미완료를 제외하거나 coverage가 낮아진 실행을 빨라졌다고 해석하지 않는다. 품질 gate·parent/child usage·준비/요약/재조회 비용과 변동성을 함께 기록한다.
 
 공식 자료를 AgentProf에 적용한 부분은 **설계 판단**이다. 계산은 [METRICS](METRICS.md#aggregation-and-token-accounting), [행동 카드](METRICS.md#efficiency-opportunity-cards), 순서는 [IMPLEMENTATION](IMPLEMENTATION.md#efficiency-review-priorities), 검증은 [ACCEPTANCE](ACCEPTANCE.md#quality-preserving-improvement-pilot)에 반영한다. 후속 후보는 [BACKLOG](BACKLOG.md#efficiency-candidate-gates)에 남긴다. 원본 제안과 병행 PR의 코드는 변경하지 않는다.
+
+## 2026-10-01 P3: Claude adapter 구현 전 조사
+
+별도 연구 담당이 main `baa384f779d5eab6d31a6c7099372f19a1d98496` 기준으로 P0 Claude S1–S3의 고정 prefix/digest를 재현했다. 1,179 records·280 call/result pairs·8 duration-only turns·626 usage records/251 message IDs가 기존 P0와 일치했다. 원문은 RAM에서만 읽었으며 명령을 실행하거나 실제 로그·경로·ID를 문서/fixture/메모리에 복사하지 않았다. 자세한 분모·실제 field/type과 후속 대조 기준은 [CLAUDE-EVIDENCE](CLAUDE-EVIDENCE.md)에 있다. 앱 코드·테스트·기존 provider fixture는 이 조사에서 변경하지 않았다.
+
+- UUID records 960개는 각 stream에서 유일했다. 하나의 API message ID가 여러 UUID/content block records로 나뉘므로 UUID replay 제거와 response usage upsert를 분리한다. P0의 “usage 재저장”은 같은 UUID 재저장이 검증됐다는 뜻이 아니다.
+- result 280/280에서 tool_use ID·parentUuid·sourceToolAssistantUUID가 같은 stream의 call과 연결됐다. 직접 tool duration은 0/280이다. parent timestamp 역전 4개가 있어 parent 관계를 시간 구간으로 바꾸지 않는다.
+- Bash backgroundTaskId 5개와 Agent async_launched 1개는 시작 확인이다. canonical pending과 source acknowledgement latency를 분리한다. Agent ID가 S3와 맞지 않아 추정 parent join을 하지 않는다. 실제 child-process exit는 검증된 직접 필드가 없으므로 null이다.
+- turn_duration 8개는 durationMs 값과 end_turn assistant parent만 관측됐다. 시작/종료 구간·duration scope는 미검증이므로 unknown duration-only로 보존한다.
+- S3의 108 message IDs는 output_tokens가 늘며 마지막 ordinal의 stop_reason가 tool_use 107/end_turn 1로 바뀌었다. 공개 API message_stop와 local 저장 시점의 연결은 미검증이다. 실제 usage는 모두 unknown/provisional이며 terminal-shaped enum을 final 보장으로 승격하지 않는다.
+- Anthropic all-input은 ordinary + cache-read + cache-creation이다. 626 records에서 네 기본 component를 확인했고 TTL bucket이 있는 466 records에서 상위 creation 합과 일치했다. reasoning 포함 관계는 미확정이므로 thinking_tokens를 output에 더하거나 reasoningOutput으로 승격하지 않는다.
+- 합성 usage 6→10의 finality/order, copied fork ordinals와 source duration은 외부 trusted test context로만 검증한다. 실제 source의 임의 annotation을 신뢰하지 않는다. 구현 전 조사 단계에서 private oracle/script를 준비했으며 실제 어댑터 parity는 아래 후속 실행 전까지 NOT RUN이었다. 전체 provider support·제품 acceptance는 이 조사로 통과하지 않는다.
+
+P3 최종 재freeze build 대조는 2026-10-01 10:35:00.753–10:35:04.662 KST, Node 26.7.0에서 실행했다(elapsed 3,908 ms). 초기 10:23 KST 실행 뒤 최초 call cwd와 source-point origin/ownership replay 회귀가 보완됐다. 아래는 이 수정과 metadata declarationFingerprint가 포함된 최신 build의 결과다. S1/S2/S3 각각과 합본의 keyed execution·turn·usage·source observations·message links·metadata가 독립 기대값과 일치했다. 합본은 executions 280(completed 180/failed 12/unknown 82/pending 6), canonical intervals 274/source results 280, duration-only turns 8, usage IDs 251/source usage observations 626/eligible 0, message links 935/typed edges 1,211, metadata 1,179였다. base 64,426/replay 64,426/RAM archive 110,557 field 비교와 3,667 helper 비교의 최종 mismatch는 0이다.
+
+직접 own declaration fields의 presence/value를 정렬한 JSON과 HMAC을 독립 계산해 metadata 1,179개/archive 2,358개의 새 declarationFingerprint를 대조했다. 같은-source replay 후 전체 snapshot·retained state·counters·capabilities가 exact 동일했고 새 inputDigest/callProjectId 반환 필드도 privacy 순회에 포함했다. RAM archive는 별도 file identity로 재표현한 것이며 실제 archive 파일 조사가 아니다. canonical은 sourceRef를 제외하면 동일하고 observations 3,552→7,104/metadata 1,179→2,358로 provenance만 늘었다. 각 표본·합본·재표현 모두 기본 상한 내였고 STATE_LIMIT·dropped diagnostics 0, 실제 usageProofReplays 0이었다. JS string.length 기준 16 UTF-16 code units 이상 민감 후보 합본 3,075개/archive 3,078개를 반환 leaf string/key와 exact 대조해 hit 0을 확인했다. 선정 기준·검증 수·harness 분모 보완·짧은 문자열/heap 등 한계는 [CLAUDE-EVIDENCE](CLAUDE-EVIDENCE.md#final-bounded-parser-verification)에 기록했다.
+
+지원 경계는 shape_verified_only/partial이다. unsupported records 244와 operation/lookup/error evidence 누락을 성공으로 숨기지 않는다. 실제 usage finality는 unknown/provisional이며 raw error/content identity는 완전성 증거가 없어 null이다. 전체 버전 지원·실제 fork/미관측 duration·제품 acceptance·성능·사람 파일럿은 별도다. 연구 담당은 제품 코드·테스트·Git·Project·memory를 변경하지 않았다.

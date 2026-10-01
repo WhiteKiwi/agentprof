@@ -4,7 +4,7 @@
 
 조사일: 2026-09-30 19:52 KST. 계획 기준 revision은 `36bb389262ae44d3f7afe3060401537c41f55c11`이다. 이 기록은 허용된 로컬 로그의 필드·관계 대조다. 제품 파서, 지표 계산, fixture 실행과 지원 승격은 **NOT RUN**이다. 아래 표본에서 필드가 존재한다는 사실을 버전 전체의 지원율로 확대하지 않는다.
 
-P0의 필드 조사와 누락 사유 기록은 수행했다. 이 문서의 NOT RUN은 당시 P0 gate의 상태다. 후속 P2의 Codex 어댑터·합성 기대값·고정 prefix 로컬 대조 결과와 지원 한계는 [CODEX-EVIDENCE](CODEX-EVIDENCE.md), runtime 검증은 [ACCEPTANCE](ACCEPTANCE.md)에 기록한다. [METRICS](METRICS.md)의 제품 계산·P3 Claude·전체 버전 지원은 아직 검증하지 않았다. 진단 품질 절차는 [QUALITY](QUALITY.md), 자원 조건은 [BENCHMARKS](BENCHMARKS.md), 합성 연결은 [FIXTURES](FIXTURES.md)를 따른다.
+P0의 필드 조사와 누락 사유 기록은 수행했다. 이 문서의 NOT RUN은 당시 P0 gate의 상태다. 후속 P2 Codex·P3 Claude 어댑터의 합성 기대값·고정 prefix 로컬 대조 결과와 지원 한계는 [CODEX-EVIDENCE](CODEX-EVIDENCE.md)·[CLAUDE-EVIDENCE](CLAUDE-EVIDENCE.md), runtime 검증은 [ACCEPTANCE](ACCEPTANCE.md)에 기록한다. [METRICS](METRICS.md)의 제품 계산·전체 버전 지원은 아직 검증하지 않았다. 진단 품질 절차는 [QUALITY](QUALITY.md), 자원 조건은 [BENCHMARKS](BENCHMARKS.md), 합성 연결은 [FIXTURES](FIXTURES.md)를 따른다.
 
 원문은 읽는 동안만 RAM에서 처리했고 저장소·ObsDog·공유 문서로 복사·업로드하지 않았다. 출력은 집계, 필드 이름·형과 익명 sample alias로 제한했다. 실제 source 경로·ID·snapshot digest는 저장소 밖의 권한 `0700` 디렉터리와 `0600` 로컬 manifest에만 있다. 원문 snapshot은 저장하지 않았다.
 

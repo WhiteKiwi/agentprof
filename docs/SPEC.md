@@ -24,6 +24,10 @@ Draft, 2026-09-30. 사용자 제공 AgentTrace 제안과 AgentProf metrics 제�
 
 P1 통합 revision `c3856249bdc0a9c19b856ca32c97d3484e189176`에는 문서 PR #11과 기반 [PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)가 병합되었다. P0 표본·합성 계약과 P1 help/version·개인정보·bounded reader·SQLite 기반을 사용한다. P2는 [Codex 어댑터](CODEX-PARSER.md)의 호출·턴·usage 관측과 [bounded 대조](CODEX-EVIDENCE.md)를 추가한다. `scan/stats/insights/report/open`은 계속 `NOT_IMPLEMENTED`·exit 2이며 제품 분석·리포트와 개선 효과 검증은 후속 기능이다. P0 조사를 하지 않았다고 표현하거나 부분 테스트 통과를 제품 분석 완료로 표현하지 않는다. [검토 근거](FINDINGS.md#2026-09-30-측정에서-개선으로-검토)와 [실행 evidence](ACCEPTANCE.md)를 참조한다.
 
+P3는 [Claude 어댑터](CLAUDE-PARSER.md)의 원문 없는 execution·turn·usage 관측을 추가한다. [고정 prefix 대조](CLAUDE-EVIDENCE.md)는 명시한 bounded 범위에서 PASS다. 호출·결과 시각 차이는 invocation latency이며 background acknowledgement는 pending으로 보존한다. 직접 turn duration은 scope·구간 불명, 실제 usage는 finality unknown/provisional이다. 이 관측을 검증된 Active Time·최종 토큰 총계로 올리지 않는다.
+
+사용자 요청으로 공개한 [npm 개발 알파](NPM-ALPHA.md)는 고정 main revision의 Codex parser·JSONL reader·privacy API와 CLI help/version을 제공한다. 최초 `0.1.0-dev.0`에는 Claude P3가 포함되지 않는다. 공개 알파의 SDK 사용 가능성과 전체 리포트 제품 출시를 구분한다.
+
 ## Product Principles
 
 - 기존 로그를 읽어 분석한다. 입력을 변경하거나 로그에 나온 명령·지침을 실행하지 않는다.
@@ -126,7 +130,7 @@ Homebrew 배포는 npm 경로를 검증한 다음 단계다. 실시간 로컬 �
 ## Open Product Questions
 
 - 독립 CLI·오프라인 리포트 이후에도 로컬 사용을 중심으로 유지할지, 선택적 공유를 제품으로 확장할지.
-- 공개 npm 이름·라이선스·Homebrew tap을 무엇으로 확정할지.
+- 정식 출시 라이선스·Homebrew tap을 무엇으로 확정할지. npm 이름은 초기 알파 공개로 `agentprof`를 확보했다.
 - 각 패턴의 초기 기본 임계값과 낮은 표본 수의 표시 기준을 어떻게 조정할지. 초기 제안은 연구 문서에서 근거·판단을 구분한다.
 
 위 질문은 초기 로컬 분석 구현을 막지 않는다. 공개 배포와 새로운 범위에는 결정이 선행되어야 한다.
