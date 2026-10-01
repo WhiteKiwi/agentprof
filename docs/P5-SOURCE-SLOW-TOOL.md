@@ -1,0 +1,115 @@
+# P5 Source-local Slow Tool
+
+2026-10-01. Reviewed bounded internal contract. This slice preserves the existing source-summary, adapters, storage, CLI and report behavior. It is not broad P5 acceptance or an empirical effectiveness claim. Implementation base: PR27 `d3289118658070a0601876445ac105fc6f1d898c`, explicitly stacked while that parent is open. Shared planning documents are additive.
+
+## Input and output boundary
+
+Add only `src/analysis/source-slow-tool.ts` for production code. Entry point: `analyzeSourceSlowTool(source: StoredSource): SourceSlowToolAnalysis`.
+
+- Input is a non-null validated `readSource` generation originating from the existing single-source ingestion contract. This is not an arbitrary-JSON/hostile-object validator. No extra caller evidence flags, relationship hints, thresholds or limits may override the rules.
+- Use type-only imports of storage/parser/normalized types. No SQLite runtime import, source discovery/read, clock, network, environment, hashing key or I/O. Do not return/store an existing mutable input object.
+- Output schema is `agentprof.source-slow-tool/v1`. Snapshot identity includes sourceId, provider, parserVersion, normalization/key versions, revision, completedOffset and observedSize. Fixed `scope=source_prefix`, `crossSourceReconciled=false`, `aggregationReady=false`, `parserResumeReady=false`, `sourceFreshnessChecked=false`.
+- Observation window is exactly the stored source byte prefix, `[0, completedOffset)`, in that generation. There is no date/time-window selection or invented collection time; `queryPeriod=null`. Do not derive a window from min/max timestamps. Duration-only evidence does not require invented intervals.
+- Fixed rule ID `slow-tool`, rule version `source-prefix-v1`, thresholds `{ minimumTimedCalls: 5, minimumDurationShare: 0.2, p95LowSampleBelow: 20 }`. They must be emitted, not hidden constants.
+- Fixed candidate severity `NOTICE`. This version has no severity escalation, cross-partition numeric score or high-confidence root-cause determination.
+- Deeply freeze newly allocated output. All labels/IDs inherit the validated closed privacy vocabulary. Do not expose operation/content/error fingerprints, raw arguments, URLs, source paths, byte payloads, user prompts or exception text. Source byte bounds themselves are safe metadata.
+
+## Source gates and event population
+
+### 1. Hard bounds and source suppression
+
+Before per-row work, apply the same readSource array caps as source-summary: 4,096 events/turns/usage; 8,192 observations/diagnostics. Reject an over-limit typed input with a fixed `source_slow_tool_limit_exceeded` error. No configurable higher limit.
+
+Preserve source-summary suppression precedence exactly: unavailable, evidence absent, stateLimited or diagnosticsDropped, ambiguousRecords or any ambiguous-origin observation. Additional rule-level source gates follow these: unsupported provider/parser contract (only current provider parserVersion 1 is covered); a stored event ID also observed as a Codex code wrapper; any non-null event parentEventId. These last two gates yield `unresolved_execution_relation`, with no candidates or shares for the source. Neither equality of parent IDs nor traversal of them resolves execution identity. A known wrapper observation with no corresponding stored event is expected and does not by itself suppress sound native calls.
+
+Suppression leaves bounded inventory/capabilities and reasons visible. `candidates=null`, not a successful zero-findings assertion. Preserve partial coverage/unsupported-record limitations even when the source is not wholly suppressed.
+
+### 2. Closed native-call population
+
+Explicitly exclude kind OR category `model`; do not infer model/network latency from gaps or usage. Exclude subagent/skill/opaque-other kinds, null/other labels, and standalone write_stdin rows. Agent/Task call durations can envelope child work, and the omitted graph cannot prove safe inclusion.
+
+Admit only these current provider/kind/tool combinations:
+
+- Codex: shell/exec_command, mcp/mcp, file_edit/apply_patch
+- Claude: shell/Bash, file_read/Read, file_write/Write, file_edit/Edit, search/Grep or Glob, mcp/mcp, browser/browser
+
+Require category consistency: shell allows test/build/search/read/other, while file_read/read, file_write/write, file_edit/edit, search/search, mcp/mcp and browser/browser are exact pairs. Inconsistent or unrecognized tuples are excluded explicitly rather than coerced into another bucket. These are admitted native-call classes, not proof of physical leaf processes or a complete tool population. Shell `other`/`shell <complex>` remains a coarse native invocation, never an inferred internal command list.
+
+Then apply terminal/timing eligibility with disjoint reasons matching source-summary precedence: cancelled, pending, unknown status, missing duration, invalid duration, unknown scope, estimated timing, unknown timing. Completed and failed rows may qualify; retain no_match/change_detected as completed outcomes. Duration must be finite, nonnegative and <= MAX_SAFE_INTEGER; scope must be known, evidence source_reported or paired_timestamps. A zero-duration call remains an observed sample.
+
+Each input event is assigned one primary eligibility reason, so admitted timed events plus exclusions equal inventory.events. The provenance step below assigns every otherwise-timed member of an unresolved partition to `identity_unresolved_partition`; individual provenance-failure counts are a separate diagnostic dimension and are not added again to exclusions. Numeric-overflow partitions still retain admitted sample counts because their individual durations are known. Whole-source suppression assigns all events to `source_suppressed`. Do not count source observations as calls. Separate observation counters from event counters.
+
+### 3. Positive provenance and authoritative representations
+
+Build one bounded event-ID observation index. Native ID equality comes from the current adapter contract; do not manufacture an alias map. Require ordinary-origin evidence and a decisive observation at the event's actual stored sourceRef file ID/byte offset. Observations must reference that event ID; Claude observation sessionId must equal its sessionId. Any linked execution observation with nonordinary origin or contradictory provider/session evidence makes that event's identity unresolved.
+
+- Codex source_reported shell/process_runtime or mcp/invocation_latency: require an ordinary terminal `structured` observation at the event source position. Do not demand raw transport status equal semantic status: rg exit 1 may have failed transport and completed/no_match semantics. Only transport completed/failed is terminal. A source_reported item_lifecycle duration is not an existing Codex v1 duration contract and is unsupported here.
+- Codex paired_timestamps/invocation_latency: require an ordinary `call` observation plus ordinary `result` or linked `poll` at the final event source position. A poll acknowledgement alone is not a new execution. Structured priority is preserved; do not replace direct runtime with call/result latency.
+- Claude: require ordinary `call` and final `result` observations for the event. Final result has completionKind=invocation_result, unassignedAcknowledgement=false, observedAt equal to event.endAt, and isError consistent with completed/failed status. For paired_timestamps require invocation_latency. For source_reported require observedResult.durationMs and durationScope equal the event's direct value/scope. That path can be synthetic-fixture-backed today; it does not promote real-log direct-duration support.
+
+For otherwise terminal/timed native-class rows, absent or contradictory provenance must not silently shrink the denominator. Form the tentative `(sessionId, durationScope, timingEvidence)` partition first; if any such row is identity-unresolved or has an unsupported timing representation, the whole partition is `identity_unresolved`, with denominator/share null and no candidates. Record its unresolved event IDs/count. Other independently valid partitions can remain evaluated. This is deliberately stricter than merely discarding an uncertain large call and inflating a remaining small group's share.
+
+Missing timing/unknown scope and unsupported opaque call classes stay explicit exclusions. They do not acquire a guessed comparable partition. Their missing duration is not zero. Wrapper observations and extra replay/call/result/poll representations are coverage evidence only; report unique observed wrapper IDs separately without pretending their runtime or child membership is known.
+
+## Partitions, groups, denominator and thresholds
+
+The source/provider/revision are fixed by the enclosing result. A duration partition is exactly `(sessionId, durationScope, timingEvidence)`. Do not combine sessions, direct/paired evidence or runtime/invocation/lifecycle. Category is not a denominator partition; a build bucket cannot qualify by dividing only by build time.
+
+Within a fully resolved partition, groups are `(kind, category, toolName, commandPattern)` using exact safe display values and explicit null. This is a display cohort, not same-task/operation identity. MCP/browser buckets are explicitly `coarse_tool_family`; a command pattern can cover different targets, flags already abstracted by normalization, or otherwise different tasks. Do not name a server/backend or assert same operation. Do not pool p95 across groups or average percentiles.
+
+Let D be the checked sum of every admitted unique native event duration in the partition, including groups with fewer than five calls and zero durations. Let G be a group's sum, and n its unique event count. Candidate iff n >= 5, D > 0, both sums finite/nonoverflowed, and G / D >= 0.2. The share is `observedEligibleNativeToolDurationShare`, always described as a share of this admitted source-local subset. It is not total session time, occupancy, latency overhead, avoided time or coverage percentage.
+
+- Empty partition: no numeric denominator and no observed-zero implication
+- Observed all-zero partition: D=0, share=null, reason=zero_denominator, no candidate
+- Any denominator overflow: D/share null and the whole partition suppressed for candidate emission; no clamp, Infinity or partial sum
+- Individual n, max and nearest-rank p50/p95 can remain known independently of sums, but a suppressed denominator cannot produce a candidate
+- Checked nonnegative sums in deterministic event-ID order, ordinary IEEE-754 arithmetic; no undocumented epsilon around 0.2 and no claim of exact real-number fractions
+- Quantiles use raw durations sorted ascending then event ID as tie-break, nearest rank ceil(q*n)-1; `lowSampleP95 = n < 20`. Five samples can pass the share signal but do not establish a reliable tail-latency diagnosis
+
+Partial/unsupported source coverage is never hidden. A candidate may describe the admitted observed subset while explicitly stating that excluded or unparsed records prevent a whole-source/population claim. Source assessment is `suppressed`, `no_eligible_events`, `evaluated` or `partial`; partition status is `evaluated`, `zero_denominator`, `numeric_overflow` or `identity_unresolved`. Whole-source suppression or no tentative terminal/timed partitions yields candidates=null with its distinct reason. If every partition is identity-unresolved or overflowed, candidates=null and assessment=partial. At least one valid positive or observed-zero denominator makes candidate assessment possible: candidates is a list, empty when none matches; retain every unevaluated partition and set partial when any exists or source coverage is partial. An all-zero observed partition therefore has a known zero sum and null share, not a missing-data or successful all-source diagnosis.
+
+## Bounded result and evidence accounting
+
+Return a source envelope, source inventory/exclusion counts and capabilities, partition denominators/statuses, and candidate cards. No CLI renderer or user-input schema is added.
+
+- All input events belong to at most one duration partition and one cohort. <=4,096 partitions/cohorts; <=819 positive cards because each requires at least five disjoint event IDs. Keep all matching cards within these natural hard bounds; do not introduce an unexplained global top-N ranking over incomparable partitions.
+- Store denominator event IDs once per partition; candidate evidenceEventIds once per candidate. No repeated full denominator list on every card. Each list total is <=4,096 across the result. Ordinary observation IDs used as evidence total <=8,192 across disjoint candidate event groups. Counts for known wrappers/orphans are separate; do not emit the full observation payload.
+- Candidate order is lexicographic partition tuple, then descending same-partition duration sum, descending n, then deterministic group tuple. There is no global fastest/slowest ranking across time meanings. Candidate IDs are deterministic result-local ordinals after ordering, with source/revision envelope providing their identity context; they are not new persistent canonical IDs.
+- Preserve all event IDs used for a candidate and exact denominator n/sum/unit. Card evidence points to a partition record rather than repeating it. Source exclusion reasons are shared by reference/context, with no fabricated partition assignment for unknown scope.
+- `includedEventIds=[]` for Detected Waste on every card. This rule provides no waste total, no global waste=0 assertion and no predicted savings. Measured impact is only the group's recorded-duration sum and observed subset share.
+- O(events + observations) indexing/grouping, O((events + observations) log(events + observations)) maximum deterministic sorting, and O(events + observations) retained state. No event-by-observation nested scan, all-pairs overlap, full-source scan per group, recursion over parent graphs, or Cartesian join. Preserve current serialized-source bounds; never copy whole input event/observation records into every card.
+
+## Each candidate's explanation and one experiment
+
+Every card carries rule/version/thresholds, source byte-window reference, stream/partition/group, sample n, duration sum/mean/max/p50/p95 and low-sample flag, denominator n/sum, evidence IDs, source eligibility/coverage limitations, measurement basis and interpretation confidence.
+
+Measurement basis distinguishes source_reported (`direct`) from paired_timestamps (`observed`). Pattern status is `candidate`; avoidable-work/root-cause/effect confidence is unestablished. Coarse grouping is disclosed independently of timing confidence.
+
+Normal necessary-work counterexample: five required full regression/build or complete retrieval calls can account for >=20% of compatible observed time and still all be necessary. A workload whose only supported calls are this tool naturally has 100% admitted share. These are valid duration-concentration candidates, not evidence that calls should be removed. Normal negative controls are n<5, share<20%, and splitting across scopes/evidence/streams so no group reaches both thresholds.
+
+One investigative action: review this bounded evidence group to identify one supported input/target restriction that might preserve the exact required result. For a coarse MCP/browser bucket, first identify the particular invocation locally from authorized source context; the rule itself does not know the endpoint or target. If a safe restriction cannot be established, leave the candidate non-actionable rather than recommend skipping work.
+
+One matched experiment, described but not executed by the rule: compare the original invocation path and that one restricted-input/target path on the same task/repository revision, provider/model/configuration, cache state and workload/sample selection. Record per-call n, same-scope duration distribution/sum and complete-cycle outcome, including extra retries/refetches or narrowing overhead. Compare task elapsed or full unique usage only if separately measured with proper boundaries/denominators; this rule cannot supply them. Retain effect-none, worse, noisy and incomparable outcomes. No fixed improvement percentage is promised.
+
+Quality guardrail: preserve the required answer/evidence, output completeness, success criteria, regression/security/build gates and mandatory full validation. A targeted-first ordering must still perform required full validation. Lower duration does not pass if correctness, required coverage or defect detection worsens. No real-user usefulness/precision/causal-effect claim is allowed from synthetic checks alone.
+
+## Verification plan and results
+
+Independent synthetic coverage must check exact 5-call/20% and negative boundaries; category-inclusive denominators; provider/source/session/scope/evidence separation; n=5/19/20 quantiles and fractional/overflow arithmetic; native-ID replay, structured priority, wrapper and poll controls; provenance loss/contradiction and conservative partition suppression; Claude final/result-before-call/multi-call/sidechain/background and direct synthetic duration gates; source suppression precedence; all-zero/absent/partial states; deterministic immutable output, fixed bounds and evidence budgets; coarse labels and necessary work; both provider adapters through close/reopen store generations with unchanged bytes. Full npm run check, artifact and documentation/privacy checks precede independent frozen-diff review.
+
+Status at contract creation: implementation and all new verification NOT RUN. Actual results will be appended here after execution. Real-user logs, local pilot, benchmark/performance campaign, macOS and hosted checks are NOT RUN in this developer session. No provider support or diagnostic precision/causal-effect promotion follows from synthetic tests.
+
+## Executed verification — 2026-10-01
+
+The coordinator reviewed selection/provenance/arithmetic before final checks. No production gate was relaxed to satisfy fixtures. The implementation uses a single event-ID observation index, checks linked execution origins/provider shape (and Claude session), selects deterministic ordinary decisive observation IDs at the canonical source position, and suppresses an entire tentative compatible partition on unresolved provenance. Observations never become event counts; no physical execution or wrapper-child relationship is invented. Noncandidate cohorts remain in the denominator. Source-context references carry shared coverage/exclusion limits without copying denominator lists onto cards.
+
+- PASS, Linux x64 Node 24.19.0: `VITEST_MAX_WORKERS=2 npm run check` with an existing writable npm cache. Typecheck, build, **709 tests / 28 files**, and **37-file artifact** pass. Artifact verification exercises tarball npm exec and isolated global install help/version with lifecycle scripts disabled, plus installed synthetic scan/list/select and unchanged read-only stats storage. The one added compiled analysis file remains internal; package metadata, public entry points, CLI and existing snapshots are unchanged.
+- PASS, new focused synthetic suite: **116 tests / 2 files** (96 unit, 20 integration). Exact five calls / 20-of-100 ms, 19-of-100 rejection, four-call rejection, all-category/small-cohort denominator, scope/evidence/stream separation, failed/no_match semantics, null/zero/overflow combinations, fractional deterministic sums and n=5/19/20 quantiles are independently asserted.
+- PASS, persisted adapter oracles: both providers generate ordinary provenance, store, close/reopen and read the same generation. Missing large-call provenance suppresses all six compatible rows after persistence; a mixed copied execution observation also suppresses the partition. Structured/fallback/replay priority, known wrapper with unknown relation, three terminal-poll sequences per call, wrapper/event collisions and explicit parent links are covered. Claude reordered/multi-call, sidechain, opaque Agent/Task/Skill, background/unassigned acknowledgements, coarse MCP/browser and explicitly fixture-backed direct duration are covered.
+- PASS, bounded results: exact 4,096 events and 8,192 observations, exact inventory-kind caps and one-over rejection before payload iteration; 819 disjoint positive cards retain 4,095 candidate event IDs, and a separate 4,096-call fixture retains exactly 8,192 decisive observation IDs. No global top-N truncation, whole denominator duplication on cards or input freezing/mutation occurs. Event/observation reordering preserves exact output. Native IDs with identical or different operations remain separate samples; safe display cohorts do not imply same operation.
+- PASS, source/store/privacy boundaries: synthetic source bytes, reopened stored generation and all storage-file bytes remain identical across pure analysis; replacement changes only enclosing revision in repeated analysis. Same native IDs in different sources stay separate envelopes. Private raw fixture sentinels/fingerprints are absent from outputs and artifact. Source has type-only imports and no I/O, clock, environment or random dependency. Every card retains the necessary-work counterexample, one investigative matched experiment and mandatory validation/correctness safeguards, with empty Detected Waste included IDs.
+- PASS, repository checks: all **157 unchanged base blobs** remain exact; the four shared documents preserve their complete PR27 content as a prefix. Only the eight planned paths differ from the verified 161-file base. Five changed documents have **98 valid local links / 16 anchors**; whitespace checks pass.
+
+Initial focused runs exposed two test-construction mistakes: the intended mismatching source ID was identical to the fixture source, and `npm run build` is normalized as `other` rather than `build` by the existing command contract. The fixtures were corrected to a genuinely different source ID and recognized synthetic `cargo build`. These failed runs were not passes; both subsequent focused and final full checks pass. No production/parser change was needed for those corrections.
+
+PR27 was rechecked at the end of local verification: still draft/unmerged at `d3289118658070a0601876445ac105fc6f1d898c`, with base main `1dcd70089d640f5137b382eaf83b0b2ecc49b41d`. Root still owns independent all-file review, draft publication, exact remote bytes/head CI and later stack retargeting. This local evidence does not claim hosted CI, macOS, real-user logs, a usefulness/precision pilot, a performance campaign, full-history resource acceptance, savings, causal effect, broad P5 completion, merge or deployment.
