@@ -192,3 +192,7 @@ Homebrew tap·formula 게시, npm 공개와 license 선택은 이 계획의 구�
 ## P5 read-only selected-source stats (2026-10-01)
 
 Implement the reviewed [read-only stats contract](P5-READONLY-STATS.md) before broader report/reconciliation work. First prove a non-creating, non-migrating existing-private-store opener for supported DELETE mode; reuse exact key/header validation and pinned readSource. Then bounded header catalogue, explicit-mode CLI and synthetic full/artifact verification. Stop and report if the supported-case no-write gate cannot be demonstrated. No report files, parser, schema or dependency changes.
+
+## Human selected-source formatter supplement (2026-10-01)
+
+[P5-HUMAN-STATS](P5-HUMAN-STATS.md) specifies the independently planned, coordinator-reviewed formatter-only slice. Keep the JSON and source-list branches unchanged; copy and partition existing immutable summary cohorts, then render numeric ASCII tables with full safe-label legends and exact String(number) values. Verify separate known/unknown top-ten buckets, every evidence/eligibility boundary, complete synthetic output, JSON byte parity, privacy and packed CLI before frozen-content review. No source-summary, storage, parser, report, dependency or CLI option change.

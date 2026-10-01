@@ -69,7 +69,7 @@ it('labels healthy empty and actual zero cohorts consistently with JSON',async()
  expect(store.replaceSourceSnapshot(zero as typeof input,revision).status).toBe('committed');db.close();
  const zeroResult=await runStats({dataDir:data,source:id});if(zeroResult.mode!=='selected_source')throw Error();
  expect(zeroResult.summary.usage![0]!.counts.total).toBe(0);expect(zeroResult.summary.durations![0]!.sumMs).toBe(0);
- const human=run(['stats','--source',id,'--data-dir',data]);expect(human.stdout).toBe(formatStatsResult(zeroResult,false));expect(human.stdout).toContain('sum=0 ms');expect(human.stdout).toContain('total=0');expect(human.stdout).not.toContain('(suppressed');
+ const human=run(['stats','--source',id,'--data-dir',data]);expect(human.stdout).toBe(formatStatsResult(zeroResult,false));expect(human.stdout).toMatch(/1\s+\| 1\s+\| 0\s+\| 0\s+\| 0\s+\| 0\s+\| 0\*/);expect(human.stdout).toMatch(/0\s+\| 0\s+\| 0\s+\| 0\s+\| 0\s+\| 0\s+\| unknown/);expect(human.stdout).not.toContain('(suppressed');
  const {createCodexAdapter}=await import('../src/parsers/codex/index.js');const empty=createCodexAdapter(ctx).snapshot();
  const writer=await openDatabase(data);createSourceStore(writer,ctx.keyId).replaceSourceSnapshot({...input,completedOffset:0,observedSize:0,boundaryFingerprint:null,events:[],evidence:{turns:empty.turns,usage:empty.usage,observations:empty.observations,diagnostics:empty.diagnostics,capabilities:empty.capabilities}},2);writer.close();
  const result=await runStats({dataDir:data,source:id});if(result.mode!=='selected_source')throw Error();expect(result.summary.suppressionReason).toBeNull();expect(result.summary.durations).toBeNull();expect(result.summary.usage).toBeNull();
