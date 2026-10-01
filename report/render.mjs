@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { escapeHtml as esc, metric, formatDuration, evidenceBadge, evidenceTable } from '../design/components.mjs';
+import { detailFixture } from './detail-fixture.mjs';
+import { renderDetails } from './details.mjs';
 import { bar, tokenComposition, timeline } from './charts.mjs';
 const root = new URL('./', import.meta.url);
 const read = path => readFile(new URL(path, root), 'utf8');
@@ -37,6 +39,6 @@ export async function renderReport(s) {
     ids.add(item.id);
     return `<article class="ap-insight"><p class="ap-overline">${esc(item.rule)}</p><div class="ap-insight-title"><h3>${esc(item.title)}</h3>${evidenceBadge(item.evidence)}</div><p>${esc(item.description)}</p><p class="ap-insight-meta">${esc(item.sample)} · ${esc(item.scope)} · ${esc(formatDuration(item.seconds))}</p><details class="ap-details" id="evidence-${item.id}"><summary>Inspect evidence and next step</summary><div class="ap-details-body"><p><strong>Next step.</strong> ${esc(item.nextStep)}</p><p><strong>One experiment.</strong> ${esc(item.experiment)}</p><p><strong>Quality guardrail.</strong> ${esc(item.guardrail)}</p>${evidenceTable(item.events)}<p class="ap-note">${esc(item.caveat)}</p></div></details></article>`;
   }).join('') || '<p class="ap-note">No insight candidates in this snapshot. This does not establish absence of problems.</p>';
-  const slots = {CSS:css,JS:js,CSP:csp,ICON:icon,TITLE:esc(s.title),PERIOD:esc(s.period),TIMEZONE:esc(s.timezone),COLLECTED:esc(s.collectedAt),SOURCE:esc(s.source),COVERAGE:esc(coverage),MISSING:String(s.terminalCalls-s.timedCalls),SESSIONS:String(s.sessions),PENDING:String(s.pendingCalls),SUMMARY:summary,HOTSPOTS:hotspots,INSIGHTS:insights,WASTE:esc(formatDuration(s.wasteSeconds)),TIME:time,TOKENS:tokenComposition(s.tokens),TIMELINE:timeline(s.timeline)};
+  const slots = {CSS:css,JS:js,CSP:csp,ICON:icon,TITLE:esc(s.title),PERIOD:esc(s.period),TIMEZONE:esc(s.timezone),COLLECTED:esc(s.collectedAt),SOURCE:esc(s.source),COVERAGE:esc(coverage),MISSING:String(s.terminalCalls-s.timedCalls),SESSIONS:String(s.sessions),PENDING:String(s.pendingCalls),SUMMARY:summary,HOTSPOTS:hotspots,INSIGHTS:insights,WASTE:esc(formatDuration(s.wasteSeconds)),TIME:time,TOKENS:tokenComposition(s.tokens),TIMELINE:timeline(s.timeline),DETAILS:renderDetails(s.details || detailFixture)};
   return (await read('report.template.html')).replace(/@@([A-Z]+)@@/g, (_, key) => { if (!(key in slots)) throw new Error('Unknown template slot'); return slots[key]; });
 }

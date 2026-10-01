@@ -34,3 +34,13 @@ Plan and limitations: [REPORT-PREVIEW](../docs/REPORT-PREVIEW.md). Product metri
 ## Visual-first revision
 
 Large metrics lead into separately scoped time bars, a synthetic token composition, selected hotspot bars/table and a five-minute session excerpt. Span endpoints are explicit, pending items have start ticks only, and a table preserves all interval values. The excerpt is not an exhaustive export or dependency graph. The internal display model now has explicit synthetic token and timeline sections; it still does not define a provider contract. No real token observations or span analysis are inferred. See the planning supplement for the primary-source review and the decision to defer a local server.
+
+## Requests and commands detail
+
+The independent `demo-detail` cohort answers three different questions with separate views:
+
+1. Horizontal stacked bars: where cumulative timed duration went, within compatible process-runtime or invocation-latency cohorts only
+2. Independent occupancy bars: each category's observed interval union divided by the 300s excerpt; categories overlap and must not be stacked into 100%
+3. Command bars/table: sum, cohort share, within-category share, observed occupancy, call/timing coverage, mean and max; longest calls link to native per-run evidence and concurrent lanes
+
+API/tool invocation latency is not model-network latency or pure server runtime. Model API timing remains unsupported. Five API/tool calls are terminal (four timed, one missing); a sixth is pending and excluded. Command aliases are hand-authored safe patterns, not raw commands or proven same-operation identities. No private arguments, endpoints, output or prompts are embedded. This display fixture and its arithmetic are not an analyzer implementation. Run the whole `report/tests/*.test.mjs` suite for its independent numeric oracles.

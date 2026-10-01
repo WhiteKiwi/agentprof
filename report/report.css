@@ -31,3 +31,20 @@
 .report-provenance summary { font-weight:400; }
 @media(max-width:800px) { .report-two-up,.report-actions { grid-template-columns:1fr; } .report-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:480px) { .report-summary { grid-template-columns:1fr; } .report-span-row { grid-template-columns:80px minmax(0,1fr); gap:8px; margin-bottom:12px; } .report-span-row > span { grid-column:2; } .report-axis { margin-left:88px; margin-right:0; } .report-legend { grid-template-columns:1fr; } .report-legend > div { display:flex; justify-content:space-between; align-items:center; } }
+/* Detailed report: aligned comparisons, native disclosure drilldown. */
+#details { display:grid; gap:var(--ap-space-6); }
+.report-breakdown-rows { display:grid; gap:12px; margin-top:20px; }
+.report-command-table { margin-top:20px; }
+.report-command-table table { min-width:680px; }
+.report-command-table a,.report-longest a { color:var(--ap-brand-text); }
+.report-command-table th:first-child { min-width:150px; }
+.report-command-table td:nth-child(2) { min-width:140px; }
+.report-command-table td { font-variant-numeric:tabular-nums; }
+.report-command-table td .ap-muted { display:inline-block; margin-top:6px; }
+.report-longest { padding:0; list-style:none; counter-reset:rank; }
+.report-longest li { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 12px; padding:16px 0; border-bottom:1px solid var(--ap-border); }
+.report-longest li > span { grid-column:1/-1; }
+#details .report-span-row { grid-template-columns:190px minmax(0,1fr) 118px; }
+#details .report-axis { margin-left:202px; }
+#details .report-span-row a { overflow-wrap:anywhere; }
+@media(max-width:480px) { #details .report-span-row { grid-template-columns:110px minmax(0,1fr); } #details .report-axis { margin-left:122px; } }

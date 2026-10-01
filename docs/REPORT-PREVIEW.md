@@ -1,6 +1,6 @@
 # Fixed-snapshot report preparation
 
-Status: preparatory presentation slice, 2026-09-30. Tracks [P5 #6](https://github.com/WhiteKiwi/agentprof/issues/6); P6 remains dependent on real analysis. This supplement does not replace SPEC, METRICS or the P5/P6 implementation plan.
+Status: preparatory presentation slice, 2026-09-30. Tracks [Project P5](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833093); P6 remains dependent on real analysis. This supplement does not replace SPEC, METRICS or the P5/P6 implementation plan.
 
 ## Scope and evidence
 
@@ -49,3 +49,13 @@ Recommendation: improve the offline report before introducing a server. Measure 
 ### Revision verification
 
 Check numerical chart domains, finite/non-negative intervals and token partition consistency; missing values get text, not zero-width marks. Span widths use the selected window's scale; no parent-child connectors or inferred critical path. Accessible labels and data tables retain timing values without SVG or JavaScript. Preserve CSP, escaping, deterministic output and existing tests. Browser rendering remains a separate outstanding gate.
+
+## Detailed timing slice — 2026-10-01 UTC
+
+User requested API request/response share, build-command share and longest commands. This is a continuation of the same [Project P5 presentation ticket](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833093), not a second engine task. Current main `baa384f` still has no analysis-to-report snapshot pipeline. The report therefore adds one explicitly synthetic, independently identified five-minute detail cohort; it does not imply the existing parser captures model-network timing.
+
+Before implementation: choose horizontal stacked bars only for mutually exclusive categories within the same duration scope/evidence cohort. Process-runtime cumulative shares and API/tool invocation latency sums get separate panels. Independent category interval-union occupancy uses the 300-second excerpt as denominator and may sum above 100%; never stack those rows into a whole. Command rankings use bars and a numeric table with count, timed count, sum, mean and max. Long executions link to safe per-run detail and aligned interval lanes. Generic labels do not prove same-operation retry identity.
+
+The detail fixture's direct process-runtime cohort has 7 terminal calls totaling 360s: build 180s, tests 120s, search 60s. Its API/tool invocation cohort has 5 terminal calls, 4 timed at 60s each (240s), one missing duration; a sixth pending call is separately excluded. Model API/network latency is unsupported. Timing intervals are a separate observed field, not inferred from direct duration. Per-category union occupancy is 180/300 build, 120/300 test, 60/300 search, 240/300 API/tool; overlap means the percentages are not additive. All known interval union is 260/300; remaining 40s is unobserved, not proven idle. This hand-authored oracle is unrelated to real user logs.
+
+Safe command aliases are display-only synthetic patterns without private paths, parameters, endpoints or outputs. A future adapter must enforce allowlisting before supplying them; escaping does not sanitize sensitive text. Internal report helpers validate and format the bounded synthetic view, not replace product metric contracts. Verify fixed arithmetic, identical-scope denominators, null versus zero, union overlap, nonterminal exclusion, mean/max ordering, safe detail references and hostile strings. Keep no-JS tables/disclosures and browser QA limitations explicit.
