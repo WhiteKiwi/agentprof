@@ -159,3 +159,7 @@ One validated stored source prefix may expose an internal, read-only summary: re
 ## P5 read-only selected-source stats (2026-10-01)
 
 Existing-store stats requires exactly one explicit --list-sources or --source <full-source-id>. It reads one stored prefix without collecting input logs, creating storage, changing permissions or migrating. List output is bounded to 64 IDs with explicit truncation. Selected metrics reuse the source-local summary with its suppression, scope, null/zero and unreconciled boundaries. No history/global totals or freshness check is claimed.
+
+## Human selected-source stats tables (2026-10-01)
+
+The selected-source human report presents exact stored inventory and evidence-labelled duration/usage tables. It preserves unknown versus observed zero and full source/session identities. Known recorded-duration sums rank only within one session/scope/evidence partition; unknown sums occupy a separate unranked bucket. Each bucket shows at most ten cohorts with truthful omission counts. JSON retains all cohorts and contributing IDs unchanged; source listing is unchanged. No new metrics, global totals, elapsed/busy time, percentages or savings are inferred. See [P5-HUMAN-STATS](P5-HUMAN-STATS.md).
