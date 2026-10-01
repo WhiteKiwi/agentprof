@@ -52,7 +52,7 @@ Checked nonnegative finite sums cannot exceed MAX_SAFE_INTEGER. Overflow nulls t
 
 ## Verification plan and actual evidence
 
-The pre-implementation Project plan recorded four steps and concrete Verify entries. The following evidence is now executed locally, distinct from pending review/publication:
+The pre-implementation Project plan recorded four steps and concrete Verify entries. The following table records the local implementation handoff; final review/publication evidence is recorded separately below:
 
 | Step / concrete Verify | Actual result |
 | --- | --- |
@@ -67,3 +67,28 @@ The pre-implementation Project plan recorded four steps and concrete Verify entr
 Local verification: Node 24.19.0, Linux x64, 2026-10-01 13:27 UTC. Command: `npm_config_cache=<workspace-cache> npm run check`. Initial artifact verification failed because the default home npm cache directory was unavailable; using the permitted workspace cache resolved it, and the complete check was rerun successfully. No dependency changes, install scripts, package publication, merge or deployment were performed. The internal module does not change the existing distribution manifest.
 
 No new actual-user-log execution, full-history throughput/coverage, global aggregation, CLI/report integration, all ten metrics/six diagnostics, full P5/P6 completion or provider-version support is claimed. Follow-on consistent enumeration and cross-source canonical reconciliation require a separate reviewed plan before any global stats/report connection.
+
+## Repository-owner integration review (2026-10-01)
+
+All seven changed files were reviewed at implementation head
+`9cb0b19675cb8f695ceee3b6860780e5ccdab932`: one production file selected by
+OCR delegate and six manually reviewed documentation/test files. No additional
+actionable findings were identified. Review confirms the validated-input-only
+boundary, conservative suppression, disjoint eligibility accounting, measured
+cohort separation, whole-response conflict exclusion and source-local scope.
+
+- PASS: macOS arm64, Node 24.15.0, 24.21.0 and 26.7.0; each full
+  `npm run check` passes typecheck, build, 427 tests across 20 files and the
+  33-file artifact check, including synthetic adapter/store/reopen integration
+  and script-disabled packed-install verification.
+- PASS: Node 22.16.0 returns `UNSUPPORTED_RUNTIME`, exit 2 and no stdout.
+- PASS: 33 documentation files, 231 local links, 23 Markdown anchors and
+  `git diff --check`. This review follow-up changes only this document; the
+  other six reviewed files retain their verified content hashes.
+
+Final publication-head hashes, exact-head Linux CI and merge evidence are
+recorded in [PR #24](https://github.com/WhiteKiwi/agentprof/pull/24) and the
+[source-summary Project item](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=259630371)
+after verification. Full P5, global reconciliation, report integration and
+full-history resource acceptance remain open. No npm release is part of this
+review.
