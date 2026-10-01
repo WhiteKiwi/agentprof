@@ -48,6 +48,17 @@ The run status distinguishes completed traversal, partial processing and cancell
 - PASS: pre-aborted calls perform no discovery/store read; cancellation inside the second real adapter retains the first commit; cancellation after commit does not relabel that source. Abandoned directories reject subsequent reads with `ERR_DIR_CLOSED`; interrupted source descriptors reject `stat` with `EBADF`.
 - PASS: default 64-source ceiling, lowered directory/internal-node/file/record/line bounds, diagnostic sampling including a zero-sample budget, strict root/option validation and no getter execution. A symlink-only directory with a yielded-entry budget of two stops after its observed overflow diagnostic, records the limit, reports a partial/truncated result and closes the directory; unseen entries are not counted as completed discovery.
 - PASS: both local documentation links resolve and `git diff --check` passes. Coordinator read-only review of the bounded source transactions, entry limits, CAS and truthful partial summaries found no blocking issue; final frozen-content review/publication remains with the coordinator.
-- NOT RUN for this slice: macOS, exact published-head CI and full-history time/RSS acceptance. There is no CLI/resume/cache/aggregate integration claim, and both readiness flags remain false.
+- At the implementation handoff, macOS, exact published-head CI and full-history time/RSS acceptance had not run. The parent verification below adds supported-runtime evidence; full-history time/RSS acceptance remains unverified. There is no CLI/resume/cache/aggregate integration claim, and both readiness flags remain false.
+
+### Supported-runtime parent verification — 2026-10-01
+
+The parent reviewed all three published files at `609fbb4eb7742681de73fca47dadb3adabb08dd1`, including the test and documentation files excluded by OCR's deterministic selection. No additional actionable finding remained. Review also checked the existing discovery, source-prefix, ingestion and metric-store contracts on merged main.
+
+- PASS: clean `npm ci --ignore-scripts` in an isolated macOS arm64 checkout and full `npm run check` on Node 24.15.0, 24.21.0 and 26.7.0. Each passed typecheck, build, 349 tests across 17 files and the 31-file artifact check, with isolated npm-exec/global-install help/version and installation scripts disabled.
+- PASS: Node 22.16.0 returns `UNSUPPORTED_RUNTIME`, exit 2 and no stdout before importing the SQLite CLI implementation.
+- PASS: repository documentation validation checked 31 Markdown documents, 224 local links and 23 anchors with no failures; `git diff --check` passed.
+- The product and test files above are unchanged by this verification-document update. Final published-head CI, remote hashes and merge-tree equality are recorded in [PR #22](https://github.com/WhiteKiwi/agentprof/pull/22) and the P4 Project draft before the merge is treated as verified.
+
+This evidence covers bounded sequential coordination on the metric-evidence store. Full P4 integration, durable recovery, CLI and full-history resource acceptance remain open; both readiness flags remain false.
 
 The existing [ingestion contract](P4-INGESTION.md) and [source storage contract](P4-STORAGE.md) retain their own limits. Integration on the merged metric-evidence revision preserves its actual storage scope; subsequent API changes still require revalidation.
