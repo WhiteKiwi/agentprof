@@ -38,9 +38,9 @@ One replacement/readback is limited to 4,096 events, 64 KiB of serialized data p
 
 Verify new 0→2, existing 1→2, idempotent 2→2 and failed/future/corrupt migrations; controlled two-connection first-open/upgrade interleavings before lock acquisition; migration atomicity/settings preservation; two-connection stale revisions; pending/terminal and empty replacement; source unavailability; failure/cancellation rollback; exact reopened P2/P3 fixture event values; duplicate canonical IDs across sources; and inert, raw-free validation. Run full repository checks and independent contract/code review. Product scan/incremental recovery and large-history acceptance remain NOT RUN.
 
-## Execution evidence
+## Initial implementation evidence
 
-Base: `9f85567a0810a9300daf1b0d26f4b81ce299cbf5`. Final local verification on 2026-10-01 used Node 24.19.0, Linux x64 and built-in SQLite. No user logs were read.
+Base: `9f85567a0810a9300daf1b0d26f4b81ce299cbf5`. The initial developer verification on 2026-10-01 used Node 24.19.0, Linux x64 and built-in SQLite. The results below describe the original implementation before the coordinator correction. No user logs were read.
 
 - PASS: TypeScript check, build and 227 tests in 13 files, including 14 source-store tests and all existing P2/P3/HMAC/privacy oracles. Command: `npm run check` with a writable local npm cache; its artifact stage is separately qualified below.
 - PASS: new/existing/idempotent migrations, settings preservation and DDL rollback; two-connection stale-write rejection; pending→terminal replacement; empty/truncated-source replacement; retained unavailable-source history; first-write key binding rollback; mid-write SQL failure and detected cancellation; caller-owned transaction protection; limits, raw-field/accessor/toJSON rejection and corrupted readback.
@@ -48,7 +48,7 @@ Base: `9f85567a0810a9300daf1b0d26f4b81ce299cbf5`. Final local verification on 20
 - PASS: independent static review. Its two findings were fixed: iterator-based readback stops at the total-byte/count bound and always closes its cursor; same-scope duration/interval conflicts greater than 1 ms reject the whole replacement. Regression tests cover another writer progressing after failed readback, atomic rejection, distinct scopes and the 1 ms tolerance.
 - Earlier pre-review code passed the complete repository check, including the 27-file packed artifact, isolated npm exec/global install and help/version. After the final two corrections, the fresh-cache artifact install was BLOCKED by HTTP 403 from the npm registry while fetching Commander. The final typecheck/build/227 tests passed, but the final complete `npm run check` did not pass locally. No network workaround was attempted. CI must verify the exact published head, including this artifact step.
 
-The interrupted executor's last focused-test process could not be recovered, so its missing result is not counted. The final recorded tests above were run after recovery. macOS and the supported CI runtime matrix are not local results. No full-scan performance or incremental-resume acceptance is claimed. Product scan, durable parser recovery and aggregation remain NOT RUN.
+The interrupted executor's last focused-test process could not be recovered, so its missing result is not counted. The recorded initial tests above were run after recovery. The initial developer results cover Linux only; supported macOS coordinator results follow below. No full-scan performance or incremental-resume acceptance is claimed. Product scan, durable parser recovery and aggregation remain NOT RUN.
 
 ## Migration review correction evidence (2026-10-01)
 
@@ -59,3 +59,13 @@ The correction was verified with actual Node 24.15.0 on macOS arm64 and built-in
 - PASS: future schema 99 retains `DATABASE_SCHEMA_TOO_NEW`; unsupported settings, schema -1 and failed DDL retain `DATABASE_MIGRATION_FAILED`, preserve prior state and leave no migration transaction active. Corrupt-file opening retains `DATABASE_ACCESS_FAILED`. Nested migrations at versions 0, 1 and 2 reject safely, preserve the caller's schema/work and allow the caller to commit its original row. The generic `transaction()` helper is unchanged.
 
 Schema-2 no-op migrations now acquire the same immediate lock before inspecting the version. They can therefore wait for a writer or fail safely when the lock cannot be acquired, including inside a caller-owned transaction. The deterministic cases verify the specified pre-lock interleaving, not arbitrary scheduling or lock-timeout performance. This developer evidence covers the targeted correction; full supported-runtime, artifact and corrected-head CI verification remain the coordinator's publication gate.
+
+## Coordinator verification (2026-10-01)
+
+The coordinator reviewed all seven PR files and the migration correction. The corrected source/test commit is `23d2310` on base `9f85567a0810a9300daf1b0d26f4b81ce299cbf5`; only documentation evidence changed after this local verification.
+
+- PASS: macOS arm64, Node 24.15.0, 24.21.0 and 26.7.0 each completed `npm run check`: TypeScript, build, 232 tests in 13 files (19 source-store tests) and the 27-file packed artifact. Artifact validation includes isolated npm exec/global-prefix install, help/version and fixture exclusion, with install scripts disabled.
+- PASS: Node 22.16.0 rejects the built CLI before importing unsupported SQLite APIs, with `UNSUPPORTED_RUNTIME` and exit 2. Local documentation validation checked 28 Markdown documents, 213 local links and 23 anchors without failures.
+- The original published head `4573684` passed the Linux CI matrix with 227 tests, including the artifact stage. The initial fresh-cache HTTP 403 is historical; the corrected macOS artifact checks above passed. Merge requires successful Linux CI for the final corrected published head. Exact head, run URLs and merge evidence are recorded in [PR #19](https://github.com/WhiteKiwi/agentprof/pull/19) and the [P4 Project item](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833059).
+
+This verifies only the bounded source event-contribution store. The full P4 ticket stays In Progress: durable parser state, diagnostics/provenance/usage/turn storage, cross-source integration, discovery/rewrite handling, incremental resume, scan CLI and full-scan resource acceptance remain incomplete.
