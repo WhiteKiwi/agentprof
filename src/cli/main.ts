@@ -2,6 +2,8 @@ import { Command, CommanderError } from "commander";
 import { safeErrorEnvelope, SafeError } from "../privacy/diagnostics.js";
 import { formatScanResult, runScan, validateCliPath } from "./scan.js";
 import type { ScanArguments } from "./scan.js";
+import { formatStatsResult, runStats, validateSourceSelection } from "./stats.js";
+import type { StatsArguments } from "./stats.js";
 import { VERSION } from "./version.js";
 
 function collect(value: string, previous: string[]): string[] {
@@ -11,7 +13,7 @@ function collect(value: string, previous: string[]): string[] {
 
 export async function run(argv: string[]): Promise<void> {
   const program = new Command();
-  program.name("agentprof").description("Local agent profiling. Development build; bounded explicit-root scan. Aggregation and reports are pending.")
+  program.name("agentprof").description("Local agent profiling. Development build; bounded scan and selected-source stats. Global aggregation and reports are pending.")
     .version(VERSION)
     .option("--json", "emit structured results and errors")
     .option("--data-dir <directory>", "override local private data directory", validateCliPath)
@@ -29,8 +31,20 @@ export async function run(argv: string[]): Promise<void> {
       process.stdout.write(formatScanResult(result, options.json === true));
       process.exitCode = result.status === "completed" ? 0 : result.status === "aborted" ? 130 : 1;
     });
-  program.command("stats").description("Read aggregate statistics (not implemented yet)")
-    .option("--last <period>", "selected period, for example 7d").action(pending);
+  const stats = program.command("stats").description("Read one stored source prefix or list up to 64 sources (read-only)")
+    .option("--list-sources", "list bounded stored source inventory")
+    .option("--source <id>", "select one full source ID from list/scan JSON", validateSourceSelection)
+    .addHelpText("after", "\nExactly one selection mode is required. Existing private DELETE-mode store only; no scan or migration.\nNo --last, global totals, freshness check or cross-source reconciliation. Suppression and unknown values remain visible.");
+  let selections = 0;
+  for (const flag of ["list-sources", "source"]) stats.on(`option:${flag}`, () => {
+    if (++selections > 1) throw new SafeError("INVALID_ARGUMENT");
+  });
+  stats.action(async () => {
+    const options = { ...program.opts(), ...stats.opts() } as StatsArguments & { json?: boolean };
+    const result = await runStats(options);
+    process.stdout.write(formatStatsResult(result, options.json === true));
+    process.exitCode = 0;
+  });
   program.command("insights").description("Read diagnostics (not implemented yet)")
     .option("--last <period>", "selected period, for example 7d").action(pending);
   program.command("report").description("Generate an offline HTML report (not implemented yet)")

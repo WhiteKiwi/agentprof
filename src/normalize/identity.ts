@@ -50,6 +50,18 @@ export function comparableIdentities(left: string | null, right: string | null):
   return a !== null && b !== null && a[1] === b[1] && a[2] === b[2];
 }
 
+/** Shared serialized key contract; never creates or repairs a key. */
+export function parseIdentityKey(text: string): Readonly<{ keyId: string; secret: string }> {
+  try {
+    const raw: unknown = JSON.parse(text);
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) throw new SafeError("INVALID_IDENTITY_KEY");
+    const value = raw as { keyVersion?: unknown; keyId?: unknown; secret?: unknown };
+    if (value.keyVersion !== KEY_VERSION || typeof value.keyId !== "string" || !/^[a-f0-9]{32}$/.test(value.keyId)
+      || typeof value.secret !== "string" || !/^[a-f0-9]{64}$/.test(value.secret)) throw new SafeError("INVALID_IDENTITY_KEY");
+    return Object.freeze({ keyId: value.keyId, secret: value.secret });
+  } catch { throw new SafeError("INVALID_IDENTITY_KEY"); }
+}
+
 export async function loadOrCreateIdentityContext(dataDir: string): Promise<IdentityContext> {
   const directory = await ensurePrivateDirectory(dataDir);
   const destination = join(directory, "identity-key.json");
@@ -72,12 +84,7 @@ export async function loadOrCreateIdentityContext(dataDir: string): Promise<Iden
   const file = await openPrivateFile(destination);
   try {
     if ((await file.stat()).size > 1024) throw new SafeError("INVALID_IDENTITY_KEY");
-    const raw: unknown = JSON.parse(await file.readFile("utf8"));
-    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) throw new SafeError("INVALID_IDENTITY_KEY");
-    const value = raw as { keyVersion?: unknown; keyId?: unknown; secret?: unknown };
-    if (value.keyVersion !== KEY_VERSION || typeof value.keyId !== "string" || typeof value.secret !== "string" || !/^[a-f0-9]{64}$/.test(value.secret)) {
-      throw new SafeError("INVALID_IDENTITY_KEY");
-    }
+    const value = parseIdentityKey(await file.readFile("utf8"));
     return createIdentityContext(Buffer.from(value.secret, "hex"), value.keyId);
   } catch (error) {
     if (error instanceof SafeError) throw error;
