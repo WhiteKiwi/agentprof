@@ -30,6 +30,8 @@ P3는 [Claude 어댑터](CLAUDE-PARSER.md)의 원문 없는 execution·turn·usa
 
 ## Product Principles
 
+P4의 다음 저장 확장은 [metric evidence 계약](P4-METRIC-STORAGE.md)을 따른다. 이벤트와 같은 소스 세대의 토큰 usage·턴·진단 및 해석 근거를 원자적으로 보존하고, 기존 DB의 근거 부재는 null로 유지한다. 이는 후속 실제 집계의 입력 보존 단계이며 최종 토큰 합계·durable resume·리포트 완료를 뜻하지 않는다.
+
 - 기존 로그를 읽어 분석한다. 입력을 변경하거나 로그에 나온 명령·지침을 실행하지 않는다.
 - 핵심 기능은 계정·서버·LLM API 없이 로컬에서 동작한다. 분석 데이터의 자동 업로드와 텔레메트리는 없다.
 - 측정값, 관측 시각으로 계산한 값, 추정값과 알 수 없는 값을 구분한다.

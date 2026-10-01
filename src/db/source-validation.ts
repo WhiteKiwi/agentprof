@@ -18,12 +18,12 @@ export function integer(value: unknown, minimum = 0): number {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < minimum) invalid();
   return value;
 }
-function number(value: unknown): number | null {
+export function number(value: unknown): number | null {
   if (value === null) return null;
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > Number.MAX_SAFE_INTEGER) invalid();
   return value;
 }
-function choice<T extends string>(value: unknown, values: readonly T[]): T {
+export function choice<T extends string>(value: unknown, values: readonly T[]): T {
   if (typeof value !== "string" || !values.includes(value as T)) invalid();
   return value as T;
 }
@@ -36,7 +36,7 @@ export function identity(value: unknown, domain: string, key: string): string {
   if (typeof value !== "string" || value.length !== prefix.length + 64 || !value.startsWith(prefix) || !/^[a-f0-9]{64}$/.test(value.slice(prefix.length))) invalid();
   return value;
 }
-function nullableIdentity(value: unknown, domain: string, key: string): string | null {
+export function nullableIdentity(value: unknown, domain: string, key: string): string | null {
   return value === null ? null : identity(value, domain, key);
 }
 export function fields(value: unknown, names: readonly string[]): Record<string, unknown> {
@@ -53,7 +53,7 @@ export function fields(value: unknown, names: readonly string[]): Record<string,
   }
   return result;
 }
-function array(value: unknown, maximum: number): unknown[] {
+export function array(value: unknown, maximum: number): unknown[] {
   if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) invalid();
   if (value.length > maximum) throw new SafeError("STATE_LIMIT");
   const descriptors = Object.getOwnPropertyDescriptors(value);
@@ -66,7 +66,7 @@ function array(value: unknown, maximum: number): unknown[] {
   }
   return result;
 }
-function timestamp(value: unknown): string | null {
+export function timestamp(value: unknown): string | null {
   if (value === null) return null;
   if (typeof value !== "string" || value.length > 27) invalid();
   const parsed = new Date(value);
@@ -141,7 +141,7 @@ export function validateEvent(value: unknown, header: SourceHeaderInput): Normal
   if (event.contentFingerprint !== null && event.contentState !== "complete") invalid();
   return event;
 }
-const HEADER_FIELDS = ["sourceId", "provider", "parserVersion", "normalizationVersion", "keyVersion", "keyId", "completedOffset", "observedSize", "boundaryFingerprint"] as const;
+export const HEADER_FIELDS = ["sourceId", "provider", "parserVersion", "normalizationVersion", "keyVersion", "keyId", "completedOffset", "observedSize", "boundaryFingerprint"] as const;
 export function validateHeader(value: unknown, expectedKey: string): SourceHeaderInput {
   const v = fields(value, HEADER_FIELDS);
   if (v["keyId"] !== expectedKey || v["normalizationVersion"] !== 1 || v["keyVersion"] !== 1) invalid();

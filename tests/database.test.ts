@@ -10,7 +10,7 @@ it("imports SQLite, binds integers/null/text, commits/rolls back, migrates idemp
   const directory = join(temporaryDirectory(), "data");
   const db = await openDatabase(directory);
   try {
-    expect(db.prepare("PRAGMA user_version").get()?.["user_version"]).toBe(2);
+    expect(db.prepare("PRAGMA user_version").get()?.["user_version"]).toBe(3);
     expect(db.prepare("PRAGMA journal_mode").get()?.["journal_mode"]).toBe("delete");
     expect(db.prepare("PRAGMA busy_timeout").get()?.["timeout"]).toBe(1000);
     expect(db.prepare("PRAGMA foreign_keys").get()?.["foreign_keys"]).toBe(1);

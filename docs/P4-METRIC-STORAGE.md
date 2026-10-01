@@ -1,0 +1,74 @@
+# P4: bounded source metric evidence
+
+## Reviewed scope
+
+The coordinator approved this plan on 2026-10-01 before implementation, after PR #20 merged as `c6b80d29e4a796666d0e7eadbfcbeebea1e6ce41`. This extends [source storage](P4-STORAGE.md) and [single-file ingestion](P4-INGESTION.md) with the final adapter's turns, usage, source observations, capabilities and safe diagnostics. These are observations for later analysis, not calculated metric totals.
+
+One source generation contains its event contributions, metric evidence and completed-line observation metadata, committed under the original optimistic revision in one transaction. It is produced by one fresh single-source adapter. A multi-source canonical snapshot cannot be split by `sourceRef` into original contributions. Updates are final snapshot arrays, never concatenated ingest batches. Independent sources retain duplicate canonical IDs without selecting a winner.
+
+The contract remains `aggregationReady: false` and `parserResumeReady: false`. Metadata segments, wrapper relationships, message graphs and the adapter's private recovery/order state are excluded. Source observations preserve available provenance but do not make that omitted evidence recoverable or resolve cross-source ambiguity. There is no scan CLI, resume, aggregate, report integration or performance claim in this slice.
+
+## Exact safe persistence boundary
+
+Every object uses an exact own-data-property allowlist; arrays have bounded dense own entries. Extra properties, accessors, custom prototypes, unsafe identities, invalid numbers and unknown enums reject before a write. Reconstruct safe objects before serialization, without calling caller `toJSON`. All identities must have the expected HMAC domain and local key ID. Every non-null source reference must belong to this source and precede its completed-line offset. No provider text, prompt, command output, path, arbitrary message or raw parser state is permitted.
+
+Fields are copied from the existing provider types without recomputing counts, finality, scopes, time intervals or selections:
+
+- Turn common fields: `id`, `sessionId`, `provider`, `startAt`, `endAt`, `intervalTimingEvidence`, `intervalScope`, `durationMs`, `timingEvidence`, `durationScope`, `status`, `sourceRef`. Codex additionally preserves `startTimingEvidence`, `endTimingEvidence`; Claude preserves `observedAt`, `selection` with null start/end and unknown interval scope. A Claude duration-only observation never gains a positioned interval.
+- Usage common fields: `id`, `sessionId`, `turnId`, `responseId`, `provider`, `source`, `counts`, `scope`, `selection`, `finality`, `countStatus`, `mapping`, `limitations`, `toolEventId`, `phase`, `sourceRef`. Claude additionally preserves `stopReason`, `terminalCandidate`. `toolEventId` remains null and `phase` unknown. Counts preserve nullable `input`, `output`, `cachedInput`, `cacheWriteInput`, `reasoningOutput`, `total`; Claude additionally preserves `uncachedInput` and null reasoning output. Null remains unknown, never zero. Response increments, cumulative snapshots, provisional/final/conflicted/invalid states remain distinct.
+- Source observation common fields: `id`, `eventId`, `turnId`, `usageId`, `representation`, `origin`, `observedUsage`, `sourceRef`. Codex preserves `transportStatus`; Claude preserves `sessionId`, `messageId`, `observedResult`. Nested observed usage contains only counts/finality/countStatus/mapping, plus Claude stopReason. Claude result evidence contains only `isError`, `completionKind`, `unassignedAcknowledgement`, `observedAt`, `acknowledgementLatencyMs`, `durationMs`, `durationScope`. Its acknowledgement remains distinguishable from execution completion. Observation references may legitimately point to unsupported or omitted objects; no missing execution is invented.
+- Capabilities: `provider`, `parserVersion`, `support`, `coverage`, `observedShapes`, `unsupportedRecords`, `ambiguousRecords`, `stateLimited`, `diagnosticsDropped`. Preserve exact provider enums and counters. Recognized shapes never mean full coverage. Storage can retain a bounded partial evidence set with explicit flags; file ingestion continues to reject state-limited or diagnostic-dropped attempts before any write.
+- Diagnostics: fixed `code` from the application's diagnostic vocabulary, `severity`, safe `sourceAlias` or null, `byteOffset` or null. Preserve diagnostic order; the containing source supplies its identity. Alias is display evidence, not an identity. A non-null offset must precede the completed prefix.
+
+UTC timestamps and duration/count values obey the existing normalized contracts. Reject non-finite/negative/unsafe values, foreign providers/domains/versions and unsupported fields. Preserve sanitized partial/invalid count components, conflicting null counts and unknown boundary evidence rather than reinterpreting them. Storage validation does not manufacture proof that fixture-trusted evidence came from a production log; production ingestion still accepts no trusted fixture context.
+
+## Schema, generations and limits
+
+Schema 3 adds a source metric descriptor and tagged ordered rows beside the existing event tables. A descriptor is present only when a metric-evidence snapshot was supplied. Each generation has one capabilities row and independently ordered turn/usage/observation/diagnostic rows. Canonical IDs are unique within a source and kind; diagnostics retain their array positions. No JSON query or aggregate API is introduced.
+
+Migration observes the schema after acquiring `BEGIN IMMEDIATE`. Upgrade 0/1 through schema 2, then add schema 3 without replacing existing settings, identities, revisions, source headers or event rows. Existing v2 sources have absent evidence (`null`), not fabricated empty arrays, complete coverage or zero totals. Future versions reject without modifying the database. Failed migration rolls back; caller-owned transactions are not rolled back.
+
+`replaceSourceSnapshot` validates and atomically replaces the event set and metric evidence with the original expected revision. Existing `replaceSource` remains the event-only API and clears any previous metric evidence in the same transaction. `markUnavailable` retains both sets. Cancel, stale revision, validation failure or SQL failure cannot advance any part of a generation or its key binding.
+
+Bounds are checked before accumulating encoded rows and on readback: at most 4,096 turns, 4,096 usage observations, 8,192 source observations, 8,192 diagnostics and one capabilities row; 64 KiB per metric row and 16 MiB total metric rows. The existing event bounds remain 4,096 rows, 64 KiB each and 16 MiB. Thus one write/read is at most 32 MiB of serialized contributions, with 28,673 total event/evidence rows. These are serialized data bounds, not a process RSS target. Input arrays cannot raise the limits. A source exceeding a bound rejects without partial replacement.
+
+Readback pins one SQLite snapshot in an explicit read transaction. It reuses an existing caller-owned transaction without committing or rolling it back. Before selecting payload rows, bounded metadata queries independently check actual row counts, serialized byte totals and maximum row/identity sizes against both descriptors and hard limits. Only then do ordered bounded cursors read payloads, checking ordinals, IDs and exact totals again and closing on all outcomes. A read transaction owned by the store ends on success or failure; corruption raises a fixed safe error. No event/evidence Cartesian join or unbounded `.all()` materialization is used. This preflight also bounds potential SQLite sorting memory before any payload cursor yields a row, rather than relying only on JavaScript's later cumulative byte check. Absence remains explicit; both readiness flags stay false.
+
+The coordinator's 2026-10-01 implementation review identified possible payload sorting before the initial UNION cursor could enforce its JavaScript byte budget. The plan was revised before correcting that query, preserving the single-generation snapshot contract while allowing multiple statements inside the pinned read transaction.
+
+## Implementation and Verify
+
+1. Add strict provider-specific metric validators and serialized limits, then schema 3 and source-store integration.
+   **Verify:** exact allowlists, null/unknown/finality/scope preservation, privacy sentinels, own-property/getter/toJSON rejection, numeric/domain/version bounds; existing database settings/data and migration races preserved; old evidence absent.
+2. Connect the existing bounded file ingestion to final metric snapshots and generation-safe readback.
+   **Verify:** all ten provider JSONL fixtures match independent adapter invocation after close/reopen; same-ID updates stay one final item, copied/ambiguous observations and cumulative snapshots survive; event-only replacement clears evidence; unavailable history and same canonical IDs across sources remain separate.
+3. Exercise atomic failure paths and complete review/checks.
+   **Verify:** original stale CAS, cancel, file change/limits and injected SQL failures preserve all tables, revisions and checkpoints; corrupt reads/count/byte bounds fail safely and release cursors; typecheck/build/tests/artifact, independent final review, exact remote file hashes and supported-runtime CI. Record actual results below; do not call unrun stages passed.
+
+## Verification evidence
+
+2026-10-01, Node 24.19.0 on Linux x64, SQLite built into Node:
+
+- PASS: full `npm run check`: typecheck, build and 323 tests across 16 files. The 35 new metric-store cases supplement the 288 existing tests; ingestion's ten independent fixture comparisons now also verify exact reopened turns, usage, source observations, capabilities and diagnostics.
+- PASS: a 30-file tarball with isolated npm-exec/global-install help/version and install scripts disabled. No package publication was performed by this implementation slice.
+- PASS: existing v2 events/settings/revisions survive migration and reopening with absent evidence; controlled real-connection 2→3 interleaving succeeds; failed migration, unsupported future schemas and caller-owned transactions retain prior state.
+- PASS: final response output 10 is stored once after partial 6/8 updates, while six underlying usage observations and cumulative snapshots remain separate. Claude all-input/cache partitions, unknown finality, null reasoning, duration-only turns and background acknowledgements are preserved. Conflicted/null and ambiguous-origin evidence round-trips unchanged.
+- PASS: 54 Codex and 38 Claude generated raw-count cases pass through their actual adapters and round-trip field for field, including missing/null/non-numeric/negative/fractional/non-finite/unsafe values, explicit zero, partial components, invalid containment and safe-integer overflow. The persistence layer neither repairs nor promotes these observations.
+- PASS: original CAS, SQL failure during metric insertion, in-transaction cancellation and event-only evidence deletion failures preserve all source tables, revision, checkpoint and key binding. Unavailable evidence is retained; source variants with the same canonical IDs remain separate.
+- PASS: exactly 8,192 ordered diagnostics read back unchanged; valid-shaped combined evidence exceeding 16 MiB rejects atomically. Corrupt payloads, ordinals, missing/extra rows and byte descriptors fail safely. A hostile 128 KiB row rejects during metadata preflight before either payload query runs. Owned read transactions and cursors close on failure; caller-owned transactions survive success and failure. A real WAL peer writing between header and payload statements cannot mix read generations; this test-only WAL setting does not change the product's DELETE journal mode.
+- PASS: strict own-property/privacy/domain/version/number/enum checks, no caller getters/toJSON execution, and no synthetic secret/path sentinels in rows or safe error envelopes. All 59 local documentation links checked for this slice resolve; `git diff --check` passes.
+- Review: independent coordinator review identified the initial SQLite sorting-bound gap, which was corrected with a preflight regression and repeated full check. Revised read ownership, allowlists, CAS, migration and differential evidence received no further blocking finding; final frozen-content review and publication belong to the coordinator.
+- At the implementation handoff, macOS, exact published-head CI and full-history performance acceptance had not run. The parent verification below adds supported-runtime evidence; full-history performance acceptance remains unverified. No scan CLI, durable parser restore, complete provenance graph, aggregate or report integration is claimed. Both readiness flags remain false.
+
+### Supported-runtime parent verification — 2026-10-01
+
+The parent reviewed all 14 published files at `94ffeaa1c7d204a28311b9dcbbddf3f631668cd7`: five product files, four test files and five documents. OCR supplied deterministic file selection and rules; the parent also reviewed every excluded test and document. No additional actionable finding remained after the corrected metadata preflight.
+
+- PASS: clean `npm ci --ignore-scripts` in an isolated macOS arm64 checkout, followed by full `npm run check` on Node 24.15.0, 24.21.0 and 26.7.0. Each runtime passed typecheck, build, 323 tests across 16 files and the 30-file artifact check, including isolated npm-exec/global-install help/version with installation scripts disabled.
+- PASS: Node 22.16.0 rejects before the CLI imports SQLite, returning `UNSUPPORTED_RUNTIME`, exit 2 and no stdout.
+- PASS: repository documentation validation checked 30 Markdown documents, 222 local links and 23 anchors with no failures; `git diff --check` passed.
+- The source and test files exercised above are unchanged by this verification-document update. Final published-head CI, remote file hashes and merge-tree equality are recorded in [PR #21](https://github.com/WhiteKiwi/agentprof/pull/21) and the Project draft before the merge is treated as verified.
+
+This verifies bounded source metric persistence and its provider evidence. Full P4 recovery/integration and full-history resource acceptance remain open; neither readiness flag is promoted.
+
+The [P4 Project draft](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833059) owns execution status and claims. Full P4 remains incomplete until its later recovery, integration and acceptance gates pass.

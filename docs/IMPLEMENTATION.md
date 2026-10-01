@@ -175,3 +175,7 @@ Homebrew tap·formula 게시, npm 공개와 license 선택은 이 계획의 구�
 ## P4 single-source ingestion supplement (2026-10-01)
 
 [P4-INGESTION.md](P4-INGESTION.md) defines the reviewed bounded connection from one explicit file through its existing adapter to the event-contribution store. It reparses from zero, verifies observed file consistency and a precise keyed LF boundary, and preserves the caller's revision for atomic replacement. Event-only storage remains neither aggregation-ready nor parser-resume-ready. The coordinator reviewed the plan before implementation; the P4 Project item owns the bounded claim and verification status.
+
+## P4 metric evidence storage supplement (2026-10-01)
+
+[P4-METRIC-STORAGE.md](P4-METRIC-STORAGE.md) defines the next reviewed storage extension: final source turns, usage, observations, capabilities and safe diagnostics committed with events and completed-prefix metadata in one generation. Schema 3 preserves absent historical evidence; legacy event-only replacement clears stale evidence. Readback stays bounded and neither aggregation-ready nor parser-resume-ready. Provider interpretation, graph/recovery state and report integration are separate gates.
