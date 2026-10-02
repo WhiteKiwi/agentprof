@@ -219,6 +219,8 @@ describe.skipIf(!baselineBinary)("frozen baseline exact old-command parity", () 
     expect(current.status).toBe(old.status); expect(current.stderr).toBe(old.stderr);
     let preserved = current.stdout;
     const removeExactlyOnce = (text: string) => { expect(preserved.split(text)).toHaveLength(2); preserved = preserved.replace(text, ""); };
+    removeExactlyOnce("  --search-recurrence   show completed Claude native search recurrence\n");
+    removeExactlyOnce("--search-recurrence requires --source and excludes --failures/--read-revisits/--invocation-overlap; Claude parser2 Grep/Glob only; exact request recurrence, not equal results or waste.\n");
     removeExactlyOnce("  --invocation-overlap  show observed Claude invocation interval union\n");
     removeExactlyOnce("--invocation-overlap requires --source and excludes --failures/--read-revisits; Claude only, Codex unsupported; no runtime, active-time or savings claim.\n");
     const wrappedRead = "  --read-revisits       show completed Claude Read file revisits for one\n                        --source\n";
