@@ -1,3 +1,8 @@
+import { types } from "node:util";
+import { checkpointBinding, checkpointBudget, checkpointLimits, decodeCodexCheckpoint, encodeCodexCheckpoint } from "./checkpoint.js";
+import type { CheckpointPosition, ExecutionState, SafeResult, SourceState, StreamState, UsageOrder, CodexCheckpointBinding, CodexCheckpointExport, CodexCheckpointOptions, CodexCheckpointRestore, CodexCheckpointUnavailableReason } from "./checkpoint-types.js";
+export { MAX_CODEX_CHECKPOINT_BYTES } from "./checkpoint.js";
+export type { CodexCheckpointBinding, CodexCheckpointExport, CodexCheckpointOptions, CodexCheckpointRestore, CodexCheckpointUnavailableReason } from "./checkpoint-types.js";
 import { normalizeEvent } from "../../normalize/event.js";
 import type { IdentityContext } from "../../normalize/identity.js";
 import type { NormalizedEvent } from "../../normalize/types.js";
@@ -5,18 +10,11 @@ import { diagnostic, SafeError } from "../../privacy/diagnostics.js";
 import type { DiagnosticCode, SafeDiagnostic } from "../../privacy/diagnostics.js";
 import type { CodexBatch, CodexInputSource, CodexLimits, CodexShape, CodexSnapshot, MetadataSegment, NormalizedTurn, ParserCapabilities, ParserSourceRef, SourceObservation, TokenCounts, UsageObservation, WrapperRepresentation } from "../types.js";
 import { argumentsObject, command, semanticExit, supportedShell, toolKind } from "./command.js";
-import type { ExitPolicy } from "./command.js";
 import { elapsed, epochSeconds, exitCode, field, integer, jsonObject, milliseconds, object, rustDuration, text, utc } from "./fields.js";
 import { processKey, readOutput } from "./output.js";
-import type { SafeOutput } from "./output.js";
 import { decreased, sameCounts, tokenCounts } from "./usage.js";
 
 export const DEFAULT_CODEX_LIMITS: CodexLimits = Object.freeze({ events: 4096, turns: 4096, usage: 4096, sources: 256, streams: 256, links: 1024, observations: 8192, metadata: 8192, diagnostics: 8192 });
-type SourceState = { ownerId: string | null; activeTurnId: string | null; ambiguous: boolean; nativeUsageVerified: boolean };
-type StreamState = { projectId: string | null; versionFingerprint: string | null; forkParentId: string | null };
-type ExecutionState = { event: NormalizedEvent; policy: ExitPolicy; mode: "exec" | "mcp" | "patch"; callSeen: boolean; callOperationKey: string | null; structured: boolean; conflicted: boolean; result: SafeResult | null; structuredDigest: string | null };
-type SafeResult = Readonly<{ exec: SafeOutput; mcp: SafeOutput; other: SafeOutput; at: string | null; sourceRef: ParserSourceRef; digest: string; conflicted: boolean }>;
-type UsageOrder = Readonly<{ group: string; order: number }>;
 type WorkBatch = { events: Map<string, NormalizedEvent>; turns: Map<string, NormalizedTurn>; usage: Map<string, UsageObservation>; observations: Map<string, SourceObservation>; diagnostics: SafeDiagnostic[] };
 type Input = { source: CodexInputSource; fileId: string; sourceState: SourceState; sourceRef: ParserSourceRef; at: string | null; origin: SourceObservation["origin"]; completeOutput: boolean };
 
@@ -78,6 +76,11 @@ export class CodexAdapter {
   #diagnosticsDropped = 0;
   #wrapperChildLinks = 0;
 
+  #checkpointPosition: CheckpointPosition = { firstOrdinal: null, lastOrdinal: null, lastByteOffset: null, recordCount: 0 };
+  #checkpointSourceId: string | null = null;
+  #checkpointUnavailable: CodexCheckpointUnavailableReason | null = null;
+  #continuation: CodexCheckpointBinding | null = null;
+
   constructor(context: IdentityContext, limits: Partial<CodexLimits> = {}) {
     this.#context = context;
     const selected = { ...DEFAULT_CODEX_LIMITS, ...limits };
@@ -128,7 +131,116 @@ export class CodexAdapter {
     this.#pendingResults.delete(id);
   }
 
+  /** Adapter-only state token. A caller boundary is not proof of file bytes or an LF. */
+  exportCheckpoint(binding: CodexCheckpointBinding, options: CodexCheckpointOptions = {}): CodexCheckpointExport {
+    if (this.#checkpointUnavailable) return Object.freeze({ status: "unavailable", reason: this.#checkpointUnavailable });
+    try {
+      const checked = checkpointBinding(binding, this.#context), maximum = checkpointBudget(options), p = this.#checkpointPosition;
+      if (this.#checkpointSourceId !== null && checked.sourceId !== this.#checkpointSourceId
+        || p.recordCount === 0 && checked.completedOffset !== 0
+        || p.recordCount > 0 && (p.lastOrdinal === null || p.lastByteOffset === null || !Number.isSafeInteger(p.lastOrdinal + 1)
+          || checked.nextOrdinal !== p.lastOrdinal + 1 || checked.completedOffset <= p.lastByteOffset)
+        || this.#continuation !== null && (checked.sourceId !== this.#continuation.sourceId || checked.nextOrdinal !== this.#continuation.nextOrdinal
+          || checked.completedOffset !== this.#continuation.completedOffset)) return Object.freeze({ status: "unavailable", reason: "incompatible_binding" });
+      return encodeCodexCheckpoint(this.#context, checked, this.#limits, this.#capabilities().parserVersion, p, {
+        sources: this.#sources,
+        streams: this.#streams,
+        events: this.#events,
+        pendingResults: this.#pendingResults,
+        processes: this.#processes,
+        polls: this.#polls,
+        turns: this.#turns,
+        usage: this.#usage,
+        usageOrder: this.#usageOrder,
+        lastSnapshots: this.#lastSnapshots,
+        wrappers: this.#wrappers,
+        metadata: this.#metadata,
+        observations: this.#observations,
+        diagnostics: this.#diagnostics,
+        unsupportedCalls: this.#unsupportedCalls,
+        resultReplays: this.#resultReplays,
+        shapes: this.#shapes,
+        wrapperChildLinks: this.#wrapperChildLinks,
+        partial: this.#partial,
+        limited: this.#limited,
+        unsupported: this.#unsupported,
+        ambiguous: this.#ambiguous,
+        diagnosticsDropped: this.#diagnosticsDropped,
+      }, maximum);
+    } catch { return Object.freeze({ status: "unavailable", reason: "incompatible_binding" }); }
+  }
+  /** Validate first, then expose one fresh owned instance. No existing adapter is mutated. */
+  static restoreCheckpoint(context: IdentityContext, encoded: unknown, expectedBinding: CodexCheckpointBinding, limits: Partial<CodexLimits> = {}):
+    CodexCheckpointRestore {
+    try {
+      const safeLimits = checkpointLimits(limits, DEFAULT_CODEX_LIMITS), binding = checkpointBinding(expectedBinding, context);
+      const adapter = new CodexAdapter(context, safeLimits);
+      const decoded = decodeCodexCheckpoint(context, encoded, binding, adapter.#limits, adapter.#capabilities().parserVersion), s = decoded.state;
+      for (const [key, value] of s.sources) adapter.#sources.set(key, value);
+      for (const [key, value] of s.streams) adapter.#streams.set(key, value);
+      for (const [key, value] of s.events) adapter.#events.set(key, value);
+      for (const [key, value] of s.pendingResults) adapter.#pendingResults.set(key, value);
+      for (const [key, value] of s.processes) adapter.#processes.set(key, value);
+      for (const [key, value] of s.polls) adapter.#polls.set(key, value);
+      for (const [key, value] of s.turns) adapter.#turns.set(key, value);
+      for (const [key, value] of s.usage) adapter.#usage.set(key, value);
+      for (const [key, value] of s.usageOrder) adapter.#usageOrder.set(key, value);
+      for (const [key, value] of s.lastSnapshots) adapter.#lastSnapshots.set(key, value);
+      for (const [key, value] of s.wrappers) adapter.#wrappers.set(key, value);
+      for (const [key, value] of s.metadata) adapter.#metadata.set(key, value);
+      for (const [key, value] of s.observations) adapter.#observations.set(key, value);
+      for (const [key, value] of s.diagnostics) adapter.#diagnostics.set(key, value);
+      for (const value of s.unsupportedCalls) adapter.#unsupportedCalls.add(value);
+      for (const value of s.resultReplays) adapter.#resultReplays.add(value);
+      for (const value of s.shapes) adapter.#shapes.add(value);
+      adapter.#wrapperChildLinks = s.wrapperChildLinks;
+      adapter.#partial = s.partial;
+      adapter.#limited = s.limited;
+      adapter.#unsupported = s.unsupported;
+      adapter.#ambiguous = s.ambiguous;
+      adapter.#diagnosticsDropped = s.diagnosticsDropped;
+      adapter.#checkpointPosition = decoded.position; adapter.#checkpointSourceId = binding.sourceId; adapter.#continuation = binding;
+      return Object.freeze({ status: "restored", adapter });
+    } catch { return Object.freeze({ status: "rejected", reason: "invalid_checkpoint" }); }
+  }
+  #trackCheckpoint(source: CodexInputSource): void {
+    if (this.#checkpointUnavailable) return;
+    try {
+      if (source === null || typeof source !== "object" || types.isProxy(source)) throw new Error();
+      const descriptors = Object.getOwnPropertyDescriptors(source);
+      const reachable = (name: string): PropertyDescriptor | undefined => {
+        let current: object | null = source;
+        for (let depth = 0; current !== null && depth < 16; depth++) {
+          if (types.isProxy(current)) throw new Error();
+          const descriptor = Object.getOwnPropertyDescriptor(current, name);
+          if (descriptor) return descriptor;
+          current = Object.getPrototypeOf(current) as object | null;
+        }
+        if (current !== null) throw new Error();
+        return undefined;
+      };
+      if (reachable("trustedFixtureContext")) { this.#checkpointUnavailable = "unsupported_state"; return; }
+      const alias = reachable("sourceAlias");
+      if (alias && (!("value" in alias) || alias.value !== undefined && alias.value !== null && typeof alias.value !== "string")) {
+        this.#checkpointUnavailable = "unsupported_state"; return;
+      }
+      for (const name of ["fileIdentity", "byteOffset", "ordinal"]) if (!descriptors[name] || !("value" in descriptors[name])) throw new Error();
+      const fileIdentity = text(descriptors.fileIdentity!.value), byteOffset = integer(descriptors.byteOffset!.value), ordinal = integer(descriptors.ordinal!.value);
+      if (fileIdentity === null || byteOffset === null || ordinal === null || Object.is(byteOffset, -0) || Object.is(ordinal, -0)) throw new Error();
+      const sourceId = this.#context.fingerprint("source", ["codex", fileIdentity]), p = this.#checkpointPosition;
+      if (this.#checkpointSourceId !== null && this.#checkpointSourceId !== sourceId) { this.#checkpointUnavailable = "unsupported_state"; return; }
+      if (this.#continuation !== null && (ordinal !== this.#continuation.nextOrdinal || byteOffset < this.#continuation.completedOffset)) throw new Error();
+      if (p.recordCount > 0 && (p.lastOrdinal === null || p.lastByteOffset === null || !Number.isSafeInteger(p.lastOrdinal + 1)
+        || ordinal !== p.lastOrdinal + 1 || byteOffset <= p.lastByteOffset)) throw new Error();
+      if (!Number.isSafeInteger(p.recordCount + 1)) throw new Error();
+      this.#checkpointSourceId = sourceId;
+      this.#checkpointPosition = { firstOrdinal: p.firstOrdinal ?? ordinal, lastOrdinal: ordinal, lastByteOffset: byteOffset, recordCount: p.recordCount + 1 };
+      this.#continuation = null;
+    } catch { this.#checkpointUnavailable = "unsafe_positions"; }
+  }
+
   ingest(record: unknown, source: CodexInputSource): CodexBatch {
+    this.#trackCheckpoint(source);
     const batch: WorkBatch = { events: new Map(), turns: new Map(), usage: new Map(), observations: new Map(), diagnostics: [] };
     let input: Input | null = null;
     try {
