@@ -2,7 +2,7 @@
 
 ## Status and authority
 
-Planned narrow opt-in view on merged main `38871590fb00efba2b1efd64f1b7639572365fce`, tree `e189f4a259de4f1a95e538c24a89845e8200b053`. The [Project draft](https://github.com/users/WhiteKiwi/projects/2/views/1?pane=issue&itemId=260255296) owns live status and the twelve-path reservation. Documentation and the independent ordinary-input oracle precede production implementation. All execution evidence below is NOT RUN until an explicit receipt is appended.
+Implemented internal opt-in view based on merged main `38871590fb00efba2b1efd64f1b7639572365fce`, tree `e189f4a259de4f1a95e538c24a89845e8200b053`. The [Project draft](https://github.com/users/WhiteKiwi/projects/2/views/1?pane=issue&itemId=260255296) owns live status and claims; [PR #33](https://github.com/WhiteKiwi/agentprof/pull/33) records publication and exact-head CI. The original twelve-path reservation was amended to thirteen before the inherited help-test edit. Documentation and the independent ordinary-input oracle preceded production implementation. Earlier failed and NOT RUN checkpoints below are historical; subsequent receipts establish only their explicitly tested gates.
 
 ## Observable contract
 
@@ -44,7 +44,7 @@ Also verify replay versus new ID, untimed and one-sided terminal records, revers
 
 ## Executed evidence
 
-NOT RUN: ordinary-input gate, analyzer checks/review, CLI checks, aggregate campaign, artifact/parity gates and independent final review. Local synthetic success does not establish real-user timing validity or provider-version support beyond recognized shapes.
+Initial planning checkpoint: ordinary-input gate, analyzer checks/review, CLI checks, aggregate campaign, artifact/parity gates and independent final review were NOT RUN. The subsequent dated receipts record execution. Local synthetic success does not establish real-user timing validity or provider-version support beyond recognized shapes.
 
 ### First ordinary-input gate correction
 
@@ -91,3 +91,14 @@ The coordinator-approved single campaign completed with exit 0 inside the actual
 - Source and command behavior remain within the thirteen-path reservation. The extra inherited test edit is only the exact help assertion. No production parser, normalization, store, shared analyzer, package, workflow, artifact-script, inherited fixture or report path was edited.
 
 Independent ordinary-oracle, analyzer and CLI/help review stages approved their frozen contents. Earlier failures and corrections above remain part of the verification record. Exact published-head CI, other supported Node/OS execution, real-user logs/pilot, paid benchmarks, release, merge and report integration are not established by this local campaign. Publication belongs to the coordinator; this change is prepared as a draft PR.
+
+### Independent parent review (2026-10-02)
+
+The parent reviewed all thirteen changed paths at source head `7afac2a1bf854b6371b770d63fee4a351d497fcc` against base `38871590fb00efba2b1efd64f1b7639572365fce`, including all four production files, five tests and four documents. The complete recursive trees contain 187 base files and 194 head files; all 181 inherited paths outside this change retain identical blobs and modes. Review also checked the unchanged ordinary Claude adapter, normalization and store validation behind positioned-boundary admission. No actionable production blocker was found. The parent corrected only these four maintained documents to distinguish historical planning checkpoints from executed evidence; all other 190 head paths retain their source-head bytes and modes.
+
+- macOS arm64 Node 24.15.0, 24.21.0 and 26.7.0: each full `npm run check` passed 1216 tests / 44 files / zero skips and the unchanged 45-file artifact verifier. Typecheck and build passed. The 39 optional cases were enabled with both installed variables, the inherited relationship/read-revisits baseline `b8ea155829e6ee095fb0eafbf4774bc264a94eaa`, and the invocation baseline `38871590fb00efba2b1efd64f1b7639572365fce`; neither baseline was replaced. Local offline installation disabled scripts, and all 43 installed runtime files match current bytes and modes.
+- Independent renderer capture: five focused cases passed on each supported macOS runtime using the exact `AGENTPROF_INVOCATION_RECEIPTS` variable. This supplemental run saved output-bound receipts after a private aggregate runner used an incorrect capture-variable name; the full aggregate assertions and their zero-skip counts were unaffected. All three runtimes agree: ordinary human output 23 lines / 3042 bytes; 4096-session maximum 53 lines / 5841 bytes with complete JSON 3901307 bytes; one-session 4096-event complete JSON 1351241 bytes. These five-case capture runs are separate receipts, not added to the aggregate test count.
+- Source-head Linux x64 [push CI](https://github.com/WhiteKiwi/agentprof/actions/runs/36965871579) and [PR CI](https://github.com/WhiteKiwi/agentprof/actions/runs/36965893708): each supported Node 24.15.0, 24.21.0 and 26.7.0 job passed 1177 tests / 44 files with 39 optional baseline/installed cases explicitly skipped, plus the 45-file script-disabled unpublished artifact gate. Actual logs verify the push checkout and the PR test merge's exact parents and tree. This evidence covers the source head above; final documentation-head and merged-main CI are recorded in the PR publication receipt.
+- Unsupported Node 22.16.0 rejects with `UNSUPPORTED_RUNTIME`; hosted guard jobs and the independent macOS guard passed. No package was published and no actual user logs were read or uploaded.
+
+The remaining empirical gates are unchanged: real-user/provider-version timing validity, diagnostic usefulness, performance, paid benchmarks, savings, release and report integration are not established by these synthetic checks. Live publication status stays in the Project item and PR.
