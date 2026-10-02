@@ -207,9 +207,9 @@ describe.skipIf(!baselineBinary)("frozen baseline exact old-command parity", () 
     const oldHuman = seeded(root, "old-human"), currentHuman = seeded(root, "current-human");
     expect(invoke(binary, currentHuman, scan)).toEqual(invoke(baselineBinary!, oldHuman, scan));
   });
-  it("preserves help/version bytes except the exact stats option and support line", () => {
+  it("preserves unchanged help/version bytes; report and top-level help intentionally changed", () => {
     const data = join(temporaryDirectory(), "absent");
-    for (const args of [["--help"], ["--version"], ["scan", "--help"], ["insights", "--help"], ["report", "--help"], ["open", "--help"]]) expect(invoke(binary, data, args)).toEqual(invoke(baselineBinary!, data, args));
+    for (const args of [["--version"], ["scan", "--help"], ["insights", "--help"], ["open", "--help"]]) expect(invoke(binary, data, args)).toEqual(invoke(baselineBinary!, data, args));
     const old = invoke(baselineBinary!, data, ["stats", "--help"]), current = invoke(binary, data, ["stats", "--help"]);
     expect(current.status).toBe(old.status); expect(current.stderr).toBe(old.stderr);
     let preserved = current.stdout;

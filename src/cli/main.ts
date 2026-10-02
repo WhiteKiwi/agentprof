@@ -6,6 +6,8 @@ import { formatStatsResult, runStats, validateSourceSelection } from "./stats.js
 import type { StatsArguments } from "./stats.js";
 import { formatInsightsResult, runInsights } from "./insights.js";
 import type { InsightsArguments } from "./insights.js";
+import { runReport, formatReportResult } from "./report.js";
+import type { ReportArguments } from "./report.js";
 import { VERSION } from "./version.js";
 
 function collect(value: string, previous: string[]): string[] {
@@ -15,7 +17,7 @@ function collect(value: string, previous: string[]): string[] {
 
 export async function run(argv: string[]): Promise<void> {
   const program = new Command();
-  program.name("agentprof").description("Local agent profiling. Development build; bounded scan and selected-source stats/insights. Global aggregation and reports are pending.")
+  program.name("agentprof").description("Local agent profiling. Development build; bounded scan and selected-source stats/insights. Selected-source offline reports are supported; global aggregation is pending.")
     .version(VERSION)
     .option("--json", "emit structured results and errors")
     .option("--data-dir <directory>", "override local private data directory", validateCliPath)
@@ -67,10 +69,20 @@ export async function run(argv: string[]): Promise<void> {
     process.stdout.write(formatInsightsResult(result, options.json === true));
     process.exitCode = 0;
   });
-  program.command("report").description("Generate an offline HTML report (not implemented yet)")
-    .option("--last <period>", "selected period, for example 7d")
-    .option("--output <file>", "output HTML file")
-    .option("--open", "open the generated file").action(pending);
+  const report = program.command("report").description("Write a new offline HTML report from one stored source prefix")
+    .option("--source <id>", "select one full source ID", validateSourceSelection)
+    .option("--output <file>", "new output HTML file; existing files are never overwritten")
+    .addHelpText("after", "\nBoth --source and --output are required. Read-only existing store; no scan, roots, --last or --open.\nBounded source-prefix observations only; no global totals, freshness check or savings claim.");
+  for (const name of ["source", "output"]) {
+    let count = 0;
+    report.on(`option:${name}`, () => { if (++count > 1) throw new SafeError("INVALID_ARGUMENT"); });
+  }
+  report.action(async () => {
+    const options = { ...program.opts(), ...report.opts() } as ReportArguments & { json?: boolean };
+    const result = await runReport(options);
+    process.stdout.write(formatReportResult(result, options.json === true));
+    process.exitCode = result.status === "published" ? 0 : 1;
+  });
   program.command("open").description("Open a generated report (not implemented yet)")
     .argument("<file>", "generated HTML file").action(pending);
 

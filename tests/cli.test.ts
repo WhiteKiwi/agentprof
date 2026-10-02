@@ -20,7 +20,7 @@ it("runs built help/version without creating private data or importing SQLite", 
   expect(help.status).toBe(0); expect(help.stdout).toContain("Usage: agentprof");
   expect(help.stderr).toBe(""); expect(existsSync(data)).toBe(false);
 });
-it.each(["report", "open"])("returns honest pending command errors: %s", (command) => {
+it.each(["open"])("returns honest pending command errors: %s", (command) => {
   const args = command === "open" ? [command, "FICTITIOUS_AGENTPROF_ARG_SENTINEL.html"] : [command];
   const data = join(temporaryDirectory(), "must-not-create");
   const result = run([...args, "--json", "--data-dir", data]);
@@ -38,10 +38,10 @@ it("redacts raw unknown options/arguments and retains one structured error envel
   expect(envelope).toMatchObject({ schema: "agentprof.cli/v1", ok: false, error: { code: "INVALID_ARGUMENT" } });
   expect(result.stderr).not.toContain("FICTITIOUS_AGENTPROF_ARG_SENTINEL");
 });
-it("parses source overrides/report flags while preserving the unimplemented boundary", () => {
+it("rejects unsupported report roots and flags before I/O", () => {
   const result = run(["--codex-root", "/FICTITIOUS_AGENTPROF_PROJECT", "--codex-root", "/other", "--claude-root", "/third", "report", "--last", "7d", "--output", "FICTITIOUS_AGENTPROF_ARG_SENTINEL.html", "--open", "--json"]);
   expect(result.status).toBe(2);
-  expect(JSON.parse(result.stderr).error.code).toBe("NOT_IMPLEMENTED");
+  expect(JSON.parse(result.stderr).error.code).toBe("INVALID_ARGUMENT");
   expect(result.stderr).not.toContain("FICTITIOUS_AGENTPROF_PROJECT");
 });
 
