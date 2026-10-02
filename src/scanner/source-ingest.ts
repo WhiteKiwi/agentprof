@@ -47,6 +47,9 @@ export async function ingestSourceFile(store: ReturnType<typeof createSourceStor
     normalizationVersion: context.normalizationVersion, keyVersion: context.keyVersion, keyId: context.keyId,
     completedOffset: prefix.completedOffset, observedSize: prefix.observedSize, boundaryFingerprint: prefix.boundaryFingerprint,
     cacheEvidence: { contractVersion: 1, contentFingerprint: prefix.contentFingerprint },
+    relationshipEvidence: "wrappers" in snapshot
+      ? { contractVersion: 1, capturePolicyVersion: 1, status: "captured", provider: "codex", metadata: snapshot.metadata, wrappers: snapshot.wrappers }
+      : { contractVersion: 1, capturePolicyVersion: 1, status: "captured", provider: "claude", metadata: snapshot.metadata, messages: snapshot.messages },
     events: snapshot.events, evidence: { turns: snapshot.turns, usage: snapshot.usage, observations: snapshot.observations,
       diagnostics: snapshot.diagnostics, capabilities: snapshot.capabilities } }, expectedRevision, signal);
   return Object.freeze({ ...evidence, ...result });

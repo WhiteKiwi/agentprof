@@ -100,7 +100,7 @@ it("wrong key and missing source fail safely with no mutation, followed by a suc
 });
 it("event-only and unavailable generations succeed without claiming a healthy zero", async () => {
   const f = await fixture(); const db = await openDatabase(f.data), store = createSourceStore(db, f.context.keyId);
-  const { revision, availability, persistedScope, aggregationReady, parserResumeReady, evidence, cacheEvidence, ...input } = f.saved;
+  const { revision, availability, persistedScope, aggregationReady, parserResumeReady, evidence, cacheEvidence, relationshipEvidence, ...input } = f.saved;
   expect(store.replaceSource(input, revision)).toMatchObject({ status: "committed", revision: 2 }); db.close();
   let before = bytes(f.data), r = await runFailures({ dataDir: f.data, source: f.id });
   expect(r.analysis).toMatchObject({ revision: 2, cohorts: null, suppressionReason: "evidence_absent" }); expect(bytes(f.data)).toEqual(before);
@@ -108,7 +108,7 @@ it("event-only and unavailable generations succeed without claiming a healthy ze
   before = bytes(f.data); r = await runFailures({ dataDir: f.data, source: f.id });
   expect(r.analysis).toMatchObject({ revision: 3, cohorts: null, suppressionReason: "source_unavailable" }); expect(bytes(f.data)).toEqual(before);
 });
-it.each([0, 3, 5])("schema %s preserves exact safe code/message and bytes", async version => {
+it.each([0, 3, 4, 6])("schema %s preserves exact safe code/message and bytes", async version => {
   const f = await fixture(), db = new DatabaseSync(join(f.data, "agentprof.sqlite")); db.exec(`PRAGMA user_version=${version}`); db.close();
   const before = bytes(f.data), r = run(["stats", "--source", f.id, "--data-dir", f.data, "--json"]);
   expect(jsonError(r).error).toEqual({ code: "DATABASE_SCHEMA_INCOMPATIBLE", message: MESSAGES.DATABASE_SCHEMA_INCOMPATIBLE });

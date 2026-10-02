@@ -41,8 +41,8 @@ describe("source-store migration", () => {
         if (existing) createV1(db);
         db.exec("CREATE TABLE preserved (value INTEGER); INSERT INTO preserved VALUES (42)");
         migrate(db); migrate(db);
-        expect(db.prepare("PRAGMA user_version").get()).toEqual({ user_version: 4 });
-        expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }]);
+        expect(db.prepare("PRAGMA user_version").get()).toEqual({ user_version: 5 });
+        expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }]);
         expect(db.prepare("SELECT * FROM settings ORDER BY key").all()).toEqual([{ key: "key_version", value: 1 }, { key: "normalization_version", value: 1 }]);
         expect(db.prepare("SELECT value FROM preserved").get()).toEqual({ value: 42 });
       } finally { db.close(); }
@@ -68,8 +68,8 @@ describe("source-store migration", () => {
       try { migrate(first); } catch (error) { failureCode = safeErrorEnvelope(error).error.code; }
       expect(peerMigrations).toBe(1);
       for (const db of [first, peer]) {
-        expect(db.prepare("PRAGMA user_version").get()).toEqual({ user_version: 4 });
-        expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }]);
+        expect(db.prepare("PRAGMA user_version").get()).toEqual({ user_version: 5 });
+        expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }]);
         expect(db.prepare("SELECT * FROM settings ORDER BY key").all()).toEqual([{ key: "key_version", value: 1 }, { key: "normalization_version", value: 1 }]);
         expect(db.prepare("SELECT value FROM preserved").get()).toEqual({ value: 42 });
         expect(storedRows(db)).toEqual({ headers: [], events: [], identity: [] });
@@ -77,11 +77,11 @@ describe("source-store migration", () => {
       expect(failureCode).toBeNull();
     } finally { first.exec = exec; first.close(); peer.close(); }
   });
-  it.each([0, 1, 4])("leaves caller-owned work active when schema %i migration cannot begin", (version) => {
+  it.each([0, 1, 5])("leaves caller-owned work active when schema %i migration cannot begin", (version) => {
     const db = new DatabaseSync(":memory:");
     try {
       if (version === 1) createV1(db);
-      if (version === 4) migrate(db);
+      if (version === 5) migrate(db);
       db.exec("CREATE TABLE caller_owned (value INTEGER); BEGIN IMMEDIATE; INSERT INTO caller_owned VALUES (9)");
       const schema = db.prepare("SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY name").all();
       expect(() => migrate(db)).toThrowError(expect.objectContaining({ code: "DATABASE_MIGRATION_FAILED" }));

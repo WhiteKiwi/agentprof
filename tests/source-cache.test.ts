@@ -1,3 +1,4 @@
+import { relationshipFingerprint } from "../src/db/source-relationship-validation.js";
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -17,14 +18,15 @@ function input(): SourceSnapshotInput {
   const snap = createCodexAdapter(context).snapshot();
   return { sourceId: context.fingerprint("source", ["codex", "synthetic"]), provider: "codex", parserVersion: 1, normalizationVersion: 1, keyVersion: 1, keyId: context.keyId,
     completedOffset: 0, observedSize: 0, boundaryFingerprint: null, events: [], evidence: { turns: snap.turns, usage: snap.usage, observations: snap.observations, diagnostics: snap.diagnostics, capabilities: snap.capabilities },
+    relationshipEvidence: { contractVersion: 1, capturePolicyVersion: 1, status: "captured", provider: "codex", metadata: [], wrappers: [] },
     cacheEvidence: { contractVersion: 1, contentFingerprint: context.fingerprint("content", ["synthetic-proof"]) } };
 }
 function token(source: StoredSource): SourceCacheToken {
   const h = Object.fromEntries(HEADER_FIELDS.map(k => [k, source[k]]));
-  return { ...h, revision: source.revision, cacheEvidence: source.cacheEvidence! } as SourceCacheToken;
+  return { ...h, revision: source.revision, cacheEvidence: source.cacheEvidence!, relationshipFingerprint: relationshipFingerprint(source.relationshipEvidence)! } as SourceCacheToken;
 }
 function rows(db: DatabaseSync) { return Object.fromEntries(["settings", "source_store_identity", "source_event_headers", "source_event_contributions", "source_metric_headers", "source_metric_contributions", "source_cache_evidence"].map(t => [t, db.prepare(`SELECT * FROM ${t}`).all()])); }
-function schemaThree(db: DatabaseSync) { db.exec("DROP TABLE source_cache_evidence; DELETE FROM schema_migrations WHERE version=4; PRAGMA user_version=3"); }
+function schemaThree(db: DatabaseSync) { db.exec("DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DROP TABLE source_cache_evidence; DELETE FROM schema_migrations WHERE version>=4; PRAGMA user_version=3"); }
 
 describe("schema 4 proof lifecycle", () => {
   it("preserves schema3 generations/settings and absent historical proof, including peer-completed migration", async () => {
@@ -34,7 +36,7 @@ describe("schema 4 proof lifecycle", () => {
     db.exec = sql => { if (sql === "BEGIN IMMEDIATE" && !interleaved) { interleaved = true; migrate(peer); } exec(sql); };
     migrate(db); db.exec = exec; migrate(db);
     expect(interleaved).toBe(true); expect(rows(db)).toEqual(before); expect(store.readSource(v.sourceId)!.cacheEvidence).toBeNull();
-    expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([1, 2, 3, 4].map(version => ({ version })));
+    expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([1, 2, 3, 4, 5].map(version => ({ version })));
   });
   it.each([1, 2, 3])("rejects missing old schema marker %i and rolls back upgrade", marker => {
     const db = memory(); schemaThree(db); db.prepare("DELETE FROM schema_migrations WHERE version=?").run(marker);
@@ -51,7 +53,7 @@ describe("schema 4 proof lifecycle", () => {
     const db = memory(), store = createSourceStore(db, context.keyId), v = input();
     store.replaceSourceSnapshot(v, null); const one = store.readSource(v.sourceId)!; expect(one.cacheEvidence).toEqual(v.cacheEvidence); expect(Object.isFrozen(one.cacheEvidence)).toBe(true);
     const { cacheEvidence: _cache, ...without } = v; store.replaceSourceSnapshot(without, 1); expect(store.readSource(v.sourceId)!.cacheEvidence).toBeNull();
-    store.replaceSourceSnapshot(v, 2); const { evidence: _evidence, ...events } = without; store.replaceSource(events, 3); expect(store.readSource(v.sourceId)).toMatchObject({ cacheEvidence: null, evidence: null });
+    store.replaceSourceSnapshot(v, 2); const { evidence: _evidence, relationshipEvidence: _relationships, ...events } = without; store.replaceSource(events, 3); expect(store.readSource(v.sourceId)).toMatchObject({ cacheEvidence: null, evidence: null });
     store.replaceSourceSnapshot(v, 4); const before = store.readSource(v.sourceId)!; store.markUnavailable(v.sourceId, 5); expect(store.readSource(v.sourceId)).toEqual({ ...before, revision: 6, availability: "unavailable", cacheEvidence: null });
   });
   it("preserves all generation rows on stale, abort and SQL failure, including first key binding", () => {
@@ -121,7 +123,7 @@ describe("fresh synchronous unchanged confirmation", () => {
   });
 });
 
-it.each([3, 4])("rejects malformed/extra markers and settings on schema %i without mutation", version => {
+it.each([3, 5])("rejects malformed/extra markers and settings on schema %i without mutation", version => {
   for (const corruption of ["missing", "extra", "text", "settings"]) {
     const db = memory(); if (version === 3) schemaThree(db);
     if (corruption === "missing") db.exec("DELETE FROM schema_migrations WHERE version=2");
