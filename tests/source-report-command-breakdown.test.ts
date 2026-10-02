@@ -1,3 +1,5 @@
+import { buildSourceInvocationTimeline } from "../src/report/invocation-timeline.js";
+import { analyzeSourceInvocationOverlap } from "../src/analysis/source-invocation-overlap.js";
 // Planning artifact only. NOT RUN. Proposed destination: tests/source-report-command-breakdown.test.ts
 // Expected failure before implementation: missing ../src/report/command-breakdown.js.
 import { expect, it } from "vitest";
@@ -64,7 +66,7 @@ const six = () => source([
 ]);
 function project(s: StoredSource) {
   const slow = analyzeSourceSlowTool(s), breakdown = buildSourceCommandBreakdown(s, slow);
-  return { slow, breakdown, model: buildSourceReportModel(summarizeSource(s), slow, breakdown) };
+  return { slow, breakdown, model: buildSourceReportModel(summarizeSource(s), slow, breakdown,buildSourceInvocationTimeline(s,analyzeSourceInvocationOverlap(s))) };
 }
 function partition(s: StoredSource) { return project(s).breakdown.partitions[0]!; }
 type Mutable<T> = T extends readonly (infer U)[] ? Mutable<U>[] : T extends object
@@ -82,7 +84,7 @@ it("shows an 80/100 one-call build even though unchanged SlowTool only selects t
   expect(p.calls!.map(c => [c.ordinal, c.groupOrdinal, c.durationMs])).toEqual([
     [6, 1, 80], [1, 2, 4], [2, 2, 4], [3, 2, 4], [4, 2, 4], [5, 2, 4],
   ]);
-  expect(model.schema).toBe("agentprof.source-report/v2");
+  expect(model.schema).toBe("agentprof.source-report/v3");
   expect(JSON.stringify(s)).toBe(before);
   expect(Object.isFrozen(s)).toBe(false);
   expect(Object.isFrozen(breakdown)).toBe(true);
@@ -464,6 +466,7 @@ function maximumCombinedModel() {
     ["item_lifecycle", "paired_timestamps"], ["process_runtime", "source_reported"],
   ] as const;
   const count = (total: number, shown = total) => ({ total, shown, omitted: total - shown });
+  m.invocationTimeline.partitions = []; m.invocationTimeline.selection.sessions = count(0);
   m.selection.shownSessionIds = sessions; m.selection.sessionCounts = []; m.selection.partitionCounts = [];
   m.summary.durations = []; m.summary.usage = []; m.slowTool.partitions = []; m.slowTool.candidates = [];
   m.commandBreakdown.contexts = [];

@@ -1,3 +1,5 @@
+import { buildSourceInvocationTimeline } from "../src/report/invocation-timeline.js";
+import { analyzeSourceInvocationOverlap } from "../src/analysis/source-invocation-overlap.js";
 // Planning artifact only. NOT RUN. Proposed destination: tests/source-report-command-breakdown-cli.test.ts
 import { createHmac, createHash } from "node:crypto";
 import { mkdtemp, realpath, mkdir, writeFile, readFile, readdir, stat, rm } from "node:fs/promises";
@@ -90,7 +92,7 @@ it.each(["codex", "claude"] as const)("%s ordinary stored generation yields the 
     const breakdown = breakdownModule.buildSourceCommandBreakdown(f.saved, slow);
     expect(breakdown.partitions[0]!.groups!.map(row => [row.n, row.sumMs, row.share])).toEqual([[1, 80, 0.8], [5, 20, 0.2]]);
     expect(breakdown.partitions[0]!.calls!.map(row => row.durationMs)).toEqual([80, 4, 4, 4, 4, 4]);
-    buildSourceReportModel(summary, slow, breakdown);
+    buildSourceReportModel(summary, slow, breakdown,buildSourceInvocationTimeline(f.saved,analyzeSourceInvocationOverlap(f.saved)));
     expect(JSON.stringify(summary)).toBe(originalSummary); expect(JSON.stringify(slow)).toBe(originalSlow);
     const before = await snapshot(f.data), receipt = await runReport({ dataDir: f.data, source: f.sourceId, output: f.output });
     const html = await readFile(f.output, "utf8"), shares = table(html, "Native command duration shares"), calls = table(html, "Slowest recorded calls");
