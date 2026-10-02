@@ -177,3 +177,10 @@ One validated stored source prefix may produce internal Slow Tool duration-conce
 ## Read-only selected-source insights (2026-10-01)
 
 `agentprof insights --source <full-source-id>` exposes the unchanged provenance-backed source-local Slow Tool analysis from one existing private current-schema DELETE-mode store. Exactly one full source selection is required; no period/list/input-root mode, scan, migration, storage creation or freshness check occurs. Human output retains every bounded partition and candidate with full safe identities, null/zero and partial/suppressed distinctions, compatible denominator and direct/observed evidence. Each candidate includes its necessary-work counterexample, one matched experiment and mandatory quality guardrail. JSON retains the full unchanged rule result and evidence IDs. Successful command execution does not imply diagnostic completeness. Report/global aggregation, waste/savings and empirical optimization claims remain out of scope. See [P5-SOURCE-INSIGHTS-CLI](P5-SOURCE-INSIGHTS-CLI.md).
+
+
+## Confirmed source-local failure evidence (2026-10-01)
+
+The opt-in `stats --source <full-id> --failures` view exposes provenance-backed native completed/failed counts per stored source/session. Status admission includes untimed failures; timing is independently eligible. Missing terminal provenance suppresses the compatible session denominator. Keep raw inventory, exclusions, null/zero and source limitations separate; no global failure rate, retry/error identity inference, waste or savings. Existing command result bytes remain unchanged without the flag; stats help adds the flag and its coverage warning. See [P5-SOURCE-FAILURES](P5-SOURCE-FAILURES.md).
+
+The failure view human summary deterministically bounds displayed sessions/cohorts/measurements and long patterns, always reporting shown/total/omitted and pointing to complete JSON. It does not rank incomparable scopes; displayed compatible denominators/exclusions and quality safeguards remain intact. Exact caps and falsifiable output bounds are in the failure contract.

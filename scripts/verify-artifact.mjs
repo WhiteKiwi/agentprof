@@ -99,5 +99,41 @@ try {
   const selection = spawnSync(installed, ["insights", "--json", "--data-dir", absent], { env: environment, encoding: "utf8" });
   assert.equal(selection.status, 2); assert.equal(selection.stdout, ""); assert.equal(JSON.parse(selection.stderr).error.code, "INSIGHTS_SELECTION_REQUIRED");
   assert(invoke(["insights", "--help", "--data-dir", absent]).includes("--source")); assert(!existsSync(absent));
-  console.log(JSON.stringify({ status: "PASS", node: process.versions.node, platform: process.platform, arch: process.arch, artifactFiles: packed.files.length, tarballNpmExec: "help/version passed", isolatedGlobalInstall: "help/version passed", installScripts: "disabled", packedReadOnlyStats: "synthetic scan/list/select and unchanged store passed", packedReadOnlyInsights: "positive/suppressed exact JSON/human parity, selection/help and unchanged store passed", published: false }));
+  // Independent ordinary failure fixture: include untimed failure, no-match and unknown generic exit.
+  const failuresData = join(temporary, "private-failures"), failuresRoot = join(temporary, "failures-input");
+  mkdirSync(failuresRoot);
+  const failureRecords = [{ timestamp, type: "session_meta", payload: { id: "synthetic-failures" } }];
+  for (let i = 0; i < 6; i++) failureRecords.push({ timestamp, type: "event_msg", payload: { type: "item_completed", thread_id: "synthetic-failures", started_at_ms: epoch, completed_at_ms: epoch + 20,
+    item: { type: "CommandExecution", id: `failure-${i}`, source: "unified_exec_startup", command: i < 3 ? "rg synthetic src" : "npm test", status: i < 3 || i === 5 ? "failed" : "completed", exit_code: i < 2 || i === 5 ? 2 : i === 2 ? 1 : 0,
+      ...(i === 1 ? {} : { duration: { secs: 0, nanos: (i === 3 ? 0 : 4) * 1e6 } }) } } });
+  writeFileSync(join(failuresRoot, "positive.jsonl"), failureRecords.map(r => JSON.stringify(r)).join("\n") + "\n");
+  copyFileSync(join(root, "tests/fixtures/providers/codex-fork.jsonl"), join(failuresRoot, "suppressed.jsonl"));
+  const failureScan = spawnSync(installed, ["scan", "--codex-root", failuresRoot, "--data-dir", failuresData, "--json"], { cwd: execute, env: environment, encoding: "utf8" });
+  assert.equal(failureScan.status, 1); assert.equal(JSON.parse(failureScan.stdout).result.counts.committed, 2);
+  rmSync(failuresRoot, { recursive: true });
+  const failureSnapshot = () => readdirSync(failuresData).sort().map(name => ({ name, bytes: readFileSync(join(failuresData, name)), mode: statSync(join(failuresData, name)).mode }));
+  const failureBefore = failureSnapshot();
+  const failureItems = JSON.parse(invoke(["stats", "--list-sources", "--data-dir", failuresData, "--json"])).result.catalogue.items;
+  let failurePositive = 0, failureSuppressed = 0;
+  for (const item of failureItems) {
+    for (const extra of [[], ["--failures"]]) for (const json of [false, true]) {
+      const args = ["stats", "--source", item.sourceId, "--data-dir", failuresData, ...extra, ...(json ? ["--json"] : [])];
+      const output = invoke(args);
+      assert.equal(output, execFileSync(process.execPath, [join(root, "dist/agentprof.cjs"), ...args], { env: environment, encoding: "utf8" }));
+      if (extra.length && json) {
+        const parsed = JSON.parse(output); assert.equal(parsed.result.mode, "selected_source_failures");
+        const a = parsed.result.analysis;
+        if (a.suppressionReason !== null) { failureSuppressed++; assert.equal(a.suppressionReason, "ambiguous_origin"); assert.equal(a.cohorts, null); }
+        else { failurePositive++; assert.equal(a.partitions[0].failedN, 2); assert.equal(a.partitions[0].terminalN, 5); assert.equal(a.partitions[0].exclusions.unknown_status, 1); assert.equal(a.cohorts[0].timing.measuredN, 1); assert.equal(a.cohorts[0].measurements[0].sumMs, 4); }
+      }
+      if (extra.length && !json) { assert(output.includes("Coverage warning:")); assert(output.includes("Quality guardrail:")); }
+      assert(!/positive\.jsonl|suppressed\.jsonl|boundaryFingerprint|sourceRef|errorFingerprint/.test(output));
+    }
+  }
+  assert.equal(failurePositive, 1); assert.equal(failureSuppressed, 1); assert.deepEqual(failureSnapshot(), failureBefore);
+  const absentFailures = join(temporary, "absent-failures");
+  const missingFailures = spawnSync(installed, ["stats", "--failures", "--json", "--data-dir", absentFailures], { env: environment, encoding: "utf8" });
+  assert.equal(missingFailures.status, 2); assert.equal(JSON.parse(missingFailures.stderr).error.code, "INVALID_ARGUMENT");
+  assert(invoke(["stats", "--help", "--data-dir", absentFailures]).includes("--failures")); assert(!existsSync(absentFailures));
+  console.log(JSON.stringify({ status: "PASS", node: process.versions.node, platform: process.platform, arch: process.arch, artifactFiles: packed.files.length, tarballNpmExec: "help/version passed", isolatedGlobalInstall: "help/version passed", installScripts: "disabled", packedReadOnlyStats: "synthetic scan/list/select and unchanged store passed", packedReadOnlyInsights: "positive/suppressed exact JSON/human parity, selection/help and unchanged store passed", packedReadOnlyFailures: "ordinary positive/suppressed and old stats exact installed parity; unchanged store passed", published: false }));
 } finally { rmSync(temporary, { recursive: true, force: true }); }

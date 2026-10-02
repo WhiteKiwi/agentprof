@@ -4,11 +4,14 @@ import { identity, keyId } from "../db/source-validation.js";
 import type { SourceCatalogue } from "../db/source-store.js";
 import type { SourceSummary, DurationCohort, UsageCohort } from "../analysis/source-summary.js";
 import { validateCliPath } from "./scan.js";
+import type { SourceFailureAnalysis } from "../analysis/source-failures.js";
+import { formatSourceFailures } from "./failures.js";
 
-export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string }>;
+export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean }>;
 export type StatsResult = Readonly<
   { mode: "list_sources"; catalogue: SourceCatalogue }
   | { mode: "selected_source"; sourceFreshnessChecked: false; summary: SourceSummary }
+  | { mode: "selected_source_failures"; analysis: SourceFailureAnalysis }
 >;
 export function validateSourceSelection(value: string): string {
   try { const key = keyId(value.split(":")[1]); return identity(value, "source", key); }
@@ -16,6 +19,7 @@ export function validateSourceSelection(value: string): string {
 }
 export function validateStatsArguments(options: StatsArguments): string {
   if ((options.codexRoot?.length ?? 0) || (options.claudeRoot?.length ?? 0)) throw new SafeError("INVALID_ARGUMENT");
+  if (options.failures && (options.listSources || options.source === undefined)) throw new SafeError("INVALID_ARGUMENT");
   if (!options.listSources && options.source === undefined) throw new SafeError("STATS_SELECTION_REQUIRED");
   if (options.listSources && options.source !== undefined) throw new SafeError("INVALID_ARGUMENT");
   if (options.source !== undefined) validateSourceSelection(options.source);
@@ -27,12 +31,14 @@ export async function runStats(options: StatsArguments): Promise<StatsResult> {
   const { withReadOnlyStore } = await import("../db/read-only.js");
   const { createSourceStore } = await import("../db/source-store.js");
   const { summarizeSource } = await import("../analysis/source-summary.js");
+  const analyzeFailures = options.failures ? (await import("../analysis/source-failures.js")).analyzeSourceFailures : null;
   return withReadOnlyStore(directory, (db, key) => {
     const store = createSourceStore(db, key);
     if (options.listSources) return Object.freeze({ mode: "list_sources", catalogue: store.listSources() });
     try { identity(options.source, "source", key); } catch { throw new SafeError("INVALID_IDENTITY_KEY"); }
     const source = store.readSource(options.source!);
     if (source === null) throw new SafeError("SOURCE_NOT_FOUND");
+    if (analyzeFailures !== null) return Object.freeze({ mode: "selected_source_failures", analysis: analyzeFailures(source) });
     return Object.freeze({ mode: "selected_source", sourceFreshnessChecked: false, summary: summarizeSource(source) });
   });
 }
@@ -131,6 +137,7 @@ function formatSelectedSource(s: SourceSummary): string[] {
 
 export function formatStatsResult(result: StatsResult, json: boolean): string {
   if (json) return JSON.stringify({ schema: "agentprof.cli/v1", ok: true, command: "stats", result }) + "\n";
+  if (result.mode === "selected_source_failures") return formatSourceFailures(result.analysis);
   const lines = ["AgentProf stored source-prefix stats", "Freshness and other-source conflicts were not checked. No global/session/history totals; no parser resume."];
   if (result.mode === "list_sources") {
     const c = result.catalogue;
