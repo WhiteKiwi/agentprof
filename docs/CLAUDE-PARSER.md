@@ -85,3 +85,12 @@ usage 6→6→10의 trusted final oracle은 10을 한 번 선택한다. 그 원�
    **Verify:** 의미 있는 행동 테스트·타입·빌드·macOS/Linux Node matrix·production tarball help/version·문서 링크·diff를 확인한다. P4 통합 및 A01–A27 제품 acceptance는 별도다.
 
 [NORMALIZATION](NORMALIZATION.md) · [FIXTURES](FIXTURES.md) · [EVIDENCE](EVIDENCE.md) · [IMPLEMENTATION](IMPLEMENTATION.md) · [ACCEPTANCE](ACCEPTANCE.md).
+
+
+## Ordinary Claude search lookup evidence (2026-10-02)
+
+The [reviewed native search candidate](P5-CLAUDE-SEARCH-EVIDENCE.md) emits semantic parserVersion 2. Only exact direct Grep/Glob names and the finite own-data input subset qualify. The key distinguishes exact query, authoritative per-call project, explicit/omitted root, tool, direct provider version and exact options/omissions. Missing direct version/project or unsupported shape keeps lookup null. No raw query/root/options, result-completeness, timing or waste inference is added.
+
+Input/version/eligibility replay conflicts and retained call-message/result conflicts clear lookup evidence. A first assistant-message conflict can invalidate retained native calls even if the conflicting record omits the tool block. Complete-frame overflow removes only the new lookup fields where inherited invocation parsing is representable. Descriptor/proxy safety is local to extraction and does not claim whole-adapter hardening.
+
+Checkpoint serialization remains schema 1 with semantic version 2 and no new fields. A keyed checkpoint requires the strict native tuple, valid project, ordinary call state and unconflicted retained references; fabricated Bash/Read/custom/MCP lookups remain invalid. Historical metric-bearing version1 rows remain readable without invented keys. The existing scanner reparses obsolete semantics once and can reuse a subsequent unchanged version-2 generation; durable resume remains separately owned. The linked contract distinguishes exact recovered test oracles, historical receipts and new verification gates without altering historical P3 empirical support.

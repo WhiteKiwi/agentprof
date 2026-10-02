@@ -10,6 +10,7 @@ import type { DiagnosticCode, SafeDiagnostic } from "../../privacy/diagnostics.j
 import type { ParserSourceRef } from "../types.js";
 import { canonical, elapsed, field, integer, milliseconds, object, text, utc } from "./fields.js";
 import { tool } from "./tools.js";
+import { extractClaudeSearch } from "./search.js";
 import { sameCounts, stopReason, tokenCounts } from "./usage.js";
 import type { ClaudeBatch, ClaudeCapabilities, ClaudeInputSource, ClaudeLimits, ClaudeMessageLink, ClaudeMetadata, ClaudeResultObservation, ClaudeShape, ClaudeSnapshot, ClaudeSourceObservation, ClaudeTurn, ClaudeUsage } from "./types.js";
 
@@ -60,7 +61,7 @@ export class ClaudeAdapter {
     this.#context = context; this.#limits = Object.freeze(selected);
   }
   #capabilities(): ClaudeCapabilities {
-    return Object.freeze({ provider: "claude", parserVersion: 1, support: "shape_verified_only", coverage: this.#partial ? "partial" : "recognized_shapes", observedShapes: Object.freeze([...this.#shapes].sort()), unsupportedRecords: this.#unsupported, ambiguousRecords: this.#ambiguous, stateLimited: this.#limited, diagnosticsDropped: this.#diagnosticsDropped });
+    return Object.freeze({ provider: "claude", parserVersion: 2, support: "shape_verified_only", coverage: this.#partial ? "partial" : "recognized_shapes", observedShapes: Object.freeze([...this.#shapes].sort()), unsupportedRecords: this.#unsupported, ambiguousRecords: this.#ambiguous, stateLimited: this.#limited, diagnosticsDropped: this.#diagnosticsDropped });
   }
   #warn(code: DiagnosticCode, input: Input | null, batch: WorkBatch, position: Position | null = null): void {
     this.#partial = true;
@@ -230,7 +231,7 @@ export class ClaudeAdapter {
         const results = content.filter((entry) => field(entry, "type") === "tool_result").length;
         for (const entry of content) {
           const blockType = field(entry, "type");
-          if (type === "assistant" && blockType === "tool_use") this.#call(entry, input, batch);
+          if (type === "assistant" && blockType === "tool_use") this.#call(entry, record, input, batch);
           else if (type === "user" && blockType === "tool_result") this.#result(entry, record, input, batch, results === 1);
           else if (!["text", "thinking", "redacted_thinking", "image"].includes(blockType as string)) this.#unsupportedRecord(input, batch);
         }
@@ -301,6 +302,13 @@ export class ClaudeAdapter {
     } else if (prior.digest !== digest) {
       this.#warn("INCONSISTENT_REPLAY", input, batch);
       this.#messages.set(id, Object.freeze({ ...prior, link: Object.freeze({ ...prior.link, conflicted: true }) }));
+      // A conflicting UUID can omit the original tool block. Refresh matching
+      // retained native searches once, without a new index or retained state.
+      if (!prior.link.conflicted) for (const state of this.#events.values()) {
+        if (state.callMessageId === id && state.event.kind === "search" && (state.event.toolName === "Grep" || state.event.toolName === "Glob")) {
+          state.conflicted = true; this.#refreshEvent(state, input, batch);
+        }
+      }
     }
     const usage = canonical(field(field(record, "message"), "usage") ?? null);
     const replay = this.#context.fingerprint("event", ["claude_uuid_replay", id, digest, usage, stopReason(field(field(record, "message"), "stop_reason"))]);
@@ -316,7 +324,7 @@ export class ClaudeAdapter {
     if (state.event.status === "failed" && state.event.errorFingerprint === null) this.#warn("INSUFFICIENT_ERROR_EVIDENCE", input, batch, state.result?.position ?? null);
   }
   #position(input: Input): Position { return Object.freeze({ fileId: input.fileId, ordinal: input.source.ordinal, sourceRef: input.sourceRef, sourceAlias: diagnostic("INVALID_RECORD", input.source.sourceAlias ?? null).sourceAlias }); }
-  #call(block: unknown, input: Input, batch: WorkBatch): void {
+  #call(block: unknown, record: unknown, input: Input, batch: WorkBatch): void {
     const rawId = text(field(block, "id"), 4096);
     const rawName = text(field(block, "name"), 4096);
     const args = field(block, "input");
@@ -329,10 +337,16 @@ export class ClaudeAdapter {
     const classified = tool(rawName);
     const earlier = prior?.position.fileId === input.fileId && input.source.ordinal < prior.position.ordinal;
     const project = prior && !earlier ? prior.callProjectId : input.projectId;
-    const inputDigest = this.#context.fingerprint("event", ["claude_call_input", rawName, encoded]);
+    const baseInputDigest = this.#context.fingerprint("event", ["claude_call_input", rawName, encoded]);
+    const nativeSearch = rawName === "Grep" || rawName === "Glob";
+    const version = nativeSearch ? text(field(record, "version"), 4096) : null;
+    const search = nativeSearch ? extractClaudeSearch(rawName, args, version) : null;
+    // Compose bounded opaque evidence, never re-escape a near-budget raw input.
+    const inputDigest = nativeSearch ? this.#context.fingerprint("event", ["claude_native_search_replay/v1", baseInputDigest,
+      version === null ? "absent_or_invalid" : this.#context.fingerprint("source", ["claude_version", version]), search === null ? "rejected" : "eligible"]) : baseInputDigest;
     const normalized = normalizeEvent({ provider: "claude", eventIdentity: rawId, sessionIdentity: streamId, kind: classified.kind, toolName: classified.name,
       command: classified.callKind === "bash" ? field(args, "command") : undefined,
-      operationParts: ["claude_tool", rawName, encoded], projectIdentity: project,
+      operationParts: ["claude_tool", rawName, encoded], projectIdentity: project, ...search,
       filePath: ["file_read", "file_write", "file_edit"].includes(classified.kind) ? field(args, "file_path") : undefined,
       startAt: input.at, status: "pending", statusEvidence: "explicit",
       sourceRef: { fileIdentity: input.source.fileIdentity, byteOffset: input.sourceRef.byteOffset, recordType: "assistant" },
@@ -436,7 +450,7 @@ export class ClaudeAdapter {
   #refreshEvent(state: ExecutionState, input: Input, batch: WorkBatch): void {
     const result = state.result;
     if (!result) {
-      if (state.conflicted) state.event = Object.freeze({ ...state.event, status: "unknown", executionOutcome: "unknown", endAt: null, durationMs: null, timingEvidence: "unknown", durationScope: "unknown", intervalScope: "unknown", intervalTimingEvidence: "unknown" });
+      if (state.conflicted) state.event = Object.freeze({ ...state.event, lookupKey: null, status: "unknown", executionOutcome: "unknown", endAt: null, durationMs: null, timingEvidence: "unknown", durationScope: "unknown", intervalScope: "unknown", intervalTimingEvidence: "unknown" });
       this.#emitEvent(state, input, batch); return;
     }
     const completion = this.#completionKind(state, result);
@@ -456,7 +470,7 @@ export class ClaudeAdapter {
     let intervalTimingEvidence: NormalizedEvent["intervalTimingEvidence"] = paired === null ? "unknown" : "paired_timestamps";
     if (durationMs !== null && paired !== null && durationScope === intervalScope && Math.abs(durationMs - paired) > 1) { this.#warn("TIMING_CONFLICT", input, batch, result.position); intervalScope = "unknown"; intervalTimingEvidence = "unknown"; }
     if (state.conflicted) { durationMs = null; timingEvidence = "unknown"; durationScope = "unknown"; intervalScope = "unknown"; intervalTimingEvidence = "unknown"; }
-    state.event = Object.freeze({ ...state.event, endAt, durationMs, timingEvidence, durationScope, intervalScope, intervalTimingEvidence, status, executionOutcome: status === "completed" ? "success" : status === "failed" ? "error" : "unknown", exitCode: null,
+    state.event = Object.freeze({ ...state.event, lookupKey: state.conflicted ? null : state.event.lookupKey, endAt, durationMs, timingEvidence, durationScope, intervalScope, intervalTimingEvidence, status, executionOutcome: status === "completed" ? "success" : status === "failed" ? "error" : "unknown", exitCode: null,
       contentFingerprint: state.conflicted ? null : result.contentFingerprint, contentState: state.conflicted ? "unknown" : result.contentState, errorFingerprint: status === "failed" ? result.errorFingerprint : null, errorClass: status === "failed" ? "tool_error" : null,
       sourceRef: Object.freeze({ ...result.position.sourceRef, recordType: "user" }),
     });

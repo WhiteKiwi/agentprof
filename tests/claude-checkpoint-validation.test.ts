@@ -94,7 +94,7 @@ describe("bounded untrusted Claude checkpoint restore", () => {
 
   const mutations: readonly [string, (value: Data) => void][] = [
     ["schema version", value => { value.schemaVersion = 2; }],
-    ["parser version", value => { value.parserVersion = 2; }],
+    ["parser version", value => { value.parserVersion = 3; }],
     ["normalization version", value => { value.normalizationVersion = 2; }],
     ["key version", value => { value.keyVersion = 2; }],
     ["provider", value => { value.provider = "codex"; }],

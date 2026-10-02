@@ -196,7 +196,7 @@ function validate(value: unknown, context: IdentityContext, binding: ClaudeCheck
       kind: choice("model","shell","file_read","file_write","file_edit","search","mcp","browser","skill","subagent","other"),
       category: choice("model","test","build","search","read","write","edit","mcp","browser","skill","subagent","other"),
       toolName: nullable(choice("Bash","Read","Write","Edit","Grep","Glob","exec_command","write_stdin","apply_patch","mcp","browser","other")),
-      commandPattern: command, operationKey: nid("operation"), fileFingerprint: nid("file"), lookupKey: nil, lookupRange: nil,
+      commandPattern: command, operationKey: nid("operation"), fileFingerprint: nid("file"), lookupKey: nid("lookup"), lookupRange: nil,
       contentFingerprint: nil, contentState: choice("truncated","unknown"), changeState: fixed("unknown"), validationScope: fixed("unknown"),
       startAt: nullable(timestamp), endAt: nullable(timestamp), intervalTimingEvidence: choice("unknown","paired_timestamps"),
       intervalScope: choice("unknown","invocation_latency"), durationMs: nullable(duration), timingEvidence: choice("unknown","paired_timestamps"),
@@ -211,7 +211,14 @@ function validate(value: unknown, context: IdentityContext, binding: ClaudeCheck
     if (v.executionOutcome !== (v.status === "completed" ? "success" : v.status === "failed" ? "error" : "unknown")) invalid();
     if (v.errorClass !== (v.status === "failed" ? "tool_error" : null)) invalid();
   };
-  const execution: Validator = value => { shape(value, { event, callDigest: id("event"), inputDigest: id("event"), callProjectId: nid("file"), position, callMessageId: nid("event"), callKind: choice("bash","agent","tool"), backgroundRequested: bool, result: nullable(result), conflicted: bool }); };
+  const execution: Validator = value => {
+    const v = shape(value, { event, callDigest: id("event"), inputDigest: id("event"), callProjectId: nid("file"), position, callMessageId: nid("event"), callKind: choice("bash","agent","tool"), backgroundRequested: bool, result: nullable(result), conflicted: bool });
+    const e = v.event as Obj;
+    if (e.lookupKey !== null && (e.kind !== "search" || e.category !== "search" || !["Grep", "Glob"].includes(e.toolName as string)
+      || v.callKind !== "tool" || v.callProjectId === null || v.conflicted || v.backgroundRequested
+      || e.commandPattern !== null || e.fileFingerprint !== null || e.lookupRange !== null
+      || v.result !== null && (v.result as Obj).conflicted)) invalid();
+  };
   const turn: Validator = value => {
     const v = shape(value, { id: id("turn"), sessionId: id("session"), provider: fixed("claude"), observedAt: nullable(timestamp), startAt: nil, endAt: nil,
       intervalScope: fixed("unknown"), intervalTimingEvidence: fixed("unknown"), durationMs: nullable(duration), timingEvidence: choice("source_reported","unknown"),
@@ -275,6 +282,13 @@ function validate(value: unknown, context: IdentityContext, binding: ClaudeCheck
   for(const name of ["events","turns","usage","messages"] as const) for(const [,v] of pairs(name)) {
     const row=name==="events"?v.event as Obj:name==="messages"?v.link as Obj:v;
     if(!keys.streams.has(row.sessionId as string)) invalid();
+  }
+  // A re-signed token cannot hide a linked message conflict by clearing only
+  // execution.conflicted. Missing optional message links remain representable.
+  const messages = new Map(pairs("messages"));
+  for (const [, execution] of pairs("events")) if ((execution.event as Obj).lookupKey !== null && execution.callMessageId !== null) {
+    const message = messages.get(execution.callMessageId as string);
+    if (message && (message.link as Obj).conflicted) invalid();
   }
   if(keys.usage.size!==keys.usageOrders.size||[...keys.usage].some(key=>!keys.usageOrders.has(key))) invalid();
   if([...keys.deferredResults].some(key=>keys.events.has(key))) invalid();
