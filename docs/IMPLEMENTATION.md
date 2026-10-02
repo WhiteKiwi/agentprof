@@ -277,3 +277,8 @@ The recovered candidate is based on all 209 independently verified Git blobs of 
 
 
 Independent review's earlier-cwd authority correction separates finite raw shape/version eligibility from project availability. Every eligibility frame uses the same 105-byte ASCII length-only budget stand-in, never an actual or retained identity; the real project is supplied only to normalization. Both directional regressions retain completed 4,000 ms timing, inherited source-order authority and stable subsequent replay. The Project-approved 20th file is an additional inherited fixture-header correction only; no scanner/store/schema/report scope changed.
+
+
+## P6 safe standalone opener — reviewed slice
+
+Implement [P6-SAFE-OPEN](P6-SAFE-OPEN.md) after immutable independent contract/test review and saved/reloaded ten-path activation. Validate lexical bounds before I/O; canonicalize and validate both HTML suffixes; stat before read-only nonblocking open, fstat and exactly-once close. Spawn one fixed OS helper with shell:false and ignored stdio; use monotonic acknowledgement timing, single settlement, deadline/listener cleanup, inert late-error handling and unref on timeout without kill/retry. Preserve inherited global parsing and storage-free behavior. Verify frozen focused tests and unchanged CLI controls, then freeze all paths for independent source review before coordinator-scheduled aggregate/artifact/installed gates. No new dependency, publication or broad P6 completion.
