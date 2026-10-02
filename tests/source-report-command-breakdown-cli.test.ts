@@ -74,7 +74,7 @@ async function fixture(provider: "codex" | "claude") {
 }
 function table(html: string, caption: string) {
   const tables = [...html.matchAll(/<table\b[^>]*>[\s\S]*?<\/table>/g)].map(match => match[0]);
-  const match = tables.find(value => value.includes(`<caption>${caption} · ms</caption>`));
+  const match = tables.find(value => value.match(/<caption\b[^>]*>([^<]*)<\/caption>/)?.[1] === `${caption} · ms`);
   expect(match, `missing ${caption}`).toBeDefined();
   return match!;
 }

@@ -73,3 +73,60 @@ it("renders every exact structural ceiling with bounded final bytes and all anch
 it("rejects escaped output above1MiB even when each field and collection satisfies its bound",()=>{
  const m=maximumModel();for(const row of m.summary.durations!)row.commandPattern="&".repeat(512);for(const row of m.summary.usage!)row.limitations=Array(64).fill("&".repeat(128));expect(()=>renderSourceReport(m)).toThrowError(expect.objectContaining({code:"REPORT_LIMIT"}));
 });
+
+// PR39 accessibility amendment: additive static regressions; browser behavior is not asserted.
+it("gives every bounded table a focusable region labelled by its unique caption",()=>{
+ for(const [m,expectedTables] of [[model(),3],[maximumModel(),120]] as const){
+  const html=renderSourceReport(m),ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(match=>match[1]!);
+  expect(new Set(ids).size).toBe(ids.length);
+  const wrappers=[...html.matchAll(/<div\b([^>]*\bclass="table-wrap"[^>]*)>\s*<table>\s*<caption\b([^>]*)>([\s\S]*?)<\/caption>/g)];
+  expect(wrappers).toHaveLength(expectedTables);
+  expect([...html.matchAll(/<table\b/g)]).toHaveLength(expectedTables);
+  const labels:string[]=[];
+  for(const [,attributes,captionAttributes,captionText]of wrappers){
+   expect(attributes).toMatch(/\btabindex="0"/);
+   expect(attributes).toMatch(/\brole="region"/);
+   const label=attributes!.match(/\baria-labelledby="([^"\s]+)"/)?.[1];
+   expect(label).toBeDefined();
+   expect(captionAttributes!.match(/\bid="([^"]+)"/)?.[1]).toBe(label);
+   expect(captionText!.trim().length).toBeGreaterThan(0);
+   expect(ids.filter(id=>id===label)).toHaveLength(1);labels.push(label!);
+  }
+  expect(new Set(labels).size).toBe(labels.length);
+ }
+});
+it("styles table keyboard focus without weakening the static CSP or overflow contract",()=>{
+ const html=renderSourceReport(model()),css=html.match(/<style>([\s\S]*?)<\/style>/)![1]!;
+ const focusRules=[...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([,selector])=>selector!.split(',').some(s=>s.trim()==='.table-wrap:focus-visible'));
+ expect(focusRules).toHaveLength(1);
+ expect(focusRules[0]![2]).toMatch(/outline:\s*3px solid var\(--observed\)/);
+ expect(focusRules[0]![2]).toMatch(/outline-offset:\s*4px/);
+ expect(css).toMatch(/\.table-wrap\{[^}]*overflow-x:auto/);
+ expect(html).toContain(`style-src 'sha256-${createHash('sha256').update(css).digest('base64')}'`);
+ expect(html).not.toMatch(/unsafe-inline|\sstyle\s*=|\son[a-z]+\s*=|<script/i);
+});
+it("keeps SlowTool metric terms and auxiliary text in valid description-list groups",()=>{
+ for(const m of [model(),maximumModel()]){
+  const html=renderSourceReport(m),stack:string[]=[],voids=new Set(['meta','link','br','hr','img','input','area','base','col','embed','param','source','track','wbr']);
+  for(const token of html.matchAll(/<(\/)?([a-z][a-z0-9]*)\b[^>]*>/gi)){
+   const tag=token[2]!.toLowerCase();
+   if(token[1]){expect(stack.pop()).toBe(tag);continue;}
+   if(tag==='dt'||tag==='dd')expect(stack.at(-1)==='dl'||(stack.at(-1)==='div'&&stack.at(-2)==='dl')).toBe(true);
+   if(!voids.has(tag)&&!token[0].endsWith('/>'))stack.push(tag);
+  }
+  expect(stack).toHaveLength(0);
+  const cards=[...html.matchAll(/<article class="card"[^>]*>([\s\S]*?)<\/article>/g)];
+  expect(cards).toHaveLength(m.slowTool.candidates!.length);
+  for(const [i,card]of cards.entries()){
+   const c=m.slowTool.candidates![i]!,pair=card[1]!.match(/<dl class="pair">([\s\S]*?)<\/dl>/)?.[1];
+   expect(pair).toBeDefined();
+   const groups=[...pair!.matchAll(/<div><dt>([^<]*)<\/dt><dd\b[^>]*>([\s\S]*?)<\/dd><\/div>/g)];
+   expect(groups).toHaveLength(2);expect(groups.map(g=>g[0]).join('')).toBe(pair);
+   expect(groups[0]![1]).toBe('Observed group recorded duration');
+   expect(groups[0]![2]).toContain(`${c.sumMs} ms`);expect(groups[0]![2]).toContain(`<p>${c.n} calls · mean ${c.meanMs} ms</p>`);
+   expect(groups[1]![1]).toBe('Admitted compatible duration fraction');
+   expect(groups[1]![2]).toContain(String(c.observedEligibleNativeToolDurationShare));
+   expect(groups[1]![2]).toContain(`<p>${c.sumMs} / ${c.denominatorSumMs} ms · denominator ${c.denominatorN} calls</p>`);
+  }
+ }
+});

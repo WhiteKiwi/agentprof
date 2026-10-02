@@ -108,7 +108,7 @@ it("preserves zero denominator as known zero durations with null shares", () => 
   const html = renderSourceReport(model);
   expect(html).toContain("Native command duration shares");
   expect(html).toContain("unknown");
-  const table = html.match(/<table\b[^>]*>\s*<caption>Native command duration shares[\s\S]*?<\/table>/)![0];
+  const table = html.match(/<table\b[^>]*>\s*<caption\b[^>]*>Native command duration shares[\s\S]*?<\/table>/)![0];
   expect(table).not.toMatch(/<svg|0\.0%/);
 });
 
@@ -269,7 +269,7 @@ it("renders denominator-based bars separately from legacy relative-summary bars"
   expect(html).toContain("Share of admitted compatible recorded duration");
   expect(html).toContain("API/network share"); expect(html).toContain("unavailable");
   expect(html).toContain("not time share"); // inherited summary-bar caption
-  const shares = html.match(/<table\b[^>]*>\s*<caption>Native command duration shares[\s\S]*?<\/table>/)![0];
+  const shares = html.match(/<table\b[^>]*>\s*<caption\b[^>]*>Native command duration shares[\s\S]*?<\/table>/)![0];
   const rows = [...shares.match(/<tbody>([\s\S]*?)<\/tbody>/)![1]!.matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/g)].map(match => match[0]);
   const widthFor = (text: string) => {
     const row = rows.find(value => value.includes(text))!;
@@ -391,7 +391,7 @@ it("uses the actual displayed tuple anchor instead of a coincidentally resolving
     sessionId, durationScope: "process_runtime", timingEvidence: "source_reported",
   });
   const html = renderSourceReport(model);
-  const nativeTable = html.match(/<table\b[^>]*>\s*<caption>Slowest recorded calls[\s\S]*?<\/table>/)![0];
+  const nativeTable = html.match(/<table\b[^>]*>\s*<caption\b[^>]*>Slowest recorded calls[\s\S]*?<\/table>/)![0];
   expect(nativeTable).toContain('href="#partition-2"');
   expect(nativeTable).not.toContain('href="#partition-1"');
   const target = html.indexOf('id="partition-2"'), caption = html.indexOf("Native command duration shares", target);
@@ -414,7 +414,7 @@ it("keeps the slowest call visible when its group is omitted and links only to r
   expect(p.calls![0]).toMatchObject({ ordinal: 21, groupOrdinal: 11, durationMs: 19, group: { commandPattern: "cargo build" } });
   expect(p.groups!.some(g => g.ordinal === 11)).toBe(false);
   const html = renderSourceReport(model);
-  const table = html.match(/<table\b[^>]*>\s*<caption>Slowest recorded calls[\s\S]*?<\/table>/)![0];
+  const table = html.match(/<table\b[^>]*>\s*<caption\b[^>]*>Slowest recorded calls[\s\S]*?<\/table>/)![0];
   const firstRow = table.match(/<tbody>\s*(<tr\b[\s\S]*?<\/tr>)/)![1]!;
   expect(firstRow).toContain("cargo build");
   expect(firstRow.replace(/<[^>]*>/g, " ")).toMatch(/\b1\b/); // visible rank1, distinct from alias Call21
@@ -527,8 +527,8 @@ it("renders the combined old-plus-new structural ceiling within the unchanged 1M
   expect(m.commandBreakdown.contexts.flatMap(c => c.calls!)).toHaveLength(240);
   expect(Buffer.byteLength(html)).toBeLessThanOrEqual(1048576);
   const tables = [...html.matchAll(/<table\b[^>]*>[\s\S]*?<\/table>/g)].map(match => match[0]);
-  const shareTables = tables.filter(table => table.includes("<caption>Native command duration shares · ms</caption>"));
-  const callTables = tables.filter(table => table.includes("<caption>Slowest recorded calls · ms</caption>"));
+  const shareTables = tables.filter(table => /<caption\b[^>]*>Native command duration shares · ms<\/caption>/.test(table));
+  const callTables = tables.filter(table => /<caption\b[^>]*>Slowest recorded calls · ms<\/caption>/.test(table));
   expect(shareTables).toHaveLength(24); expect(callTables).toHaveLength(24);
   const rowCount = (table: string) => [...table.match(/<tbody>([\s\S]*?)<\/tbody>/)![1]!.matchAll(/<tr\b/g)].length;
   expect(shareTables.map(rowCount)).toEqual(Array(24).fill(10));

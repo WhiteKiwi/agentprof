@@ -147,7 +147,7 @@ export function analyzeSourceSlowTool(source: StoredSource): SourceSlowToolAnaly
   const suppressionReason: Suppression = source.availability !== "available" ? "source_unavailable" : evidence === null ? "evidence_absent"
     : evidence.capabilities.stateLimited || evidence.capabilities.diagnosticsDropped > 0 ? "state_limited"
     : evidence.capabilities.ambiguousRecords > 0 || ambiguous ? "ambiguous_origin"
-    : !["codex", "claude"].includes(source.provider) || source.parserVersion !== 1 || evidence.capabilities.provider !== source.provider || evidence.capabilities.parserVersion !== 1 ? "unsupported_contract"
+    : !(source.provider === "codex" && source.parserVersion === 1 || source.provider === "claude" && (source.parserVersion === 1 || source.parserVersion === 2)) || evidence.capabilities.provider !== source.provider || evidence.capabilities.parserVersion !== source.parserVersion ? "unsupported_contract"
     : source.events.some(e => e.parentEventId !== null || wrappers.has(e.id)) ? "unresolved_execution_relation" : null;
   const eligibility = { tentativeTimedCalls: 0, admittedTimedCalls: 0, exclusions: { source_suppressed: 0, model: 0, unsupported_call_class: 0, inconsistent_category: 0, cancelled: 0, pending: 0, unknown_status: 0, missing_duration: 0, invalid_duration: 0, unknown_scope: 0, estimated_timing: 0, unknown_timing: 0, identity_unresolved_partition: 0 } };
   const eventStatuses = { completed: 0, failed: 0, cancelled: 0, pending: 0, unknown: 0 }, eventOutcomes = { success: 0, no_match: 0, change_detected: 0, error: 0, unknown: 0 };

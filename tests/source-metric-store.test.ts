@@ -38,7 +38,7 @@ async function fixture(name = "codex-real-shapes.jsonl", fileIdentity = "FICTITI
     start = end + 1;
   }
   const snapshot = adapter.snapshot();
-  return { sourceId: context.fingerprint("source", [provider, fileIdentity]), provider, parserVersion: 1, normalizationVersion: 1, keyVersion: 1, keyId: context.keyId,
+  return { sourceId: context.fingerprint("source", [provider, fileIdentity]), provider, parserVersion: snapshot.capabilities.parserVersion, normalizationVersion: 1, keyVersion: 1, keyId: context.keyId,
     completedOffset: start, observedSize: bytes.length, boundaryFingerprint: start ? context.fingerprint("content", ["synthetic-boundary", start]) : null,
     events: snapshot.events, evidence: { turns: snapshot.turns, usage: snapshot.usage, observations: snapshot.observations, diagnostics: snapshot.diagnostics, capabilities: snapshot.capabilities } };
 }

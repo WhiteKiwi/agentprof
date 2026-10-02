@@ -17,7 +17,7 @@ afterEach(() => { for (const db of dbs.splice(0)) db.close(); });
 function memory() { const db = new DatabaseSync(":memory:", { enableForeignKeyConstraints: true }); migrate(db); dbs.push(db); return db; }
 function input(provider: "codex" | "claude" = "codex"): SourceSnapshotInput {
   const s = provider === "codex" ? createCodexAdapter(context).snapshot() : createClaudeAdapter(context).snapshot();
-  return { sourceId: id("source", provider), provider, parserVersion: 1, normalizationVersion: 1, keyVersion: 1, keyId: context.keyId, completedOffset: 1, observedSize: 1, boundaryFingerprint: id("content", "boundary"), events: [],
+  return { sourceId: id("source", provider), provider, parserVersion: s.capabilities.parserVersion, normalizationVersion: 1, keyVersion: 1, keyId: context.keyId, completedOffset: 1, observedSize: 1, boundaryFingerprint: id("content", "boundary"), events: [],
     evidence: { turns: s.turns, usage: s.usage, observations: s.observations, diagnostics: s.diagnostics, capabilities: s.capabilities }, cacheEvidence: { contractVersion: 1, contentFingerprint: id("content", "file") } };
 }
 function captured(v: SourceSnapshotInput): RelationshipEvidence {
