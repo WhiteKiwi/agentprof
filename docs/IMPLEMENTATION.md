@@ -282,6 +282,10 @@ Independent review's earlier-cwd authority correction separates finite raw shape
 
 Follow the five ordered steps and concrete Verify entries in [TOOLCHAIN](TOOLCHAIN.md). Separate research verified the pinned action input and the complete immutable npm/pnpm lock graph; preserve its recorded optional-peer encoding exception. Integrate current main without changing inherited production or tests, document the pinned developer commands, and qualify clean scripts-disabled installation, enabled npm prepack and isolated consumers. Run supported local checks with authentic historical baselines and this candidate's installed artifact, then inspect actual current-head hosted matrix logs before merging. The coordinator owns integration/review/publication and the Project-only draft owns the live claim; any implementation correction must return to a separate development contributor under an amended plan first. No package publication or broad P7 completion is included.
 
+## Common pnpm pin follow-up (drafted 2026-10-02)
+
+Follow the four ordered steps and Verify entries in [TOOLCHAIN](TOOLCHAIN.md#common-pnpm-pin-follow-up-plan-2026-10-02). Separate research confirms official pnpm 10.34.6 metadata, the exact installed standalone asset and the unchanged v9 lock format. A separate development contributor replaces only the current pnpm values in mise.toml, package.json and the matrix configuration; the coordinator owns README/current planning prose, review, qualification and publication. Preserve all production/tests and dependency-lock bytes. Qualify the pinned macOS runtime and actual three-runtime hosted CI, enabled npm prepack and isolated consumer execution with the authentic historical baselines. Hold the successor merge for the authorized cross-repository ordering handoff, then release only this narrow Project draft. Original PR #37 evidence and completion remain historical facts.
+
 
 ## P4 ordinary Codex checkpoint API — isolated plan (2026-10-02)
 
