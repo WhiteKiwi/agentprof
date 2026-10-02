@@ -16,6 +16,7 @@ import { CodexAdapter, createCodexAdapter } from "../src/parsers/codex/index.js"
 import { SCAN_LIMITS, scanSources } from "../src/scanner/scan-run.js";
 import { ingestSourceFile } from "../src/scanner/source-ingest.js";
 import { temporaryDirectory } from "./helpers.js";
+import { assertFreshParserVersionParity } from "./claude-parser-version-parity.js";
 
 type Provider = "codex" | "claude";
 const secret = Buffer.alloc(32, 37), keyId = "4".repeat(32);
@@ -279,12 +280,16 @@ describe.skipIf(!baselineBinary)("frozen pre-change CLI byte parity", () => {
     const before = privateData(directory, "baseline"), after = privateData(directory, "current");
     const scan = ["scan", `--${provider}-root`, input];
     const first = invoke(currentBinary, after, [...scan, "--json"]);
-    expect(first).toEqual(invoke(baselineBinary!, before, [...scan, "--json"]));
+    assertFreshParserVersionParity(provider, [...scan, "--json"], first, invoke(baselineBinary!, before, [...scan, "--json"]));
     expect(JSON.parse(first.stdout).result.counts.committed).toBe(1);
     const sourceId = keyed("source", provider, path), frozen = files(after), frozenBaseline = files(before);
     for (const args of [scan, ["stats", "--list-sources"], ["stats", "--source", sourceId],
       ["insights", "--source", sourceId], ["stats", "--failures", "--source", sourceId]]) {
-      for (const json of [[], ["--json"]]) expect(invoke(currentBinary, after, [...args, ...json])).toEqual(invoke(baselineBinary!, before, [...args, ...json]));
+      for (const json of [[], ["--json"]]) {
+        const selection = [...args, ...json], actual = invoke(currentBinary, after, selection), historical = invoke(baselineBinary!, before, selection);
+        assertFreshParserVersionParity(provider, selection, actual, historical);
+        if (args[0] !== "scan") expect(invoke(currentBinary, before, selection)).toEqual(historical);
+      }
     }
     expect(files(after)).toEqual(frozen); expect(files(before)).toEqual(frozenBaseline);
   }, 30_000);
