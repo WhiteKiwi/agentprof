@@ -216,6 +216,13 @@ The first screen shows measured source-prefix coverage and limitations, followed
 A stable trusted existing parent directory and a previously absent output are required. The report never overwrites a target. Publication is mode 0600 using supported same-directory no-replace hard-link semantics; every error after linking reports that the file was published, with durability and cleanup qualification. This does not promise defense against hostile ancestor replacement races. No JavaScript, external resources, raw data or hidden JSON is embedded. This slice does not complete all P5/P6/P7 scope or the planned full-product flow below.
 
 
+## Ordinary Claude search lookup evidence (2026-10-02)
+
+The reviewed [native search contract](P5-CLAUDE-SEARCH-EVIDENCE.md) makes opaque lookup identity available for ordinary directly recorded Claude Grep/Glob requests in a finite supported input subset. Exact query, project/root, tool, direct provider version, option values and omissions remain distinct; missing or unsupported evidence stays null. No raw request or result content is retained. Shell/MCP/custom/web searches and the documented default native Bash search path are excluded.
+
+This is evidence for future analysis, not a repeated-search ratio, new diagnostic, complete-result claim, Detected Waste total or measured saving. Current Claude interpretation becomes parserVersion 2; historical version1 data stays read-only-compatible and an explicit scan replays an obsolete source once. Prior semantic checkpoints cannot resume under the changed parser. The linked contract records recovery, exact test hashes and executed versus pending verification; the narrow Project owns current status.
+
+
 ## Ordinary Codex checkpoint boundary (2026-10-02)
 
 The proposed [P4-CODEX-CHECKPOINT](P4-CODEX-CHECKPOINT.md) API preserves bounded ordinary single-source Codex adapter state across serialization without retaining raw transcripts. Recovery requires exact source/key/version/semantic-limit binding, private replay/pending/process/poll/source evidence, cumulative snapshot diagnostic history and safe atomic rejection. Native terminal response evidence, ambiguous origin, unknown values and non-additive cumulative scope remain unchanged. Trusted fixture evidence is excluded. Serialization budget can make recovery unavailable while parsing continues normally.

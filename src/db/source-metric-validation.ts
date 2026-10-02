@@ -155,10 +155,11 @@ export function validateObservation(value: unknown, h: Header): SourceObservatio
 }
 export function validateCapabilities(value: unknown, h: Header): ParserCapabilities | ClaudeCapabilities {
   const v = fields(value, ["provider", "parserVersion", "support", "coverage", "observedShapes", "unsupportedRecords", "ambiguousRecords", "stateLimited", "diagnosticsDropped"]);
-  if (v["provider"] !== h.provider || v["parserVersion"] !== 1 || h.parserVersion !== 1) invalid();
-  const base = { parserVersion: 1 as const, support: choice(v["support"], ["shape_verified_only"]), coverage: choice(v["coverage"], ["recognized_shapes", "partial"]),
+  if (v["provider"] !== h.provider || v["parserVersion"] !== h.parserVersion
+    || (h.provider === "codex" ? h.parserVersion !== 1 : h.parserVersion !== 1 && h.parserVersion !== 2)) invalid();
+  const base = { parserVersion: h.parserVersion as 1 | 2, support: choice(v["support"], ["shape_verified_only"]), coverage: choice(v["coverage"], ["recognized_shapes", "partial"]),
     unsupportedRecords: integer(v["unsupportedRecords"]), ambiguousRecords: integer(v["ambiguousRecords"]), stateLimited: bool(v["stateLimited"]), diagnosticsDropped: integer(v["diagnosticsDropped"]) };
-  return Object.freeze(h.provider === "codex" ? { ...base, provider: "codex", observedShapes: words(v["observedShapes"], ["command_item", "mcp_item", "function_call", "custom_call", "tool_result", "poll", "code_wrapper", "turn", "response_usage", "token_snapshot"]) }
+  return Object.freeze(h.provider === "codex" ? { ...base, parserVersion: 1 as const, provider: "codex", observedShapes: words(v["observedShapes"], ["command_item", "mcp_item", "function_call", "custom_call", "tool_result", "poll", "code_wrapper", "turn", "response_usage", "token_snapshot"]) }
     : { ...base, provider: "claude", observedShapes: words(v["observedShapes"], ["tool_use", "tool_result", "message_link", "message_usage", "background_acknowledgement", "turn_duration"]) });
 }
 export function validateDiagnostic(value: unknown, h: Header): SafeDiagnostic {

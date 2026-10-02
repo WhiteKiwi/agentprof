@@ -143,7 +143,7 @@ export function analyzeSourceFailures(source: StoredSource): SourceFailureAnalys
   const suppressionReason: Suppression = source.availability !== "available" ? "source_unavailable" : evidence === null ? "evidence_absent"
     : evidence.capabilities.stateLimited || evidence.capabilities.diagnosticsDropped > 0 ? "state_limited"
     : evidence.capabilities.ambiguousRecords > 0 || ambiguous ? "ambiguous_origin"
-    : !["codex", "claude"].includes(source.provider) || source.parserVersion !== 1 || evidence.capabilities.provider !== source.provider || evidence.capabilities.parserVersion !== 1 ? "unsupported_contract"
+    : !(source.provider === "codex" && source.parserVersion === 1 || source.provider === "claude" && (source.parserVersion === 1 || source.parserVersion === 2)) || evidence.capabilities.provider !== source.provider || evidence.capabilities.parserVersion !== source.parserVersion ? "unsupported_contract"
     : source.events.some(e => e.parentEventId !== null || wrappers.has(e.id)) ? "unresolved_execution_relation" : null;
   const eligibility = { tentativeTerminalCalls: 0, admittedTerminalCalls: 0, exclusions: exclusions() };
   const eventStatuses = statuses(), eventOutcomes = { success: 0, no_match: 0, change_detected: 0, error: 0, unknown: 0 };
