@@ -1,3 +1,7 @@
+import { types } from "node:util";
+import { checkpointBinding, checkpointBudget, decodeClaudeCheckpoint, encodeClaudeCheckpoint } from "./checkpoint.js";
+import type { CheckpointPosition, ExecutionState, MessageState, Position, SafeResult, SourceState, StreamState, UsageOrder } from "./checkpoint.js";
+import type { ClaudeCheckpointBinding, ClaudeCheckpointExport, ClaudeCheckpointOptions, ClaudeCheckpointUnavailableReason } from "./types.js";
 import { normalizeEvent } from "../../normalize/event.js";
 import type { IdentityContext } from "../../normalize/identity.js";
 import type { DurationScope, NormalizedEvent } from "../../normalize/types.js";
@@ -18,22 +22,7 @@ export function claudeResponseId(context: IdentityContext, streamId: string, raw
 export function claudeUsageId(context: IdentityContext, streamId: string, rawMessageId: string): string { return context.fingerprint("event", ["claude", streamId, "usage", rawMessageId]); }
 export function claudeTurnId(context: IdentityContext, streamId: string, rawUuid: string): string { return context.fingerprint("turn", ["claude", streamId, rawUuid]); }
 
-type Position = Readonly<{ fileId: string; ordinal: number; sourceRef: ParserSourceRef; sourceAlias: string | null }>;
-type SourceState = { ownerRootSessionId: string | null; ambiguous: boolean };
-type StreamState = Readonly<{ rootSessionId: string; agentId: string | null; isSidechain: boolean; projectId: string | null }>;
 type Input = { source: ClaudeInputSource; fileId: string; sourceState: SourceState; sourceRef: ParserSourceRef; at: string | null; projectId: string | null; declarationFingerprint: string | null; origin: ClaudeSourceObservation["origin"]; streamId: string | null; messageId: string | null; semanticReplayId: string | null; replay: boolean };
-type SafeResult = Readonly<{
-  digest: string; at: string | null; position: Position; isError: boolean | null;
-  backgroundTaskId: string | null; asyncLaunched: boolean; unassignedAcknowledgement: boolean; contentFingerprint: string | null;
-  contentState: "complete" | "truncated" | "unknown"; errorFingerprint: string | null;
-  directDurationMs: number | null; directDurationScope: DurationScope; conflicted: boolean;
-}>;
-type ExecutionState = {
-  event: NormalizedEvent; callDigest: string; inputDigest: string; callProjectId: string | null; position: Position; callMessageId: string | null;
-  callKind: "bash" | "agent" | "tool"; backgroundRequested: boolean; result: SafeResult | null; conflicted: boolean;
-};
-type UsageOrder = Readonly<{ fileId: string; ordinal: number; group: string | null; order: number | null }>;
-type MessageState = Readonly<{ link: ClaudeMessageLink; digest: string }>;
 type WorkBatch = { events: Map<string, NormalizedEvent>; turns: Map<string, ClaudeTurn>; usage: Map<string, ClaudeUsage>; observations: Map<string, ClaudeSourceObservation>; diagnostics: SafeDiagnostic[] };
 
 export class ClaudeAdapter {
@@ -60,6 +49,10 @@ export class ClaudeAdapter {
   #unsupported = 0;
   #ambiguous = 0;
   #diagnosticsDropped = 0;
+  #checkpointPosition: CheckpointPosition = { firstOrdinal: null, lastOrdinal: null, lastByteOffset: null, recordCount: 0 };
+  #checkpointSourceId: string | null = null;
+  #checkpointUnavailable: ClaudeCheckpointUnavailableReason | null = null;
+  #continuation: ClaudeCheckpointBinding | null = null;
 
   constructor(context: IdentityContext, limits: Partial<ClaudeLimits> = {}) {
     const selected = { ...DEFAULT_CLAUDE_LIMITS, ...limits };
@@ -106,7 +99,93 @@ export class ClaudeAdapter {
     return Object.freeze({ snapshot: this.snapshot(), sources: Object.freeze([...this.#sources.entries()].map(([id, state]) => Object.freeze({ id, ...state }))), streams: Object.freeze([...this.#streams.entries()].map(([id, state]) => Object.freeze({ id, ...state }))), executionState: Object.freeze([...this.#events.values()].map((state) => Object.freeze({ ...state }))), messages: Object.freeze([...this.#messages.values()]), uuidReplays: Object.freeze([...this.#uuidReplays]), deferredResults: Object.freeze([...this.#deferredResults.entries()].map(([id, result]) => Object.freeze({ id, ...result }))), resultReplays: Object.freeze([...this.#resultReplays]), usageOrders: Object.freeze([...this.#usageOrders.entries()].map(([id, order]) => Object.freeze({ id, ...order }))), usageProofReplays: Object.freeze([...this.#usageProofReplays]) });
   }
 
+
+  /** Adapter-only state token. A caller boundary is not proof of file bytes or an LF. */
+  exportCheckpoint(binding: ClaudeCheckpointBinding, options: ClaudeCheckpointOptions = {}): ClaudeCheckpointExport {
+    if (this.#checkpointUnavailable) return Object.freeze({ status: "unavailable", reason: this.#checkpointUnavailable });
+    try {
+      const checked = checkpointBinding(binding, this.#context), maximum = checkpointBudget(options), p = this.#checkpointPosition;
+      if (this.#checkpointSourceId !== null && checked.sourceId !== this.#checkpointSourceId
+        || p.recordCount === 0 && checked.completedOffset !== 0
+        || p.recordCount > 0 && (p.lastOrdinal === null || p.lastByteOffset === null || !Number.isSafeInteger(p.lastOrdinal + 1)
+          || checked.nextOrdinal !== p.lastOrdinal + 1 || checked.completedOffset <= p.lastByteOffset)
+        || this.#continuation !== null && (checked.sourceId !== this.#continuation.sourceId || checked.nextOrdinal !== this.#continuation.nextOrdinal
+          || checked.completedOffset !== this.#continuation.completedOffset)) return Object.freeze({ status: "unavailable", reason: "incompatible_binding" });
+      return encodeClaudeCheckpoint(this.#context, checked, this.#limits, this.#capabilities().parserVersion, p, {
+        sources: this.#sources, streams: this.#streams, events: this.#events, turns: this.#turns, usage: this.#usage,
+        usageOrders: this.#usageOrders, messages: this.#messages, deferredResults: this.#deferredResults,
+        observations: this.#observations, metadata: this.#metadata, diagnostics: this.#diagnostics,
+        uuidReplays: this.#uuidReplays, resultReplays: this.#resultReplays, usageProofReplays: this.#usageProofReplays, shapes: this.#shapes,
+        messageEdges: this.#messageEdges, partial: this.#partial, limited: this.#limited, unsupported: this.#unsupported,
+        ambiguous: this.#ambiguous, diagnosticsDropped: this.#diagnosticsDropped,
+      }, maximum);
+    } catch { return Object.freeze({ status: "unavailable", reason: "incompatible_binding" }); }
+  }
+  /** Validate first, then expose one fresh owned instance. No existing adapter is mutated. */
+  static restoreCheckpoint(context: IdentityContext, encoded: unknown, expectedBinding: ClaudeCheckpointBinding, limits: Partial<ClaudeLimits> = {}):
+    Readonly<{ status: "restored"; adapter: ClaudeAdapter } | { status: "rejected"; reason: "invalid_checkpoint" }> {
+    try {
+      const adapter = new ClaudeAdapter(context, limits), binding = checkpointBinding(expectedBinding, context);
+      const decoded = decodeClaudeCheckpoint(context, encoded, binding, adapter.#limits, adapter.#capabilities().parserVersion), s = decoded.state;
+      for (const [key, value] of s.sources) adapter.#sources.set(key, value);
+      for (const [key, value] of s.streams) adapter.#streams.set(key, value);
+      for (const [key, value] of s.events) adapter.#events.set(key, value);
+      for (const [key, value] of s.turns) adapter.#turns.set(key, value);
+      for (const [key, value] of s.usage) adapter.#usage.set(key, value);
+      for (const [key, value] of s.usageOrders) adapter.#usageOrders.set(key, value);
+      for (const [key, value] of s.messages) adapter.#messages.set(key, value);
+      for (const [key, value] of s.deferredResults) adapter.#deferredResults.set(key, value);
+      for (const [key, value] of s.observations) adapter.#observations.set(key, value);
+      for (const [key, value] of s.metadata) adapter.#metadata.set(key, value);
+      for (const [key, value] of s.diagnostics) adapter.#diagnostics.set(key, value);
+      for (const value of s.uuidReplays) adapter.#uuidReplays.add(value);
+      for (const value of s.resultReplays) adapter.#resultReplays.add(value);
+      for (const value of s.usageProofReplays) adapter.#usageProofReplays.add(value);
+      for (const value of s.shapes) adapter.#shapes.add(value);
+      adapter.#messageEdges = s.messageEdges; adapter.#partial = s.partial; adapter.#limited = s.limited;
+      adapter.#unsupported = s.unsupported; adapter.#ambiguous = s.ambiguous; adapter.#diagnosticsDropped = s.diagnosticsDropped;
+      adapter.#checkpointPosition = decoded.position; adapter.#checkpointSourceId = binding.sourceId; adapter.#continuation = binding;
+      return Object.freeze({ status: "restored", adapter });
+    } catch { return Object.freeze({ status: "rejected", reason: "invalid_checkpoint" }); }
+  }
+  #trackCheckpoint(source: ClaudeInputSource): void {
+    if (this.#checkpointUnavailable) return;
+    try {
+      if (source === null || typeof source !== "object" || types.isProxy(source)) throw new Error();
+      const descriptors = Object.getOwnPropertyDescriptors(source);
+      const reachable = (name: string): PropertyDescriptor | undefined => {
+        let current: object | null = source;
+        for (let depth = 0; current !== null && depth < 16; depth++) {
+          if (types.isProxy(current)) throw new Error();
+          const descriptor = Object.getOwnPropertyDescriptor(current, name);
+          if (descriptor) return descriptor;
+          current = Object.getPrototypeOf(current) as object | null;
+        }
+        if (current !== null) throw new Error();
+        return undefined;
+      };
+      if (reachable("trustedFixtureContext")) { this.#checkpointUnavailable = "unsupported_state"; return; }
+      const alias = reachable("sourceAlias");
+      if (alias && (!("value" in alias) || alias.value !== undefined && alias.value !== null && typeof alias.value !== "string")) {
+        this.#checkpointUnavailable = "unsupported_state"; return;
+      }
+      for (const name of ["fileIdentity", "byteOffset", "ordinal"]) if (!descriptors[name] || !("value" in descriptors[name])) throw new Error();
+      const fileIdentity = text(descriptors.fileIdentity!.value), byteOffset = integer(descriptors.byteOffset!.value), ordinal = integer(descriptors.ordinal!.value);
+      if (fileIdentity === null || byteOffset === null || ordinal === null || Object.is(byteOffset, -0) || Object.is(ordinal, -0)) throw new Error();
+      const sourceId = this.#context.fingerprint("source", ["claude", fileIdentity]), p = this.#checkpointPosition;
+      if (this.#checkpointSourceId !== null && this.#checkpointSourceId !== sourceId) { this.#checkpointUnavailable = "unsupported_state"; return; }
+      if (this.#continuation !== null && (ordinal !== this.#continuation.nextOrdinal || byteOffset < this.#continuation.completedOffset)) throw new Error();
+      if (p.recordCount > 0 && (p.lastOrdinal === null || p.lastByteOffset === null || !Number.isSafeInteger(p.lastOrdinal + 1)
+        || ordinal !== p.lastOrdinal + 1 || byteOffset <= p.lastByteOffset)) throw new Error();
+      if (!Number.isSafeInteger(p.recordCount + 1)) throw new Error();
+      this.#checkpointSourceId = sourceId;
+      this.#checkpointPosition = { firstOrdinal: p.firstOrdinal ?? ordinal, lastOrdinal: ordinal, lastByteOffset: byteOffset, recordCount: p.recordCount + 1 };
+      this.#continuation = null;
+    } catch { this.#checkpointUnavailable = "unsafe_positions"; }
+  }
+
   ingest(record: unknown, source: ClaudeInputSource): ClaudeBatch {
+    this.#trackCheckpoint(source);
     const batch: WorkBatch = { events: new Map(), turns: new Map(), usage: new Map(), observations: new Map(), diagnostics: [] };
     let input: Input | null = null;
     try {

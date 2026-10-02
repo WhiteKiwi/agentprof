@@ -200,3 +200,9 @@ For a nonempty admitted completed-Read set with every file identity present, sho
 ## Observed source-local invocation interval union (2026-10-02)
 
 The opt-in [invocation interval view](P5-SOURCE-INVOCATION-OVERLAP.md) reports session-local geometry of positioned ordinary Claude terminal invocations from one stored prefix. It preserves conservative provenance suppression and explicit partial coverage, with interval-length sum, union and excess; unknown remains null and observed zero remains zero. It makes no runtime, active-time, task-elapsed, waste or savings claim. The existing summary and reports remain unchanged, including `no_interval_aggregation`. Codex and cross-source/session union remain unsupported. This internal CLI view is implemented and synthetically verified; empirical usefulness and real-provider/version coverage remain unverified. Independent review and execution receipts are in the linked supplement; the Project item and PR own live publication status.
+
+## Ordinary Claude checkpoint boundary (2026-10-02)
+
+The [P4-CLAUDE-CHECKPOINT](P4-CLAUDE-CHECKPOINT.md) API preserves bounded ordinary single-source Claude adapter state across serialization without retaining raw transcript content. Exact source/key/version/semantic-limit binding, private replay/ordering/pending state and safe atomic rejection are required. Trusted fixture evidence is excluded. A checkpoint byte budget may make recovery unavailable while ordinary parsing continues unchanged.
+
+This is an adapter contract, not scanner resume or durable database integration. Caller-provided offsets do not prove source bytes or LF boundaries; future scanner use requires independent source-prefix/generation validation and atomic checkpoint storage. Existing CLI behavior, coverage limitations and both false readiness flags remain unchanged. The linked contract records separate actual candidate verification and outstanding final gates.
