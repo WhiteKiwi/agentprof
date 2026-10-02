@@ -378,3 +378,8 @@ Separate post-SPEC research reviewed all 17 original paths at `c655f7c56b4961b0b
 ## PR #41 current-main local qualification receipt (2026-10-03)
 
 The reviewed composition completed local typecheck/build,69 files /1,921 passes and32 explicit shared-baseline skips, then all32 cases passed in genuine legacy21/current-main11 focused groups. Enabled prepack,56-file runtime identity,58-file artifact, tool-free installed consumers and actual Node22 guard passed. [The full receipt](P5-SOURCE-SEARCH-RECURRENCE.md#parent-current-main-local-qualification-2026-10-03) preserves filtered-case counts and historical limitations. Only these two evidence documents changed afterward. Exact-head hosted gates and actual merge/main closeout remain required.
+
+
+## PR #41 exact source-head hosted receipt (2026-10-03)
+
+Both actual push/PR runs for39fe0a7 passed all8 Foundation jobs. Supported Linux runtimes each recorded68 passed files+1 optional-only skip,1,899 passes/54 optional skips,58-file artifact and actual pnpm10.34.6. The CI merge parents/tree were verified. [The receipt](P5-SOURCE-SEARCH-RECURRENCE.md#parent-exact-source-head-hosted-qualification-2026-10-03) retains source/local scope, optional-skip distinctions and the final receipt-only head gate. No code/test changes or duplicate local full runs are needed for this two-document append; fresh final CI and actual merge/main/Project verification are still required.
