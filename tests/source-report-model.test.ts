@@ -1,3 +1,4 @@
+import { buildSourceCommandBreakdown } from "../src/report/command-breakdown.js";
 import { describe, expect, it } from "vitest";
 import { buildSourceReportModel } from "../src/report/source-model.js";
 import { summarizeSource } from "../src/analysis/source-summary.js";
@@ -41,7 +42,7 @@ function group(n = 5, extra: Partial<NormalizedEvent> = {}, prefix = "a"): Norma
   return Array.from({ length: n }, (_, i) => event(`${prefix}-${i}`, extra));
 }
 
-function model(s: StoredSource) { return buildSourceReportModel(summarizeSource(s), analyzeSourceSlowTool(s)); }
+function model(s: StoredSource) { const slow=analyzeSourceSlowTool(s); return buildSourceReportModel(summarizeSource(s), slow, buildSourceCommandBreakdown(s,slow)); }
 it("projects exact known values without evidence identifiers or private fields", () => {
  const s=source([...group(),event("other",{category:"build",commandPattern:"cargo build",durationMs:80})]),before=JSON.stringify(s),m=model(s);
  expect(m.summary.durations!.find(d=>d.n===5)).toMatchObject({n:5,sumMs:20,meanMs:4,maxMs:4,p50Ms:4,p95Ms:4,lowSampleP95:true});
@@ -66,12 +67,12 @@ it("caps known and overflow cohort rows separately with deterministic tie orderi
  expect(m.selection.durations).toEqual({total:22,shown:20,omitted:2});expect(m.summary.durations!.filter(d=>d.sumMs!==null)).toHaveLength(10);expect(m.summary.durations!.filter(d=>d.sumMs===null)).toHaveLength(10);expect(m).toEqual(again);
 });
 it("does not silently truncate safeguards and substitutes only overlong safe pattern labels",()=>{
- const s=source(group(5,{commandPattern:`npm test ${"--verbose ".repeat(100)}<target>`})),summary=summarizeSource(s),slow=analyzeSourceSlowTool(s),m=buildSourceReportModel(summary,slow);
+ const s=source(group(5,{commandPattern:`npm test ${"--verbose ".repeat(100)}<target>`})),summary=summarizeSource(s),slow=analyzeSourceSlowTool(s),m=buildSourceReportModel(summary,slow,buildSourceCommandBreakdown(s,slow));
  expect(m.summary.durations![0]!.commandPattern).toBe("safe pattern omitted (display limit)");expect(m.slowTool.candidates![0]!.group.commandPattern).toBe("safe pattern omitted (display limit)");
- const bad=structuredClone(slow);(bad.candidates![0]! as {matchedExperiment:string}).matchedExperiment="a".repeat(2049);expect(()=>buildSourceReportModel(summary,bad)).toThrow();
+ const bad=structuredClone(slow);(bad.candidates![0]! as {matchedExperiment:string}).matchedExperiment="a".repeat(2049);expect(()=>buildSourceReportModel(summary,bad,buildSourceCommandBreakdown(s,bad))).toThrow();
 });
 it("rejects mismatched generation inputs rather than splicing views",()=>{
- const s=source(group());expect(()=>buildSourceReportModel(summarizeSource(s),{...analyzeSourceSlowTool(s),revision:4})).toThrow();
+ const s=source(group());expect(()=>buildSourceReportModel(summarizeSource(s),{...analyzeSourceSlowTool(s),revision:4},buildSourceCommandBreakdown(s,analyzeSourceSlowTool(s)))).toThrow();
 });
 it("uses the union including usage-only and SlowTool-only sessions and bounds timing partitions",()=>{
  const sessions=Array.from({length:7},(_,i)=>identity.fingerprint("session",["union",i])).sort();
@@ -80,7 +81,7 @@ it("uses the union including usage-only and SlowTool-only sessions and bounds ti
  const input=source(rows),summary=structuredClone(summarizeSource(input)),slow=structuredClone(analyzeSourceSlowTool(input));
  const controlledSummary={...summary,durations:summary.durations!.filter(d=>d.sessionId!==sessions[0]&&d.sessionId!==sessions[1]),usage:[{sessionId:sessions[0]!,provider:"codex" as const,mapping:"openai_responses" as const,finality:"trusted_final" as const,observedResponses:1,usageIds:[],counts:{input:10,output:2,total:12,cachedInput:3,cacheWriteInput:null,reasoningOutput:1,uncachedInput:7},overflowComponents:[],limitations:[]}]};
  const controlledSlow={...slow,partitions:slow.partitions.filter(p=>p.sessionId!==sessions[0]),candidates:slow.candidates!.filter(c=>c.sessionId!==sessions[0])};
- const m=buildSourceReportModel(controlledSummary,controlledSlow);expect(m.selection.shownSessionIds).toEqual(sessions.slice(0,6));expect(m.selection.sessions).toEqual({total:7,shown:6,omitted:1});expect(m.summary.usage![0]!.counts).toEqual(controlledSummary.usage[0]!.counts);expect(m.selection.sessionCounts.find(s=>s.sessionId===sessions[2])!.partitions).toEqual({total:6,shown:4,omitted:2});expect(m.slowTool.partitions.some(p=>p.sessionId===sessions[1])).toBe(true);expect(m.summary.durations!.some(d=>d.sessionId===sessions[1])).toBe(false);
+ const m=buildSourceReportModel(controlledSummary,controlledSlow,buildSourceCommandBreakdown(input,controlledSlow));expect(m.selection.shownSessionIds).toEqual(sessions.slice(0,6));expect(m.selection.sessions).toEqual({total:7,shown:6,omitted:1});expect(m.summary.usage![0]!.counts).toEqual(controlledSummary.usage[0]!.counts);expect(m.selection.sessionCounts.find(s=>s.sessionId===sessions[2])!.partitions).toEqual({total:6,shown:4,omitted:2});expect(m.slowTool.partitions.some(p=>p.sessionId===sessions[1])).toBe(true);expect(m.summary.durations!.some(d=>d.sessionId===sessions[1])).toBe(false);
 });
 it("caps cards at ten in context order and keeps native denominators unchanged",()=>{
  const sessions=Array.from({length:3},(_,i)=>identity.fingerprint("session",["cards",i])).sort(),patterns=["npm test","npm run build","cargo build","git status"];

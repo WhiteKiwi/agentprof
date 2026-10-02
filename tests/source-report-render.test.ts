@@ -1,3 +1,4 @@
+import { buildSourceCommandBreakdown } from "../src/report/command-breakdown.js";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
@@ -12,7 +13,7 @@ const context=createIdentityContext(new Uint8Array(32).fill(11),"1".repeat(32));
 function model(){
  const events=Array.from({length:6},(_,i)=>normalizeEvent({provider:"codex",eventIdentity:`e${i}`,sessionIdentity:"render",kind:"shell",toolName:"exec_command",command:i<5?"npm test safe":"cargo build",status:"completed",statusEvidence:"explicit",exitCode:0,durationMs:i<5?4:80,timingEvidence:"source_reported",durationScope:"process_runtime",sourceRef:{fileIdentity:"render",byteOffset:10+i,recordType:"event_msg"}},context).event!);
  const source:StoredSource={sourceId:events[0]!.sourceRef.fileId,provider:"codex",parserVersion:1,normalizationVersion:1,keyVersion:1,keyId:context.keyId,revision:1,availability:"available",completedOffset:10000,observedSize:10005,boundaryFingerprint:context.fingerprint("content",["b"]),cacheEvidence:null,events,persistedScope:"events_and_metric_evidence",aggregationReady:false,parserResumeReady:false,evidence:{turns:[],usage:[],diagnostics:[],observations:events.map(e=>({id:context.fingerprint("source",["obs",e.id]),eventId:e.id,turnId:null,usageId:null,representation:"structured",origin:"ordinary",transportStatus:"completed",observedUsage:null,sourceRef:{fileId:e.sourceRef.fileId,byteOffset:e.sourceRef.byteOffset}})),capabilities:{provider:"codex",parserVersion:1,support:"shape_verified_only",coverage:"recognized_shapes",observedShapes:[],unsupportedRecords:0,ambiguousRecords:0,stateLimited:false,diagnosticsDropped:0}}};
- return buildSourceReportModel(summarizeSource(source),analyzeSourceSlowTool(source));
+ const slow=analyzeSourceSlowTool(source); return buildSourceReportModel(summarizeSource(source),slow,buildSourceCommandBreakdown(source,slow));
 }
 it("renders deterministic semantic HTML with exact static CSS hash and no dynamic style",()=>{
  const m=model(),html=renderSourceReport(m);expect(renderSourceReport(m)).toBe(html);expect(Buffer.byteLength(html)).toBeLessThanOrEqual(1048576);
@@ -50,19 +51,21 @@ it("gives every internal context link a44px target through the global anchor rul
 type Mutable<T> = T extends readonly (infer U)[] ? Mutable<U>[] : T extends object ? { -readonly [K in keyof T]: Mutable<T[K]> } : T;
 function maximumModel() {
  const m=structuredClone(model()) as Mutable<ReturnType<typeof model>>,baseRow=structuredClone(m.summary.durations![0]!),basePartition=structuredClone(m.slowTool.partitions[0]!),baseCard=structuredClone(m.slowTool.candidates![0]!);
+ const baseContext=structuredClone(m.commandBreakdown.contexts[0]!);m.commandBreakdown.contexts=[];
  const sessions=Array.from({length:6},(_,i)=>context.fingerprint("session",["max",i])).sort(),shapes=[['invocation_latency','paired_timestamps'],['invocation_latency','source_reported'],['item_lifecycle','paired_timestamps'],['process_runtime','source_reported']] as const;
  m.selection.shownSessionIds=sessions;m.selection.sessionCounts=[];m.selection.partitionCounts=[];m.summary.durations=[];m.summary.usage=[];m.slowTool.partitions=[];m.slowTool.candidates=[];
  for(const [si,sessionId]of sessions.entries()){
   m.selection.sessionCounts.push({sessionId,partitions:{total:4,shown:4,omitted:0},usage:{total:4,shown:4,omitted:0}});
   for(const [pi,[durationScope,timingEvidence]]of shapes.entries()){
    const index=si*4+pi,id=`partition-${index+1}`,fields={sessionId,durationScope,timingEvidence};m.slowTool.partitions.push({...basePartition,...fields,id});
+   m.commandBreakdown.contexts.push({...structuredClone(baseContext),...fields,displayPartitionId:id,nativePartitionId:id});
    m.selection.partitionCounts.push({...fields,known:{total:10,shown:10,omitted:0},unknown:{total:10,shown:10,omitted:0},candidates:{total:index<10?1:0,shown:index<10?1:0,omitted:0}});
    for(let i=0;i<20;i++)m.summary.durations.push({...baseRow,...fields,commandPattern:`npm test --verbose ${i} <target>`,sumMs:i<10?20:null,meanMs:i<10?4:null,limitations:i<10?[]:["numeric_overflow"]});
    if(index<10)m.slowTool.candidates.push({...baseCard,...fields,id:`candidate-${index+1}`,partitionId:id});
   }
   for(let i=0;i<4;i++)m.summary.usage.push({sessionId,provider:"codex",mapping:i<2?"openai_responses":"anthropic_messages",finality:i%2?"trusted_final":"source_terminal",observedResponses:1,counts:{input:10,output:2,total:12,cachedInput:3,cacheWriteInput:0,reasoningOutput:null,uncachedInput:null},overflowComponents:[],limitations:[],evidenceUsageCount:1});
  }
- m.selection.sessions={total:6,shown:6,omitted:0};m.selection.partitions={total:24,shown:24,omitted:0};m.selection.durations={total:480,shown:480,omitted:0};m.selection.usage={total:24,shown:24,omitted:0};m.selection.candidates={total:10,shown:10,omitted:0};return m;
+ m.selection.sessions={total:6,shown:6,omitted:0};m.selection.partitions={total:24,shown:24,omitted:0};m.selection.durations={total:480,shown:480,omitted:0};m.selection.usage={total:24,shown:24,omitted:0};m.selection.candidates={total:10,shown:10,omitted:0};m.commandBreakdown.selection={eligiblePartitions:{total:24,shown:24,omitted:0},unavailablePartitions:{total:0,shown:0,omitted:0},missingNativeContexts:{total:0,shown:0,omitted:0},groups:{total:48,shown:48,omitted:0},calls:{total:144,shown:144,omitted:0},totalsScope:"eligible_detail_partitions_only"};return m;
 }
 it("renders every exact structural ceiling with bounded final bytes and all anchors resolving",()=>{
  const m=maximumModel(),html=renderSourceReport(m);expect(Buffer.byteLength(html)).toBeLessThanOrEqual(1048576);expect(m.summary.durations).toHaveLength(480);expect(m.summary.usage).toHaveLength(24);expect(m.slowTool.candidates).toHaveLength(10);expect(html).toContain('id="session-6"');expect(html).toContain('id="partition-24"');expect(html).toContain('id="card-10"');const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);for(const ref of html.matchAll(/href="#([^"]+)"/g))expect(ids).toContain(ref[1]);
