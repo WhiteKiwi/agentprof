@@ -21,7 +21,7 @@ jobs:
           mise_toml: |
             [tools]
             node = "${{ matrix.node }}"
-            pnpm = "10.33.0"
+            pnpm = "10.34.6"
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm check
 
