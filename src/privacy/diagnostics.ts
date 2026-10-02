@@ -1,4 +1,9 @@
 export const MESSAGES = {
+  REPORT_SELECTION_REQUIRED: "Select --source <full-source-id> and --output <new-html-file>. Run agentprof report --help.",
+  REPORT_LIMIT: "The report exceeds the supported display limits.",
+  REPORT_OUTPUT_UNSAFE: "The report output path is unsafe or already exists.",
+  REPORT_OUTPUT_FAILED: "The report file could not be published.",
+  REPORT_OUTPUT_CLEANUP_FAILED: "The report was not published and its temporary file could not be removed.",
   INVALID_ARGUMENT: "Invalid arguments. Run agentprof --help for usage.",
   NOT_IMPLEMENTED: "This command is not implemented in this development build.",
   UNSUPPORTED_RUNTIME: "AgentProf requires Node.js >=24.15.0.",
