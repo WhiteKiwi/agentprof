@@ -297,7 +297,11 @@ function validate(value: unknown, context: IdentityContext, binding: CodexCheckp
         || v.startTimingEvidence !== required || v.endTimingEvidence !== required || v.intervalTimingEvidence !== required) invalid();
     }
   };
-  const count: Validator = v => { shape(v, { input: nullable(integer), output: nullable(integer), cachedInput: nullable(integer), cacheWriteInput: nullable(integer), reasoningOutput: nullable(integer), total: nullable(integer) }); };
+  const count: Validator = v => {
+    shape(v, { input: nullable(integer), output: nullable(integer), cachedInput: nullable(integer), cacheWriteInput: nullable(integer), reasoningOutput: nullable(integer), total: nullable(integer) });
+    // Replay equality serializes constructor counts; inspect the original own-key order.
+    if (Object.keys(v as object).join(",") !== "input,output,cachedInput,cacheWriteInput,reasoningOutput,total") invalid();
+  };
   const countConsistency = (counts: unknown, mapping: unknown, status?: unknown): void => {
     if (counts === null) { if (status === "complete" || status === "partial") invalid(); return; }
     const v = counts as Obj;

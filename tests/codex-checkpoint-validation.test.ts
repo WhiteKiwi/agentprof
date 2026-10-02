@@ -396,3 +396,81 @@ it("rejects source-empty state with a positioned malformed-object diagnostic", (
   expect(value.state.diagnostics[0][1]).toMatchObject({ code: "INVALID_RECORD", sourceAlias: "source-1", byteOffset: 5 });
   value.state.sources = []; reject(sign(value), oneBinding);
 });
+
+// Additive parent-review controls; all earlier checkpoint assertions remain unchanged.
+describe("parent count-order review regressions", () => {
+  const countNames = ["input", "output", "cachedInput", "cacheWriteInput", "reasoningOutput", "total"];
+  function nativePrefix(kind: "complete" | "nullable" | "null") {
+    const counts = kind === "null" ? null : {
+      input_tokens: 100, output_tokens: 10, cached_input_tokens: kind === "nullable" ? null : 20,
+      cache_write_input_tokens: kind === "nullable" ? null : 5,
+      reasoning_output_tokens: kind === "nullable" ? null : 2, total_tokens: 110,
+    };
+    const native = { type: "token_usage_record", timestamp: "2026-09-01T00:00:05.000Z",
+      payload: { response_id: "ordered-response", turn_id: "ordered-turn", usage: counts, thread_token_usage: counts } };
+    const adapter = createCodexAdapter(context); let completedOffset = 0;
+    [records[0], native].forEach((record, ordinal) => {
+      adapter.ingest(record, { fileIdentity, ordinal, byteOffset: completedOffset, sourceAlias: "source-1" });
+      completedOffset += Buffer.byteLength(JSON.stringify(record) + "\n");
+    });
+    const expected = { sourceId, completedOffset, nextOrdinal: 2 };
+    const captured = adapter.exportCheckpoint(expected); expect(captured.status).toBe("captured");
+    if (captured.status !== "captured") throw Error("capture");
+    return { adapter, token: captured.checkpoint, expected, native };
+  }
+  function countHolders(value: Data): Record<string, Data> {
+    return {
+      usage: value.state.usage.find((row: any) => row[1].source === "response_usage")[1],
+      lastSnapshots: value.state.lastSnapshots[0][1],
+      observedUsage: value.state.observations.find((row: any) => row[1].observedUsage?.finality === "source_terminal")[1].observedUsage,
+    };
+  }
+  it.each(["complete", "nullable"] as const)("preserves genuinely exported %s counts and identical native replay", kind => {
+    const { adapter, token, expected, native } = nativePrefix(kind);
+    for (const holder of Object.values(countHolders(decode(token)))) {
+      expect(Object.keys(holder.counts)).toEqual(countNames);
+      expect(holder.counts).toEqual({ input: 100, output: 10, cachedInput: kind === "nullable" ? null : 20,
+        cacheWriteInput: kind === "nullable" ? null : 5, reasoningOutput: kind === "nullable" ? null : 2, total: 110 });
+    }
+    const restored = CodexAdapter.restoreCheckpoint(context, token, expected);
+    expect(restored.status).toBe("restored"); if (restored.status !== "restored") throw Error("restore");
+    expect(restored.adapter.exportCheckpoint(expected)).toEqual({ status: "captured", checkpoint: token });
+    const source = { fileIdentity, ordinal: expected.nextOrdinal, byteOffset: expected.completedOffset, sourceAlias: "source-1" };
+    expect(restored.adapter.ingest(native, source)).toEqual(adapter.ingest(native, source));
+    expect(restored.adapter.inspectRetainedState()).toEqual(adapter.inspectRetainedState());
+    expect(restored.adapter.snapshot().usage.find(usage => usage.source === "response_usage")).toMatchObject({ selection: "eligible", counts: { input: 100, output: 10, total: 110 } });
+    expect(restored.adapter.snapshot().diagnostics.some(value => value.code === "USAGE_CONFLICT")).toBe(false);
+  });
+  it.each([
+    ["usage", "complete"], ["usage", "nullable"],
+    ["lastSnapshots", "complete"], ["lastSnapshots", "nullable"],
+    ["observedUsage", "complete"], ["observedUsage", "nullable"],
+  ] as const)("rejects re-signed order-only %s changes with %s components", (location, kind) => {
+    const { adapter, token, expected } = nativePrefix(kind), before = adapter.inspectRetainedState();
+    expect(CodexAdapter.restoreCheckpoint(context, sign(decode(token)), expected).status).toBe("restored");
+    for (let index = 0; index < countNames.length - 1; index++) {
+      const value = decode(token), holder = countHolders(value)[location]!, original = holder.counts;
+      const names = [...countNames]; [names[index], names[index + 1]] = [names[index + 1]!, names[index]!];
+      holder.counts = Object.fromEntries(names.map(name => [name, original[name]]));
+      expect(holder.counts).toEqual(original); expect(Object.keys(holder.counts)).not.toEqual(countNames);
+      reject(sign(value), expected);
+      expect(adapter.inspectRetainedState()).toEqual(before);
+    }
+  });
+  it("preserves genuinely exported null usage counts without synthesizing components", () => {
+    const { adapter, token, expected, native } = nativePrefix("null"), value = decode(token);
+    expect(value.state.usage).toHaveLength(2);
+    expect(value.state.usage.every((row: any) => row[1].counts === null)).toBe(true);
+    const observations = value.state.observations.filter((row: any) => row[1].observedUsage !== null);
+    expect(observations).toHaveLength(2);
+    expect(observations.every((row: any) => row[1].observedUsage.counts === null)).toBe(true);
+    expect(value.state.lastSnapshots).toEqual([]);
+    const restored = CodexAdapter.restoreCheckpoint(context, token, expected);
+    expect(restored.status).toBe("restored"); if (restored.status !== "restored") throw Error("restore");
+    expect(restored.adapter.exportCheckpoint(expected)).toEqual({ status: "captured", checkpoint: token });
+    const source = { fileIdentity, ordinal: expected.nextOrdinal, byteOffset: expected.completedOffset, sourceAlias: "source-1" };
+    expect(restored.adapter.ingest(native, source)).toEqual(adapter.ingest(native, source));
+    expect(restored.adapter.inspectRetainedState()).toEqual(adapter.inspectRetainedState());
+    expect(restored.adapter.snapshot().usage.every(usage => usage.counts === null && usage.selection === "invalid")).toBe(true);
+  });
+});
