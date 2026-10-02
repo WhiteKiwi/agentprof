@@ -1,3 +1,4 @@
+import { relationshipCurrent, relationshipFingerprint } from "../db/source-relationship-validation.js";
 import { resolve } from "node:path";
 import type { createSourceStore, SourceCacheToken, StoredSource } from "../db/source-store.js";
 import type { IdentityContext } from "../normalize/identity.js";
@@ -58,12 +59,12 @@ function explicitRoots(value: readonly InputRoot[]): readonly InputRoot[] {
 
 // Retain only the small validated candidate, releasing initial event/metric payload arrays.
 function cacheCandidate(source: StoredSource | null, context: IdentityContext, parserVersion: number): SourceCacheToken | null {
-  if (!source || !source.cacheEvidence || !source.evidence || source.availability !== "available" || source.persistedScope !== "events_and_metric_evidence"
+  if (!source || !relationshipCurrent(source.relationshipEvidence) || !source.cacheEvidence || !source.evidence || source.availability !== "available" || source.persistedScope !== "events_and_metric_evidence"
     || source.parserVersion !== parserVersion || source.normalizationVersion !== context.normalizationVersion || source.keyVersion !== context.keyVersion || source.keyId !== context.keyId
     || source.evidence.capabilities.stateLimited || source.evidence.capabilities.diagnosticsDropped !== 0) return null;
   return Object.freeze({ sourceId: source.sourceId, provider: source.provider, revision: source.revision, parserVersion: source.parserVersion,
     normalizationVersion: source.normalizationVersion, keyVersion: source.keyVersion, keyId: source.keyId, completedOffset: source.completedOffset,
-    observedSize: source.observedSize, boundaryFingerprint: source.boundaryFingerprint, cacheEvidence: source.cacheEvidence });
+    observedSize: source.observedSize, boundaryFingerprint: source.boundaryFingerprint, cacheEvidence: source.cacheEvidence, relationshipFingerprint: relationshipFingerprint(source.relationshipEvidence)! });
 }
 
 /** Bounded serial coordination only. Source commits are independent, never a whole-run transaction. */

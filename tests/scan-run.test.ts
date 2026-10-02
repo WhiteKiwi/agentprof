@@ -291,7 +291,7 @@ describe("whole-byte unchanged generation reuse", () => {
   it.each(["absent", "event_only", "unavailable", "limited", "dropped"] as const)("reparses a legitimate %s cache ineligibility", async condition => {
     const root = temporaryDirectory(), path = await file(root, "a.jsonl"), { db, store } = memory(); await scanSources(store, context, roots(root));
     if (condition === "absent") db.exec("DELETE FROM source_cache_evidence");
-    if (condition === "event_only") db.exec("DELETE FROM source_cache_evidence; DELETE FROM source_metric_contributions; DELETE FROM source_metric_headers");
+    if (condition === "event_only") db.exec("DELETE FROM source_relationship_contributions; DELETE FROM source_relationship_headers; DELETE FROM source_cache_evidence; DELETE FROM source_metric_contributions; DELETE FROM source_metric_headers");
     if (condition === "unavailable") store.markUnavailable(id(path), 1);
     if (condition === "limited" || condition === "dropped") {
       const row = db.prepare("SELECT row_json FROM source_metric_contributions WHERE kind='capabilities'").get()!, original = row["row_json"] as string, caps = JSON.parse(original);

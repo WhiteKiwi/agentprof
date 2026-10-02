@@ -1,3 +1,5 @@
+import { encodeRelationships, relationshipCurrent, relationshipFingerprint, validateRelationshipRow, RELATIONSHIP_LIMITS, MAX_RELATIONSHIP_ROW_BYTES, MAX_SOURCE_RELATIONSHIP_BYTES, MAX_SOURCE_RELATIONSHIP_ROWS } from "./source-relationship-validation.js";
+import type { EncodedRelationships, RelationshipEvidence, RelationshipKind } from "./source-relationship-validation.js";
 import type { DatabaseSync } from "node:sqlite";
 import type { NormalizedEvent } from "../normalize/types.js";
 import { SafeError } from "../privacy/diagnostics.js";
@@ -14,7 +16,7 @@ import { validateCacheEvidence } from "./source-cache-validation.js";
 import type { SourceCacheEvidence } from "./source-cache-validation.js";
 export type { SourceCacheEvidence } from "./source-cache-validation.js";
 
-export type SourceCacheToken = SourceHeaderInput & Readonly<{ revision: number; cacheEvidence: SourceCacheEvidence }>;
+export type SourceCacheToken = SourceHeaderInput & Readonly<{ revision: number; cacheEvidence: SourceCacheEvidence; relationshipFingerprint: string }>;
 export type SourceUnchangedResult = Readonly<
   { status: "unchanged"; reusedRevision: number; capabilities: MetricEvidence["capabilities"]; diagnostics: MetricEvidence["diagnostics"] }
   | { status: "stale"; actualRevision: number | null } | { status: "aborted" }
@@ -28,6 +30,7 @@ export type SourceWriteResult = Readonly<
 export type StoredSource = SourceHeaderInput & Readonly<{
   revision: number; availability: "available" | "unavailable";
   events: readonly NormalizedEvent[];
+  relationshipEvidence?: RelationshipEvidence | null;
   cacheEvidence: SourceCacheEvidence | null; evidence: MetricEvidence | null; persistedScope: "events_only" | "events_and_metric_evidence";
   aggregationReady: false; parserResumeReady: false;
 }>;
@@ -83,16 +86,16 @@ export function createSourceStore(database: DatabaseSync, key: string) {
     signalCheck(signal);
     if (signal?.aborted) return Object.freeze({ status: "aborted" });
     const { header: h, rows, bytes } = encodeSource(input, keyId);
-    return replaceEncoded({ header: h, rows, bytes }, null, null, expectation, signal);
+    return replaceEncoded({ header: h, rows, bytes }, null, null, null, expectation, signal);
   }
   function replaceSourceSnapshot(input: SourceSnapshotInput, expectedRevision: number | null, signal?: AbortSignal): SourceWriteResult {
     const expectation = expected(expectedRevision);
     signalCheck(signal);
     if (signal?.aborted) return Object.freeze({ status: "aborted" });
     const encoded = encodeSourceSnapshot(input, keyId);
-    return replaceEncoded(encoded, encoded.metrics, encoded.cacheEvidence, expectation, signal);
+    return replaceEncoded(encoded, encoded.metrics, encoded.cacheEvidence, encoded.relationships, expectation, signal);
   }
-  function replaceEncoded({ header: h, rows, bytes }: EncodedSource, metrics: EncodedMetrics | null, cacheEvidence: SourceCacheEvidence | null, expectation: number | null, signal?: AbortSignal): SourceWriteResult {
+  function replaceEncoded({ header: h, rows, bytes }: EncodedSource, metrics: EncodedMetrics | null, cacheEvidence: SourceCacheEvidence | null, relationships: EncodedRelationships | null, expectation: number | null, signal?: AbortSignal): SourceWriteResult {
     return write(signal, (checkAbort): SourceWriteResult => {
       const actual = revision(database.prepare("SELECT revision FROM source_event_headers WHERE source_id = ?").get(h.sourceId)?.["revision"]);
       if (actual !== expectation) return { status: "stale", actualRevision: actual };
@@ -110,6 +113,8 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       database.prepare("DELETE FROM source_metric_contributions WHERE source_id = ?").run(h.sourceId);
       database.prepare("DELETE FROM source_metric_headers WHERE source_id = ?").run(h.sourceId);
       database.prepare("DELETE FROM source_cache_evidence WHERE source_id = ?").run(h.sourceId);
+      database.prepare("DELETE FROM source_relationship_contributions WHERE source_id = ?").run(h.sourceId);
+      database.prepare("DELETE FROM source_relationship_headers WHERE source_id = ?").run(h.sourceId);
       const insert = database.prepare("INSERT INTO source_event_contributions(source_id, event_id, event_json) VALUES (?, ?, ?)");
       for (const row of rows) { checkAbort(); insert.run(h.sourceId, row.id, row.json); }
       if (metrics !== null) {
@@ -118,6 +123,13 @@ export function createSourceStore(database: DatabaseSync, key: string) {
           .run(h.sourceId, c.turn, c.usage, c.observation, c.diagnostic, metrics.bytes);
         const insertMetric = database.prepare("INSERT INTO source_metric_contributions(source_id, kind, ordinal, row_id, row_json) VALUES (?, ?, ?, ?, ?)");
         for (const row of metrics.rows) { checkAbort(); insertMetric.run(h.sourceId, row.kind, row.ordinal, row.id, row.json); }
+      }
+      if (relationships !== null) {
+        const c = relationships.counts, e = relationships.evidence;
+        database.prepare("INSERT INTO source_relationship_headers(source_id,contract_version,capture_policy_version,status,reason,metadata_count,wrapper_count,message_count,relationship_bytes) VALUES(?,1,1,?,?,?,?,?,?)")
+          .run(h.sourceId, e.status, e.status === "unavailable" ? e.reason : null, c.metadata, c.wrapper, c.message, relationships.bytes);
+        const insertRelationship = database.prepare("INSERT INTO source_relationship_contributions(source_id,kind,ordinal,row_id,row_json) VALUES(?,?,?,?,?)");
+        for (const row of relationships.rows) { checkAbort(); insertRelationship.run(h.sourceId, row.kind, row.ordinal, row.id, row.json); }
       }
       if (cacheEvidence !== null) database.prepare("INSERT INTO source_cache_evidence(source_id, contract_version, content_fingerprint) VALUES (?, 1, ?)").run(h.sourceId, cacheEvidence.contentFingerprint);
       return { status: "committed", revision: next };
@@ -138,9 +150,10 @@ export function createSourceStore(database: DatabaseSync, key: string) {
   // Called only after the scanner verifies a matching whole-byte observation.
   // Own a new snapshot: reusing a caller transaction could hide a newer generation.
   function confirmUnchangedSource(token: SourceCacheToken, signal?: AbortSignal): SourceUnchangedResult {
-    const v = fields(token, [...HEADER_FIELDS, "revision", "cacheEvidence"]), h: Record<string, unknown> = {};
+    const v = fields(token, [...HEADER_FIELDS, "revision", "cacheEvidence", "relationshipFingerprint"]), h: Record<string, unknown> = {};
     for (const name of HEADER_FIELDS) h[name] = v[name];
     const header = validateHeader(h, keyId), expectedRevision = integer(v["revision"], 1), proof = validateCacheEvidence(v["cacheEvidence"], keyId);
+    if (typeof v["relationshipFingerprint"] !== "string" || !/^[a-f0-9]{64}$/.test(v["relationshipFingerprint"])) throw new SafeError("INVALID_RECORD");
     signalCheck(signal);
     if (signal?.aborted) return Object.freeze({ status: "aborted" });
     if (database.isTransaction) throw new SafeError("DATABASE_TRANSACTION_FAILED");
@@ -161,7 +174,7 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       else {
         if (HEADER_FIELDS.some(name => current[name] !== header[name]) || current.cacheEvidence?.contractVersion !== proof.contractVersion
           || current.cacheEvidence.contentFingerprint !== proof.contentFingerprint || current.availability !== "available"
-          || current.evidence === null || current.persistedScope !== "events_and_metric_evidence"
+          || relationshipFingerprint(current.relationshipEvidence) !== v["relationshipFingerprint"] || !relationshipCurrent(current.relationshipEvidence) || current.evidence === null || current.persistedScope !== "events_and_metric_evidence"
           || current.evidence.capabilities.stateLimited || current.evidence.capabilities.diagnosticsDropped !== 0) throw new Error();
         result = { status: "unchanged", reusedRevision: current.revision, capabilities: current.evidence.capabilities, diagnostics: current.evidence.diagnostics };
       }
@@ -201,7 +214,11 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       CASE WHEN typeof(content_fingerprint)='text' AND length(CAST(content_fingerprint AS BLOB))<=128 THEN content_fingerprint ELSE NULL END AS content_fingerprint
       FROM source_cache_evidence WHERE source_id=? LIMIT 2`).all(sourceId);
     if (proofs.length > 1 || first === undefined && proofs.length !== 0) throw new Error();
-    if (first === undefined) return null;
+    if (first === undefined) {
+      if (database.prepare("SELECT 1 FROM source_relationship_headers WHERE source_id=? LIMIT 1").get(sourceId) !== undefined
+        || database.prepare("SELECT 1 FROM source_relationship_contributions WHERE source_id=? LIMIT 1").get(sourceId) !== undefined) throw new Error();
+      return null;
+    }
     const cacheEvidence = proofs.length === 0 ? null : validateCacheEvidence({ contractVersion: proofs[0]!["contract_version"], contentFingerprint: proofs[0]!["content_fingerprint"] }, keyId);
     const header = validateHeader({ sourceId: first["source_id"], provider: first["provider"], parserVersion: first["parser_version"],
       normalizationVersion: first["normalization_version"], keyVersion: first["key_version"], keyId: first["key_id"],
@@ -267,8 +284,67 @@ export function createSourceStore(database: DatabaseSync, key: string) {
     if (events.length !== count || bytes !== recordedBytes || metricBytes !== recordedMetricBytes
       || (Object.keys(expectedCounts) as MetricKind[]).some((kind) => expectedCounts[kind] !== actualCounts[kind])) throw new Error();
     const evidence: MetricEvidence | null = hasMetrics ? Object.freeze({ turns: Object.freeze(turns), usage: Object.freeze(usage), observations: Object.freeze(observations), diagnostics: Object.freeze(diagnostics), capabilities: capabilities! }) : null;
-    return Object.freeze({ ...header, revision: integer(first["revision"], 1), availability: first["availability"], events: Object.freeze(events), evidence, cacheEvidence,
+    return Object.freeze({ ...header, revision: integer(first["revision"], 1), availability: first["availability"], events: Object.freeze(events), evidence, cacheEvidence, relationshipEvidence: readRelationships(header, hasMetrics),
       persistedScope: evidence === null ? "events_only" : "events_and_metric_evidence", aggregationReady: false, parserResumeReady: false });
+  }
+  function readRelationships(h: SourceHeaderInput, hasMetrics: boolean): RelationshipEvidence | null {
+    const headers = database.prepare(`SELECT
+      CASE WHEN typeof(contract_version)='integer' THEN contract_version ELSE NULL END AS contract_version,
+      CASE WHEN typeof(capture_policy_version)='integer' THEN capture_policy_version ELSE NULL END AS capture_policy_version,
+      CASE WHEN typeof(status)='text' AND length(CAST(status AS BLOB))<=11 THEN status ELSE NULL END AS status,
+      CASE WHEN typeof(reason)='text' AND length(CAST(reason AS BLOB))<=28 THEN reason ELSE NULL END AS reason,
+      (reason IS NULL) AS reason_null,
+      CASE WHEN typeof(metadata_count)='integer' THEN metadata_count ELSE NULL END AS metadata_count,
+      CASE WHEN typeof(wrapper_count)='integer' THEN wrapper_count ELSE NULL END AS wrapper_count,
+      CASE WHEN typeof(message_count)='integer' THEN message_count ELSE NULL END AS message_count,
+      CASE WHEN typeof(relationship_bytes)='integer' THEN relationship_bytes ELSE NULL END AS relationship_bytes
+      FROM source_relationship_headers WHERE source_id=? LIMIT 2`).all(h.sourceId);
+    const budget = database.prepare(`SELECT count(*) AS n, coalesce(sum(bytes),0) AS bytes, coalesce(max(bytes),0) AS largest,
+      coalesce(max(id_length),0) AS id_length, coalesce(max(kind_length),0) AS kind_length,
+      coalesce(sum(bad_type),0) AS bad_type
+      FROM (SELECT length(CAST(row_json AS BLOB)) AS bytes, length(CAST(row_id AS BLOB)) AS id_length,
+        length(CAST(kind AS BLOB)) AS kind_length, (typeof(row_json)!='text' OR typeof(row_id)!='text' OR typeof(kind)!='text' OR typeof(ordinal)!='integer') AS bad_type
+        FROM source_relationship_contributions WHERE source_id=? LIMIT ?)`)
+      .get(h.sourceId, MAX_SOURCE_RELATIONSHIP_ROWS + 1)!;
+    if (headers.length === 0) { if (integer(budget["n"]) !== 0) throw new Error(); return null; }
+    if (headers.length !== 1 || !hasMetrics) throw new Error();
+    const header = headers[0]!;
+    if (header["contract_version"] !== 1 || !["captured", "unavailable"].includes(header["status"] as string)) throw new Error();
+    const policy = integer(header["capture_policy_version"], 1), counts = { metadata: integer(header["metadata_count"]), wrapper: integer(header["wrapper_count"]), message: integer(header["message_count"]) };
+    const recordedBytes = integer(header["relationship_bytes"]), n = counts.metadata + counts.wrapper + counts.message;
+    if ((Object.keys(counts) as RelationshipKind[]).some(kind => counts[kind] > RELATIONSHIP_LIMITS[kind])
+      || counts[h.provider === "codex" ? "message" : "wrapper"] !== 0 || recordedBytes > MAX_SOURCE_RELATIONSHIP_BYTES
+      || integer(budget["n"]) !== n || integer(budget["bytes"]) !== recordedBytes || integer(budget["largest"]) > MAX_RELATIONSHIP_ROW_BYTES
+      || integer(budget["id_length"]) > 128 || integer(budget["kind_length"]) > 8 || integer(budget["bad_type"]) !== 0) throw new Error();
+    if (header["status"] === "unavailable") {
+      if (header["reason"] !== "relationship_budget_exceeded" || n !== 0 || recordedBytes !== 0) throw new Error();
+      return Object.freeze({ contractVersion: 1, capturePolicyVersion: policy, status: "unavailable", provider: h.provider, reason: "relationship_budget_exceeded" });
+    }
+    if (header["reason_null"] !== 1) throw new Error();
+    const values: Record<RelationshipKind, ReturnType<typeof validateRelationshipRow>[]> = { metadata: [], wrapper: [], message: [] };
+    let bytes = 0, links = 0;
+    const seen = new Set<string>();
+    const cursor = database.prepare("SELECT kind,ordinal,row_id,row_json FROM source_relationship_contributions INDEXED BY sqlite_autoindex_source_relationship_contributions_1 WHERE source_id=? ORDER BY kind,ordinal LIMIT ?").iterate(h.sourceId, MAX_SOURCE_RELATIONSHIP_ROWS + 1);
+    try {
+      for (const row of cursor) {
+        const kind = row["kind"];
+        if (kind !== "metadata" && kind !== "wrapper" && kind !== "message") throw new Error();
+        if (values[kind].length >= counts[kind] || integer(row["ordinal"]) !== values[kind].length || typeof row["row_json"] !== "string") throw new Error();
+        const size = Buffer.byteLength(row["row_json"]);
+        if (size > MAX_RELATIONSHIP_ROW_BYTES || bytes + size > MAX_SOURCE_RELATIONSHIP_BYTES) throw new Error();
+        const item = validateRelationshipRow(kind, JSON.parse(row["row_json"]) as unknown, h);
+        if (item.id !== row["row_id"] || seen.has(`${kind}:${item.id}`)) throw new Error();
+        if ("childEventIds" in item) links += item.childEventIds.length;
+        if ("parentMessageId" in item) links += Number(item.parentMessageId !== null) + Number(item.sourceToolAssistantMessageId !== null);
+        if (links > (h.provider === "codex" ? 1024 : 8192)) throw new Error();
+        seen.add(`${kind}:${item.id}`); bytes += size; values[kind].push(item);
+      }
+    } finally { cursor.return?.(); }
+    if (bytes !== recordedBytes || (Object.keys(counts) as RelationshipKind[]).some(kind => counts[kind] !== values[kind].length)) throw new Error();
+    const checked = encodeRelationships({ contractVersion: 1, capturePolicyVersion: 1, status: "captured", provider: h.provider, metadata: values.metadata,
+      ...(h.provider === "codex" ? { wrappers: values.wrapper } : { messages: values.message }) }, h);
+    if (checked?.evidence.status !== "captured") throw new Error();
+    return Object.freeze({ ...checked.evidence, capturePolicyVersion: policy });
   }
   function listSources(): SourceCatalogue {
     let began = false;

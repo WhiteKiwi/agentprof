@@ -1,3 +1,5 @@
+import { encodeRelationships } from "./source-relationship-validation.js";
+import type { EncodedRelationships, RelationshipEvidence } from "./source-relationship-validation.js";
 import type { NormalizedTurn, ParserCapabilities, ParserSourceRef, SourceObservation, TokenCounts, UsageObservation } from "../parsers/types.js";
 import type { ClaudeCapabilities, ClaudeCounts, ClaudeSourceObservation, ClaudeTurn, ClaudeUsage } from "../parsers/claude/types.js";
 import { MESSAGES, SafeError } from "../privacy/diagnostics.js";
@@ -20,7 +22,7 @@ export type MetricEvidence = Readonly<{
   diagnostics: readonly SafeDiagnostic[];
   capabilities: ParserCapabilities | ClaudeCapabilities;
 }>;
-export type SourceSnapshotInput = SourceInput & Readonly<{ evidence: MetricEvidence; cacheEvidence?: SourceCacheEvidence | null }>;
+export type SourceSnapshotInput = SourceInput & Readonly<{ evidence: MetricEvidence; cacheEvidence?: SourceCacheEvidence | null; relationshipEvidence?: RelationshipEvidence | null }>;
 export type MetricRow = Readonly<{ kind: MetricKind; ordinal: number; id: string | null; json: string }>;
 export type EncodedMetrics = Readonly<{ rows: readonly MetricRow[]; bytes: number; counts: Readonly<Record<MetricKind, number>> }>;
 type Header = SourceHeaderInput;
@@ -185,10 +187,11 @@ export function encodeMetrics(value: unknown, h: Header): EncodedMetrics {
   }
   return { rows, bytes, counts };
 }
-export function encodeSourceSnapshot(value: unknown, keyId: string): EncodedSource & Readonly<{ metrics: EncodedMetrics; cacheEvidence: SourceCacheEvidence | null }> {
+export function encodeSourceSnapshot(value: unknown, keyId: string): EncodedSource & Readonly<{ metrics: EncodedMetrics; cacheEvidence: SourceCacheEvidence | null; relationships: EncodedRelationships | null }> {
   const hasCache = value !== null && typeof value === "object" && Object.hasOwn(value, "cacheEvidence");
-  const v = fields(value, [...HEADER_FIELDS, "events", "evidence", ...(hasCache ? ["cacheEvidence"] : [])]), source: Record<string, unknown> = {};
+  const hasRelationships = value !== null && typeof value === "object" && Object.hasOwn(value, "relationshipEvidence");
+  const v = fields(value, [...HEADER_FIELDS, "events", "evidence", ...(hasCache ? ["cacheEvidence"] : []), ...(hasRelationships ? ["relationshipEvidence"] : [])]), source: Record<string, unknown> = {};
   for (const key of [...HEADER_FIELDS, "events"]) source[key] = v[key];
   const encoded = encodeSource(source, keyId);
-  return { ...encoded, metrics: encodeMetrics(v["evidence"], encoded.header), cacheEvidence: !hasCache || v["cacheEvidence"] === null ? null : validateCacheEvidence(v["cacheEvidence"], keyId) };
+  return { ...encoded, metrics: encodeMetrics(v["evidence"], encoded.header), relationships: encodeRelationships(v["relationshipEvidence"], encoded.header), cacheEvidence: !hasCache || v["cacheEvidence"] === null ? null : validateCacheEvidence(v["cacheEvidence"], keyId) };
 }

@@ -28,7 +28,7 @@ function rows(db: DatabaseSync) {
   return { headers: db.prepare("SELECT * FROM source_event_headers ORDER BY source_id").all(), events: db.prepare("SELECT * FROM source_event_contributions ORDER BY source_id,event_id").all(), identity: db.prepare("SELECT * FROM source_store_identity").all(), metricHeaders: db.prepare("SELECT * FROM source_metric_headers ORDER BY source_id").all(), metrics: db.prepare("SELECT * FROM source_metric_contributions ORDER BY source_id,kind,ordinal").all() };
 }
 function asInput(source: StoredSource): SourceInput {
-  const { cacheEvidence: _cache, revision: _revision, availability: _availability, aggregationReady: _aggregationReady, parserResumeReady: _parserResumeReady, evidence: _evidence, persistedScope: _persistedScope, ...input } = source;
+  const { relationshipEvidence: _relationships, cacheEvidence: _cache, revision: _revision, availability: _availability, aggregationReady: _aggregationReady, parserResumeReady: _parserResumeReady, evidence: _evidence, persistedScope: _persistedScope, ...input } = source;
   return input;
 }
 const metadata = { type: "session_meta", payload: { id: "FICTITIOUS_SESSION", cli_version: "0.159.0", cwd: "/FICTITIOUS_PROJECT" } };
