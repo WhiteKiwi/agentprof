@@ -265,3 +265,15 @@ A separate development contributor implemented the bounded successor on merged m
 
 
 Parent macOS qualification amendment (2026-10-02): resolve the synthetic temporary parent with `realpath`/`realpathSync` in the two report CLI fixture files before `mkdtemp`, as planned in [P6-SOURCE-REPORT](P6-SOURCE-REPORT.md#independent-parent-qualification-amendment--macos-fixtures-2026-10-02). A separate development contributor makes this bounded test-only correction; parent retains review/publication and the three reserved documents. Verify ordinary macOS temporary paths with every existing assertion and production guard unchanged, then run supported-runtime/full optional/installed/artifact qualification and record browser results distinctly.
+
+
+## Ordinary Claude search lookup evidence (2026-10-02)
+
+The separate developer implements the coordinator-reviewed [native search slice](P5-CLAUDE-SEARCH-EVIDENCE.md) in the reviewed 20-path claim. The finite own-data extractor validates supported native fields, canonicalizes only present options and preflights the entire unchanged 2 MiB lookup frame before passing transient fields to the existing normalizer. Frame overflow removes only lookup evidence. No operation-key formula, raw retained field or state collection changes.
+
+Native replay digests compose the unchanged base HMAC with bounded version fingerprints/state and raw shape/version eligibility independent of project availability. Lookup creation alone uses the selected authoritative call project. First message-link conflict propagates through one bounded existing-event-map walk to matching native searches, including omitted-tool replay. Checkpoint schema 1 admits only exact keyed native tuples and rejects linked retained conflicts; semantic version 2 rejects old 1 tokens. Storage and the two analyzer gates accept historical Claude 1/current Claude 2 with exact agreement; Codex remains 1. Historical capability insertion order is preserved for byte-identical old output.
+
+The recovered candidate is based on all 209 independently verified Git blobs of merged 063ee04b. Existing main report changes and all earlier shared-document bytes remain untouched. The original evidence-test prefix and unchanged checkpoint/storage test files match their pre-loss hashes; source and documentation recovery use a new immutable freeze and independent review. The interrupted aggregate is not a pass. Root coordinates the next one-worker/512 MiB resource gate, exact-head review and any later publication.
+
+
+Independent review's earlier-cwd authority correction separates finite raw shape/version eligibility from project availability. Every eligibility frame uses the same 105-byte ASCII length-only budget stand-in, never an actual or retained identity; the real project is supplied only to normalization. Both directional regressions retain completed 4,000 ms timing, inherited source-order authority and stable subsequent replay. The Project-approved 20th file is an additional inherited fixture-header correction only; no scanner/store/schema/report scope changed.

@@ -49,7 +49,7 @@ async function fixture(provider: "codex" | "claude", records: unknown[], fileIde
   // Same source replay at identical positions must not invent additional executions.
   records.forEach((record, i) => adapter.ingest(record, points[i]!));
   expect(adapter.snapshot()).toEqual(snapshot);
-  const input: SourceSnapshotInput = { sourceId: identity.fingerprint("source", [provider, fileIdentity]), provider, parserVersion: 1, normalizationVersion: 1, keyVersion: 1, keyId: identity.keyId,
+  const input: SourceSnapshotInput = { sourceId: identity.fingerprint("source", [provider, fileIdentity]), provider, parserVersion: snapshot.capabilities.parserVersion, normalizationVersion: 1, keyVersion: 1, keyId: identity.keyId,
     completedOffset: bytes.length, observedSize: bytes.length, boundaryFingerprint: identity.fingerprint("content", ["synthetic-boundary", bytes.length]), events: snapshot.events,
     evidence: { turns: snapshot.turns, usage: snapshot.usage, observations: snapshot.observations, diagnostics: snapshot.diagnostics, capabilities: snapshot.capabilities } };
   return { input, path, bytes, snapshot };
