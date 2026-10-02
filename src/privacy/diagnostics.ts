@@ -1,4 +1,9 @@
 export const MESSAGES = {
+  OPEN_FILE_UNSAFE: "Select a regular local HTML file with a supported path.",
+  OPEN_FILE_UNAVAILABLE: "The selected HTML file could not be accessed.",
+  OPEN_OPENER_UNAVAILABLE: "A desktop opener is unavailable. Open the selected HTML file manually.",
+  OPEN_FAILED: "The system did not accept the open request. Open the selected HTML file manually.",
+  OPEN_TIMEOUT: "Could not confirm the open request before the timeout; the file may already be open.",
   REPORT_SELECTION_REQUIRED: "Select --source <full-source-id> and --output <new-html-file>. Run agentprof report --help.",
   REPORT_LIMIT: "The report exceeds the supported display limits.",
   REPORT_OUTPUT_UNSAFE: "The report output path is unsafe or already exists.",

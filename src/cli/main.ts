@@ -8,6 +8,7 @@ import { formatInsightsResult, runInsights } from "./insights.js";
 import type { InsightsArguments } from "./insights.js";
 import { runReport, formatReportResult } from "./report.js";
 import type { ReportArguments } from "./report.js";
+import { formatOpenResult, runOpen } from "./open.js";
 import { VERSION } from "./version.js";
 
 function collect(value: string, previous: string[]): string[] {
@@ -26,7 +27,6 @@ export async function run(argv: string[]): Promise<void> {
     .exitOverride()
     .configureOutput({ writeErr: () => undefined });
 
-  const pending = () => { throw new SafeError("NOT_IMPLEMENTED"); };
   program.command("scan").description("Collect explicit --codex-root/--claude-root inputs only (at least one required)")
     .addHelpText("after", "\nBounded scan: at most 16 roots, 64 sources, 256 directories, 4096 nodes and yielded entries,\n16 MiB/32768 records per source, 256 diagnostic samples. No aggregation or parser resume.")
     .action(async () => {
@@ -37,11 +37,12 @@ export async function run(argv: string[]): Promise<void> {
     });
   const stats = program.command("stats").description("Read one stored source prefix or list up to 64 sources (read-only)")
     .option("--list-sources", "list bounded stored source inventory")
+    .option("--search-recurrence", "show completed Claude native search recurrence")
     .option("--invocation-overlap", "show observed Claude invocation interval union")
     .option("--read-revisits", "show completed Claude Read file revisits for one --source")
     .option("--failures", "show confirmed native failure evidence for one --source")
     .option("--source <id>", "select one full source ID from list/scan JSON", validateSourceSelection)
-    .addHelpText("after", "\nExactly one selection mode is required. Existing private DELETE-mode store only; no scan or migration.\nNo --last, global totals, freshness check or cross-source reconciliation. Suppression and unknown values remain visible.\n--failures requires --source; status/timing coverage stay separate; generic Codex nonzero statuses may be unknown.\n--read-revisits requires --source and excludes --failures; Claude Read only, Codex unsupported; no same-content or waste claim.\n--invocation-overlap requires --source and excludes --failures/--read-revisits; Claude only, Codex unsupported; no runtime, active-time or savings claim.");
+    .addHelpText("after", "\nExactly one selection mode is required. Existing private DELETE-mode store only; no scan or migration.\nNo --last, global totals, freshness check or cross-source reconciliation. Suppression and unknown values remain visible.\n--failures requires --source; status/timing coverage stay separate; generic Codex nonzero statuses may be unknown.\n--read-revisits requires --source and excludes --failures; Claude Read only, Codex unsupported; no same-content or waste claim.\n--invocation-overlap requires --source and excludes --failures/--read-revisits; Claude only, Codex unsupported; no runtime, active-time or savings claim.\n--search-recurrence requires --source and excludes --failures/--read-revisits/--invocation-overlap; Claude parser2 Grep/Glob only; exact request recurrence, not equal results or waste.");
   let selections = 0;
   for (const flag of ["list-sources", "source"]) stats.on(`option:${flag}`, () => {
     if (++selections > 1) throw new SafeError("INVALID_ARGUMENT");
@@ -52,6 +53,8 @@ export async function run(argv: string[]): Promise<void> {
   stats.on("option:read-revisits", () => { if (++readRevisitFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   let invocationOverlapFlags = 0;
   stats.on("option:invocation-overlap", () => { if (++invocationOverlapFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
+  let searchRecurrenceFlags = 0;
+  stats.on("option:search-recurrence", () => { if (++searchRecurrenceFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   stats.action(async () => {
     const options = { ...program.opts(), ...stats.opts() } as StatsArguments & { json?: boolean };
     const result = await runStats(options);
@@ -83,8 +86,16 @@ export async function run(argv: string[]): Promise<void> {
     process.stdout.write(formatReportResult(result, options.json === true));
     process.exitCode = result.status === "published" ? 0 : 1;
   });
-  program.command("open").description("Open a generated report (not implemented yet)")
-    .argument("<file>", "generated HTML file").action(pending);
+  program.command("open").description("Request the system opener for one explicitly trusted local HTML file")
+    .argument("<file>", "existing local .html/.htm file")
+    .allowExcessArguments(false)
+    .addHelpText("after", "\nmacOS/Linux only. Open explicitly trusted local files: selected HTML may run scripts or contact remote resources.\nCanonical symlink targets are used; native opening may create OS/browser history.\nNo scan, report generation, latest-file search, URLs or report --open. Global data/root options are validated but inert.\nA helper acknowledgement does not verify browser rendering. Timeout may mean the file is already open; no automatic retry.")
+    .action(async (file: string) => {
+      const options = program.opts<{ json?: boolean }>();
+      const result = await runOpen({ file });
+      process.stdout.write(formatOpenResult(result, options.json === true));
+      process.exitCode = 0;
+    });
 
   try {
     if (argv.length <= 2) {

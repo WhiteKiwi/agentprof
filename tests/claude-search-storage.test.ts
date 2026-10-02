@@ -95,9 +95,9 @@ describe("ordinary Claude native search source storage and transition", () => {
   it("invalidates a genuine old interpretation once, reparses under original CAS, then reuses v2", async () => {
     const { root, path } = await inputFile(), db = await openDatabase(temporaryDirectory()), store = { ...createSourceStore(db, keyId) };
     try {
-      const { sourceId } = await seedHistorical(store, path), ingest = vi.spyOn(ClaudeAdapter.prototype, "ingest"), replace = vi.spyOn(store, "replaceSourceSnapshot");
+      const { sourceId } = await seedHistorical(store, path), ingest = vi.spyOn(ClaudeAdapter.prototype, "ingest"), replace = vi.spyOn(store, "replaceSourceSnapshotWithCheckpoint");
       expect((await scanSources(store, context, [{ provider: "claude", path: root }])).sources[0]).toMatchObject({ status: "committed", expectedRevision: 1, committedRevision: 2 });
-      expect(ingest).toHaveBeenCalledTimes(2); expect(replace.mock.calls[0]?.[1]).toBe(1);
+      expect(ingest).toHaveBeenCalledTimes(2); expect(replace.mock.calls[0]?.[3]).toBe(1);
       expect(store.readSource(sourceId)).toMatchObject({ revision: 2, parserVersion: 2 }); expect(store.readSource(sourceId)!.events[0]!.lookupKey).toBe(expectedKey);
       const before = rows(db); ingest.mockClear(); replace.mockClear();
       expect((await scanSources(store, context, [{ provider: "claude", path: root }])).sources[0]).toMatchObject({ status: "unchanged", expectedRevision: 2, reusedRevision: 2 });

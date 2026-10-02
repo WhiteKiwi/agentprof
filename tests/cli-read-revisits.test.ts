@@ -7,6 +7,7 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { temporaryDirectory } from "./helpers.js";
 import { assertFreshParserVersionParity } from "./claude-parser-version-parity.js";
+import { migrateHistoricalSchema5Copy } from "./claude-historical-schema-copy.js";
 import { runStats, formatStatsResult } from "../src/cli/stats.js";
 import type { StatsArguments, StatsResult } from "../src/cli/stats.js";
 const runRevisits = async (options: StatsArguments) => await runStats({ ...options, readRevisits: true }) as Extract<StatsResult, {mode:"selected_source_read_revisits"}>;
@@ -108,7 +109,7 @@ it("event-only and unavailable generations succeed without claiming a healthy ze
   before = bytes(f.data); r = await runRevisits({ dataDir: f.data, source: f.id });
   expect(r.analysis).toMatchObject({ revision: 3, suppressionReason: "source_unavailable" }); expect(bytes(f.data)).toEqual(before);
 });
-it.each([0, 3, 4, 6])("schema %s preserves exact safe code/message and bytes", async version => {
+it.each([0, 3, 4, 5, 7])("schema %s preserves exact safe code/message and bytes", async version => {
   const f = await fixture(), db = new DatabaseSync(join(f.data, "agentprof.sqlite")); db.exec(`PRAGMA user_version=${version}`); db.close();
   const before = bytes(f.data), r = run(["stats", "--source", f.id, "--data-dir", f.data, "--json"]);
   expect(jsonError(r).error).toEqual({ code: "DATABASE_SCHEMA_INCOMPATIBLE", message: MESSAGES.DATABASE_SCHEMA_INCOMPATIBLE });
@@ -191,7 +192,7 @@ function seeded(root: string, name: string) {
   return data;
 }
 describe.skipIf(!baselineBinary)("frozen baseline exact old-command parity", () => {
-  it.each(inheritedFixtures)("retains all initial/reused scans and list/stats/insights/failures for %s", name => {
+  it.each(inheritedFixtures)("retains all initial/reused scans and list/stats/insights/failures for %s", async name => {
     expect(inheritedFixtures).toHaveLength(10);
     const root = temporaryDirectory(), input = join(root, "input"); mkdirSync(input); copyFileSync(join(fixtureDirectory, name), join(input, "synthetic.jsonl"));
     const old = seeded(root, "old"), current = seeded(root, "current"), provider = name.startsWith("codex") ? "codex" : "claude";
@@ -201,24 +202,63 @@ describe.skipIf(!baselineBinary)("frozen baseline exact old-command parity", () 
     expect(JSON.parse(initial.stdout).result.counts.committed).toBe(1);
     const sourceId = JSON.parse(invoke(binary, current, ["stats", "--list-sources", "--json"]).stdout).result.catalogue.items[0].sourceId;
     const before = bytes(current), oldBefore = bytes(old);
+    const rejected = invoke(binary, old, ["stats", "--list-sources", "--json"]);
+    expect(rejected.status).toBe(2); expect(rejected.stdout).toBe("");
+    expect(JSON.parse(rejected.stderr).error).toEqual({ code: "DATABASE_SCHEMA_INCOMPATIBLE", message: "Read-only source commands require a compatible existing database. No migration was attempted." });
+    expect(bytes(old)).toEqual(oldBefore);
+    const historicalCopy = join(root, "historical-schema6");
+    await migrateHistoricalSchema5Copy(old, historicalCopy);
+    const copiedBefore = bytes(historicalCopy);
     for (const args of [scan, ["stats", "--list-sources"], ["stats", "--source", sourceId], ["insights", "--source", sourceId], ["stats", "--source", sourceId, "--failures"]]) {
       for (const json of [[], ["--json"]]) {
         const selection = [...args, ...json], actual = invoke(binary, current, selection), historical = invoke(baselineBinary!, old, selection);
         assertFreshParserVersionParity(provider, selection, actual, historical);
-        if (args[0] !== "scan") expect(invoke(binary, old, selection)).toEqual(historical);
+        if (args[0] !== "scan") expect(invoke(binary, historicalCopy, selection)).toEqual(historical);
       }
     }
-    expect(bytes(current)).toEqual(before); expect(bytes(old)).toEqual(oldBefore);
+    expect(bytes(current)).toEqual(before); expect(bytes(old)).toEqual(oldBefore); expect(bytes(historicalCopy)).toEqual(copiedBefore);
     const oldHuman = seeded(root, "old-human"), currentHuman = seeded(root, "current-human");
     expect(invoke(binary, currentHuman, scan)).toEqual(invoke(baselineBinary!, oldHuman, scan));
   });
   it("preserves unchanged help/version bytes; report and top-level help intentionally changed", () => {
     const data = join(temporaryDirectory(), "absent");
-    for (const args of [["--version"], ["scan", "--help"], ["insights", "--help"], ["open", "--help"]]) expect(invoke(binary, data, args)).toEqual(invoke(baselineBinary!, data, args));
+    for (const args of [["--version"], ["scan", "--help"], ["insights", "--help"]]) expect(invoke(binary, data, args)).toEqual(invoke(baselineBinary!, data, args));
+    const pendingOpenHelp = `Usage: agentprof open [options] <file>
+
+Open a generated report (not implemented yet)
+
+Arguments:
+  file        generated HTML file
+
+Options:
+  -h, --help  display help for command
+`;
+    const trustedOpenHelp = `Usage: agentprof open [options] <file>
+
+Request the system opener for one explicitly trusted local HTML file
+
+Arguments:
+  file        existing local .html/.htm file
+
+Options:
+  -h, --help  display help for command
+
+macOS/Linux only. Open explicitly trusted local files: selected HTML may run scripts or contact remote resources.
+Canonical symlink targets are used; native opening may create OS/browser history.
+No scan, report generation, latest-file search, URLs or report --open. Global data/root options are validated but inert.
+A helper acknowledgement does not verify browser rendering. Timeout may mean the file is already open; no automatic retry.
+`;
+    const oldOpen = invoke(baselineBinary!, data, ["open", "--help"]), currentOpen = invoke(binary, data, ["open", "--help"]);
+    expect(oldOpen).toEqual({ status: 0, stdout: pendingOpenHelp, stderr: "" });
+    expect(currentOpen).toEqual({ status: 0, stdout: trustedOpenHelp, stderr: "" });
+    expect(oldOpen.stdout + currentOpen.stdout).not.toMatch(/FICTITIOUS_|SQLite/);
+    expect(oldOpen.stdout + currentOpen.stdout).not.toContain(data);
     const old = invoke(baselineBinary!, data, ["stats", "--help"]), current = invoke(binary, data, ["stats", "--help"]);
     expect(current.status).toBe(old.status); expect(current.stderr).toBe(old.stderr);
     let preserved = current.stdout;
     const removeExactlyOnce = (text: string) => { expect(preserved.split(text)).toHaveLength(2); preserved = preserved.replace(text, ""); };
+    removeExactlyOnce("  --search-recurrence   show completed Claude native search recurrence\n");
+    removeExactlyOnce("--search-recurrence requires --source and excludes --failures/--read-revisits/--invocation-overlap; Claude parser2 Grep/Glob only; exact request recurrence, not equal results or waste.\n");
     removeExactlyOnce("  --invocation-overlap  show observed Claude invocation interval union\n");
     removeExactlyOnce("--invocation-overlap requires --source and excludes --failures/--read-revisits; Claude only, Codex unsupported; no runtime, active-time or savings claim.\n");
     removeExactlyOnce("  --read-revisits       show completed Claude Read file revisits for one\n                        --source\n");

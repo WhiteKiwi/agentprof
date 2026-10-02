@@ -254,6 +254,11 @@ Every card carries NOTICE severity, fixed emitted thresholds, denominator refere
 
 [P5-SOURCE-FAILURES](P5-SOURCE-FAILURES.md) defines the bounded native-call evidence subset. Per source/provider/revision/session, confirmed failed and completed calls form the terminal denominator; untimed failures are included. One unresolved otherwise terminal native row suppresses that session denominator/cohorts. Raw inventory is separate. No-match/change-detected completed outcomes are successes, not failures. Safe display cohorts do not prove same task/error. Nested failed-duration measurements retain compatible scope/evidence, measured n / confirmed failed n, checked sums, nearest-rank quantiles, unknown timing and low-N; no global rate or savings inference.
 
+
+## Completed native search recurrence (2026-10-02)
+
+[Completed native search recurrence](P5-SOURCE-SEARCH-RECURRENCE.md) uses unique provenance-admitted completed ordinary Claude parser2 Grep/Glob events per session: N invocations, U exact versioned opaque lookup identities, repeatN=N-U, repeatRatio=(N-U)/N. No compatible-subset fallback: any admitted null key makes all four metric fields null while candidate/missing inventories remain explicit. Empty populations also yield null; a nonempty all-distinct population yields zero repeats. An identical request may be necessary after edits or external changes; no equal-results, avoidability, waste time, token savings, retries or navigation-quality conclusion follows.
+
 ## Observed invocation timeline display boundary
 
 The [selected-source timeline](P6-INVOCATION-TIMELINE.md) presents unchanged source-invocation-overlap metrics per session. S is the sum of positioned invocation interval lengths, U their union, and excess is S minus U. Three identical ten-second invocations yield S=30 seconds, U=10 seconds and excess=20 seconds; excess is multiplicity-weighted overlap, not concurrent wall time.

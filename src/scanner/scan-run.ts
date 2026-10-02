@@ -1,6 +1,7 @@
+import { adapterLimitsFingerprint } from "../db/source-checkpoint-validation.js";
 import { relationshipCurrent, relationshipFingerprint } from "../db/source-relationship-validation.js";
 import { resolve } from "node:path";
-import type { createSourceStore, SourceCacheToken, StoredSource } from "../db/source-store.js";
+import type { createSourceStore, SourceCacheToken, StoredSource, SourceIngestionCandidate } from "../db/source-store.js";
 import type { IdentityContext } from "../normalize/identity.js";
 import { createCodexAdapter } from "../parsers/codex/index.js";
 import { createClaudeAdapter } from "../parsers/claude/index.js";
@@ -8,7 +9,7 @@ import { diagnostic, SafeError, safeErrorEnvelope } from "../privacy/diagnostics
 import type { DiagnosticCode, SafeDiagnostic } from "../privacy/diagnostics.js";
 import type { InputRoot } from "../privacy/paths.js";
 import { discoverSources } from "./discovery.js";
-import { ingestSourceFile } from "./source-ingest.js";
+import { ingestSourceFile, ingestSourceFileFromCheckpoint } from "./source-ingest.js";
 import type { SourceIngestResult } from "./source-ingest.js";
 import { ownInput, probeSourceFile, sourcePrefixOptions, validSourcePath } from "./source-prefix.js";
 
@@ -106,12 +107,19 @@ export async function scanSources(store: ReturnType<typeof createSourceStore>, c
     let expectedRevision: number | null = null, revisionRead = false;
     const common = { sourceId, sourceAlias: source.sourceAlias, provider: source.provider };
     try {
-      let candidate: SourceCacheToken | null;
+      let candidate: SourceCacheToken | null, ingestionCandidate: SourceIngestionCandidate | undefined;
       const currentParserVersion = (source.provider === "codex" ? createCodexAdapter(context) : createClaudeAdapter(context)).snapshot().capabilities.parserVersion;
       {
-        const stored = store.readSource(sourceId);
+        ingestionCandidate = source.provider === "claude" ? store.readSourceForIngestion(sourceId, context) : undefined;
+        const stored = ingestionCandidate ? ingestionCandidate.source : store.readSource(sourceId);
         expectedRevision = stored?.revision ?? null; revisionRead = true;
         candidate = cacheCandidate(stored, context, currentParserVersion);
+        const checkpoint = ingestionCandidate?.checkpoint;
+        // File proofs bind scanner options, but not the adapter's private limits.
+        // Authenticate first in readSourceForIngestion; incompatibility then replays.
+        if (checkpoint && (checkpoint.adapterLimitsFingerprint !== adapterLimitsFingerprint()
+          || checkpoint.maxFileBytes !== prefix.maxFileBytes || checkpoint.maxRecords !== prefix.maxRecords
+          || checkpoint.maxLineBytes !== prefix.maxLineBytes)) candidate = null;
       }
       if (candidate) {
         const probe = await probeSourceFile(path, context, { sourceId, provider: source.provider, parserVersion: currentParserVersion,
@@ -119,7 +127,9 @@ export async function scanSources(store: ReturnType<typeof createSourceStore>, c
           { maxFileBytes: prefix.maxFileBytes, maxRecords: prefix.maxRecords, maxLineBytes: prefix.maxLineBytes, chunkBytes: prefix.chunkBytes, ...(signal === undefined ? {} : { signal }) });
         if (probe.status !== "mismatch") {
           // Final successful generation confirmation is synchronous; no await before recording it.
-          const confirmed = probe.status === "matched" ? store.confirmUnchangedSource(candidate, signal) : probe;
+          const confirmed = probe.status === "matched" ? (ingestionCandidate
+            ? store.confirmUnchangedSourceWithCheckpoint(candidate, ingestionCandidate.predecessor, context, signal)
+            : store.confirmUnchangedSource(candidate, signal)) : probe;
           const capabilities = confirmed.status === "unchanged" ? confirmed.capabilities : null;
           if (confirmed.status === "unchanged") for (const value of confirmed.diagnostics) record(value, source.sourceAlias);
           if (confirmed.status === "rejected" && confirmed.diagnostic) record(confirmed.diagnostic, source.sourceAlias);
@@ -134,9 +144,10 @@ export async function scanSources(store: ReturnType<typeof createSourceStore>, c
           continue;
         }
       }
-      const result = await ingestSourceFile(store, context, { path, provider: source.provider, expectedRevision,
+      const input = { path, provider: source.provider, expectedRevision,
         maxFileBytes: prefix.maxFileBytes, maxRecords: prefix.maxRecords, maxLineBytes: prefix.maxLineBytes, chunkBytes: prefix.chunkBytes,
-        ...(signal === undefined ? {} : { signal }) });
+        ...(signal === undefined ? {} : { signal }) };
+      const result = ingestionCandidate ? await ingestSourceFileFromCheckpoint(store, context, input, ingestionCandidate) : await ingestSourceFile(store, context, input);
       for (const value of [...result.diagnostics, ...result.readerDiagnostics]) record(value, source.sourceAlias);
       adapterDroppedCount += result.capabilities.diagnosticsDropped;
       counts[result.status]++;

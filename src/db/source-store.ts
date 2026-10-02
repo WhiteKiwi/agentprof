@@ -1,3 +1,8 @@
+import type { Hash } from "node:crypto";
+import type { IdentityContext } from "../normalize/identity.js";
+import { adapterLimitsFingerprint, assertContext, encodedProjection, generationObservation, generationSeal, newProjection, projectionFrame, readCheckpoint, validateCapture, validatePredecessor } from "./source-checkpoint-validation.js";
+import type { SourceCheckpointCapture, SourceIngestionCandidate, SourcePredecessor } from "./source-checkpoint-validation.js";
+export type { SourceCheckpointCapture, SourceIngestionCandidate, SourcePredecessor } from "./source-checkpoint-validation.js";
 import { encodeRelationships, relationshipCurrent, relationshipFingerprint, validateRelationshipRow, RELATIONSHIP_LIMITS, MAX_RELATIONSHIP_ROW_BYTES, MAX_SOURCE_RELATIONSHIP_BYTES, MAX_SOURCE_RELATIONSHIP_ROWS } from "./source-relationship-validation.js";
 import type { EncodedRelationships, RelationshipEvidence, RelationshipKind } from "./source-relationship-validation.js";
 import type { DatabaseSync } from "node:sqlite";
@@ -95,10 +100,16 @@ export function createSourceStore(database: DatabaseSync, key: string) {
     const encoded = encodeSourceSnapshot(input, keyId);
     return replaceEncoded(encoded, encoded.metrics, encoded.cacheEvidence, encoded.relationships, expectation, signal);
   }
-  function replaceEncoded({ header: h, rows, bytes }: EncodedSource, metrics: EncodedMetrics | null, cacheEvidence: SourceCacheEvidence | null, relationships: EncodedRelationships | null, expectation: number | null, signal?: AbortSignal): SourceWriteResult {
-    return write(signal, (checkAbort): SourceWriteResult => {
+  function replaceEncoded({ header: h, rows, bytes }: EncodedSource, metrics: EncodedMetrics | null, cacheEvidence: SourceCacheEvidence | null, relationships: EncodedRelationships | null, expectation: number | null, signal?: AbortSignal,
+    checkpoint?: Readonly<{ capture: SourceCheckpointCapture | null; context: IdentityContext; predecessor: SourcePredecessor | undefined; projection: string }>): SourceWriteResult {
+    let invalidPredecessor = false;
+    try { return write(signal, (checkAbort): SourceWriteResult => {
       const actual = revision(database.prepare("SELECT revision FROM source_event_headers WHERE source_id = ?").get(h.sourceId)?.["revision"]);
       if (actual !== expectation) return { status: "stale", actualRevision: actual };
+      if (checkpoint?.predecessor !== undefined) {
+        try { comparePredecessor(readIngestionPinned(h.sourceId, checkpoint.context).predecessor, checkpoint.predecessor); }
+        catch { invalidPredecessor = true; throw new SafeError("DATABASE_ACCESS_FAILED"); }
+      }
       const next = integer((actual ?? 0) + 1, 1);
       database.prepare("INSERT OR IGNORE INTO source_store_identity(singleton, key_id) VALUES (1, ?)").run(keyId);
       // Existing header is retained throughout the replacement; dependent rows never dangle.
@@ -113,6 +124,7 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       database.prepare("DELETE FROM source_metric_contributions WHERE source_id = ?").run(h.sourceId);
       database.prepare("DELETE FROM source_metric_headers WHERE source_id = ?").run(h.sourceId);
       database.prepare("DELETE FROM source_cache_evidence WHERE source_id = ?").run(h.sourceId);
+      database.prepare("DELETE FROM source_parser_checkpoints WHERE source_id = ?").run(h.sourceId);
       database.prepare("DELETE FROM source_relationship_contributions WHERE source_id = ?").run(h.sourceId);
       database.prepare("DELETE FROM source_relationship_headers WHERE source_id = ?").run(h.sourceId);
       const insert = database.prepare("INSERT INTO source_event_contributions(source_id, event_id, event_json) VALUES (?, ?, ?)");
@@ -132,8 +144,29 @@ export function createSourceStore(database: DatabaseSync, key: string) {
         for (const row of relationships.rows) { checkAbort(); insertRelationship.run(h.sourceId, row.kind, row.ordinal, row.id, row.json); }
       }
       if (cacheEvidence !== null) database.prepare("INSERT INTO source_cache_evidence(source_id, contract_version, content_fingerprint) VALUES (?, 1, ?)").run(h.sourceId, cacheEvidence.contentFingerprint);
+      if (checkpoint?.capture) {
+        const c = checkpoint.capture, limits = adapterLimitsFingerprint();
+        const seal = generationSeal(checkpoint.context, h, next, cacheEvidence!, c, limits, checkpoint.projection);
+        database.prepare("INSERT INTO source_parser_checkpoints(source_id,contract_version,next_ordinal,max_file_bytes,max_records,max_line_bytes,checkpoint_bytes,checkpoint_json,adapter_limits_fingerprint,generation_seal) VALUES(?,1,?,?,?,?,?,?,?,?)")
+          .run(h.sourceId, c.nextOrdinal, c.maxFileBytes, c.maxRecords, c.maxLineBytes, Buffer.byteLength(c.checkpoint), c.checkpoint, limits, seal);
+      }
       return { status: "committed", revision: next };
-    });
+    }); } catch (error) {
+      if (invalidPredecessor) throw new SafeError("DATABASE_ACCESS_FAILED");
+      throw error;
+    }
+  }
+  function replaceSourceSnapshotWithCheckpoint(input: SourceSnapshotInput, capture: SourceCheckpointCapture | null, context: IdentityContext,
+    expectedRevision: number | null, predecessor?: SourcePredecessor, signal?: AbortSignal): SourceWriteResult {
+    assertContext(context, keyId);
+    const expectation = expected(expectedRevision);
+    signalCheck(signal);
+    if (signal?.aborted) return Object.freeze({ status: "aborted" });
+    const encoded = encodeSourceSnapshot(input, keyId), checked = capture === null ? null : validateCapture(capture, encoded, context);
+    if (encoded.header.provider !== "claude") throw new SafeError("INVALID_RECORD");
+    const guard = predecessor === undefined ? undefined : validatePredecessor(predecessor, keyId);
+    return replaceEncoded(encoded, encoded.metrics, encoded.cacheEvidence, encoded.relationships, expectation, signal,
+      { capture: checked, context, predecessor: guard, projection: encodedProjection(encoded) });
   }
   function markUnavailable(sourceId: string, expectedRevision: number, signal?: AbortSignal): SourceWriteResult {
     identity(sourceId, "source", keyId);
@@ -143,6 +176,7 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       if (actual !== expectation) return { status: "stale", actualRevision: actual };
       const next = integer(actual + 1, 1);
       database.prepare("DELETE FROM source_cache_evidence WHERE source_id = ?").run(sourceId);
+      database.prepare("DELETE FROM source_parser_checkpoints WHERE source_id = ?").run(sourceId);
       database.prepare("UPDATE source_event_headers SET availability = 'unavailable', revision = ? WHERE source_id = ?").run(next, sourceId);
       return { status: "committed", revision: next };
     });
@@ -150,6 +184,13 @@ export function createSourceStore(database: DatabaseSync, key: string) {
   // Called only after the scanner verifies a matching whole-byte observation.
   // Own a new snapshot: reusing a caller transaction could hide a newer generation.
   function confirmUnchangedSource(token: SourceCacheToken, signal?: AbortSignal): SourceUnchangedResult {
+    return confirmUnchanged(token, signal);
+  }
+  function confirmUnchangedSourceWithCheckpoint(token: SourceCacheToken, predecessor: SourcePredecessor, context: IdentityContext, signal?: AbortSignal): SourceUnchangedResult {
+    assertContext(context, keyId);
+    return confirmUnchanged(token, signal, { predecessor: validatePredecessor(predecessor, keyId), context });
+  }
+  function confirmUnchanged(token: SourceCacheToken, signal?: AbortSignal, checkpoint?: Readonly<{ predecessor: SourcePredecessor; context: IdentityContext }>): SourceUnchangedResult {
     const v = fields(token, [...HEADER_FIELDS, "revision", "cacheEvidence", "relationshipFingerprint"]), h: Record<string, unknown> = {};
     for (const name of HEADER_FIELDS) h[name] = v[name];
     const header = validateHeader(h, keyId), expectedRevision = integer(v["revision"], 1), proof = validateCacheEvidence(v["cacheEvidence"], keyId);
@@ -168,10 +209,12 @@ export function createSourceStore(database: DatabaseSync, key: string) {
         const installed = validateKeyId(bindings[0]!["key_id"]);
         if (installed !== keyId) throw new SafeError("INVALID_IDENTITY_KEY");
       }
-      const current = readPinned(header.sourceId);
+      const candidate = checkpoint ? readIngestionPinned(header.sourceId, checkpoint.context) : undefined;
+      const current = candidate ? candidate.source : readPinned(header.sourceId);
       let result: SourceUnchangedResult;
       if (current === null || current.revision !== expectedRevision) result = { status: "stale", actualRevision: current?.revision ?? null };
       else {
+        if (checkpoint && candidate) comparePredecessor(candidate.predecessor, checkpoint.predecessor);
         if (HEADER_FIELDS.some(name => current[name] !== header[name]) || current.cacheEvidence?.contractVersion !== proof.contractVersion
           || current.cacheEvidence.contentFingerprint !== proof.contentFingerprint || current.availability !== "available"
           || relationshipFingerprint(current.relationshipEvidence) !== v["relationshipFingerprint"] || !relationshipCurrent(current.relationshipEvidence) || current.evidence === null || current.persistedScope !== "events_and_metric_evidence"
@@ -183,6 +226,35 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       return Object.freeze(signal?.aborted ? { status: "aborted" } : result);
     } catch (error) {
       if (began) try { database.exec("ROLLBACK"); } catch { /* Only this owned read transaction. */ }
+      if (error instanceof SafeError && error.code === "INVALID_IDENTITY_KEY") throw error;
+      throw new SafeError("DATABASE_ACCESS_FAILED");
+    }
+  }
+  function comparePredecessor(current: SourcePredecessor, expected: SourcePredecessor): void {
+    if (current.checkpointSeal !== expected.checkpointSeal || current.generationDigest !== expected.generationDigest) throw new SafeError("DATABASE_ACCESS_FAILED");
+  }
+  function readIngestionPinned(sourceId: string, context: IdentityContext): SourceIngestionCandidate {
+    const digest = newProjection(), source = readPinned(sourceId, digest), projection = source === null ? null : digest.digest("hex");
+    const checkpoint = readCheckpoint(database, sourceId, source, projection, context);
+    const predecessor = Object.freeze({ checkpointSeal: checkpoint?.generationSeal ?? null, generationDigest: generationObservation(source, projection) });
+    return Object.freeze({ source, checkpoint, predecessor });
+  }
+  function readSourceForIngestion(sourceId: string, context: IdentityContext): SourceIngestionCandidate {
+    identity(sourceId, "source", keyId); assertContext(context, keyId);
+    if (database.isTransaction) throw new SafeError("DATABASE_TRANSACTION_FAILED");
+    let began = false;
+    try {
+      database.exec("BEGIN"); began = true;
+      const bindings = database.prepare("SELECT CASE WHEN typeof(singleton)='integer' THEN singleton ELSE NULL END AS singleton, CASE WHEN typeof(key_id)='text' AND length(CAST(key_id AS BLOB))=32 THEN key_id ELSE NULL END AS key_id FROM source_store_identity LIMIT 2").all();
+      if (bindings.length > 1 || bindings.length === 1 && (bindings[0]!["singleton"] !== 1 || bindings[0]!["key_id"] === null)) throw new Error();
+      if (bindings.length === 0) {
+        if (database.prepare("SELECT 1 FROM source_event_headers LIMIT 1").get() !== undefined) throw new Error();
+      } else if (validateKeyId(bindings[0]!["key_id"]) !== keyId) throw new SafeError("INVALID_IDENTITY_KEY");
+      const result = readIngestionPinned(sourceId, context);
+      database.exec("COMMIT"); began = false;
+      return result;
+    } catch (error) {
+      if (began) try { database.exec("ROLLBACK"); } catch { /* Only our owned read. */ }
       if (error instanceof SafeError && error.code === "INVALID_IDENTITY_KEY") throw error;
       throw new SafeError("DATABASE_ACCESS_FAILED");
     }
@@ -205,7 +277,7 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       throw error;
     }
   }
-  function readPinned(sourceId: string): StoredSource | null {
+  function readPinned(sourceId: string, projection?: Hash): StoredSource | null {
     const first = database.prepare(`SELECT h.*, m.contract_version, m.turn_count, m.usage_count, m.observation_count, m.diagnostic_count, m.metric_bytes
       FROM source_event_headers h LEFT JOIN source_metric_headers m ON m.source_id = h.source_id WHERE h.source_id = ?`).get(sourceId);
     // Only bounded proof metadata crosses into JS, including malformed-table sentinels.
@@ -260,7 +332,7 @@ export function createSourceStore(database: DatabaseSync, key: string) {
         bytes += size;
         const event = validateEvent(JSON.parse(json) as unknown, header);
         if (event.id !== row["row_id"] || seen.has(`event:${event.id}`)) throw new Error();
-        seen.add(`event:${event.id}`); events.push(event); return;
+        seen.add(`event:${event.id}`); events.push(event); projectionFrame(projection, "event", event.id, event.id, json); return;
       }
       if (row["row_group"] !== 2 || !hasMetrics || size > MAX_METRIC_ROW_BYTES || metricBytes + size > MAX_SOURCE_METRIC_BYTES) throw new Error();
       const kind = metricKind(row["kind"]);
@@ -268,6 +340,7 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       const item = METRIC_VALIDATORS[kind](JSON.parse(json) as unknown, header), id = "id" in item ? item.id : null;
       if (id !== row["row_id"]) throw new Error();
       if (id !== null) { const key = `${kind}:${id}`; if (seen.has(key)) throw new Error(); seen.add(key); }
+      projectionFrame(projection, kind, actualCounts[kind], id, json);
       metricBytes += size; actualCounts[kind]++;
       switch (kind) {
         case "turn": turns.push(item as typeof turns[number]); break;
@@ -284,10 +357,10 @@ export function createSourceStore(database: DatabaseSync, key: string) {
     if (events.length !== count || bytes !== recordedBytes || metricBytes !== recordedMetricBytes
       || (Object.keys(expectedCounts) as MetricKind[]).some((kind) => expectedCounts[kind] !== actualCounts[kind])) throw new Error();
     const evidence: MetricEvidence | null = hasMetrics ? Object.freeze({ turns: Object.freeze(turns), usage: Object.freeze(usage), observations: Object.freeze(observations), diagnostics: Object.freeze(diagnostics), capabilities: capabilities! }) : null;
-    return Object.freeze({ ...header, revision: integer(first["revision"], 1), availability: first["availability"], events: Object.freeze(events), evidence, cacheEvidence, relationshipEvidence: readRelationships(header, hasMetrics),
+    return Object.freeze({ ...header, revision: integer(first["revision"], 1), availability: first["availability"], events: Object.freeze(events), evidence, cacheEvidence, relationshipEvidence: readRelationships(header, hasMetrics, projection),
       persistedScope: evidence === null ? "events_only" : "events_and_metric_evidence", aggregationReady: false, parserResumeReady: false });
   }
-  function readRelationships(h: SourceHeaderInput, hasMetrics: boolean): RelationshipEvidence | null {
+  function readRelationships(h: SourceHeaderInput, hasMetrics: boolean, projection?: Hash): RelationshipEvidence | null {
     const headers = database.prepare(`SELECT
       CASE WHEN typeof(contract_version)='integer' THEN contract_version ELSE NULL END AS contract_version,
       CASE WHEN typeof(capture_policy_version)='integer' THEN capture_policy_version ELSE NULL END AS capture_policy_version,
@@ -306,7 +379,7 @@ export function createSourceStore(database: DatabaseSync, key: string) {
         length(CAST(kind AS BLOB)) AS kind_length, (typeof(row_json)!='text' OR typeof(row_id)!='text' OR typeof(kind)!='text' OR typeof(ordinal)!='integer') AS bad_type
         FROM source_relationship_contributions WHERE source_id=? LIMIT ?)`)
       .get(h.sourceId, MAX_SOURCE_RELATIONSHIP_ROWS + 1)!;
-    if (headers.length === 0) { if (integer(budget["n"]) !== 0) throw new Error(); return null; }
+    if (headers.length === 0) { if (integer(budget["n"]) !== 0) throw new Error(); projectionFrame(projection, "relationship_header", null, null, JSON.stringify(null)); return null; }
     if (headers.length !== 1 || !hasMetrics) throw new Error();
     const header = headers[0]!;
     if (header["contract_version"] !== 1 || !["captured", "unavailable"].includes(header["status"] as string)) throw new Error();
@@ -316,6 +389,7 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       || counts[h.provider === "codex" ? "message" : "wrapper"] !== 0 || recordedBytes > MAX_SOURCE_RELATIONSHIP_BYTES
       || integer(budget["n"]) !== n || integer(budget["bytes"]) !== recordedBytes || integer(budget["largest"]) > MAX_RELATIONSHIP_ROW_BYTES
       || integer(budget["id_length"]) > 128 || integer(budget["kind_length"]) > 8 || integer(budget["bad_type"]) !== 0) throw new Error();
+    projectionFrame(projection, "relationship_header", null, null, JSON.stringify([header["contract_version"], policy, header["status"], header["reason"], counts.metadata, counts.wrapper, counts.message, recordedBytes]));
     if (header["status"] === "unavailable") {
       if (header["reason"] !== "relationship_budget_exceeded" || n !== 0 || recordedBytes !== 0) throw new Error();
       return Object.freeze({ contractVersion: 1, capturePolicyVersion: policy, status: "unavailable", provider: h.provider, reason: "relationship_budget_exceeded" });
@@ -337,6 +411,7 @@ export function createSourceStore(database: DatabaseSync, key: string) {
         if ("childEventIds" in item) links += item.childEventIds.length;
         if ("parentMessageId" in item) links += Number(item.parentMessageId !== null) + Number(item.sourceToolAssistantMessageId !== null);
         if (links > (h.provider === "codex" ? 1024 : 8192)) throw new Error();
+        projectionFrame(projection, kind, values[kind].length, item.id, row["row_json"]);
         seen.add(`${kind}:${item.id}`); bytes += size; values[kind].push(item);
       }
     } finally { cursor.return?.(); }
@@ -392,5 +467,5 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       throw new SafeError("DATABASE_ACCESS_FAILED");
     }
   }
-  return Object.freeze({ replaceSource, replaceSourceSnapshot, markUnavailable, readSource, confirmUnchangedSource, listSources });
+  return Object.freeze({ replaceSource, replaceSourceSnapshot, replaceSourceSnapshotWithCheckpoint, markUnavailable, readSource, readSourceForIngestion, confirmUnchangedSource, confirmUnchangedSourceWithCheckpoint, listSources });
 }

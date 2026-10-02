@@ -20,7 +20,7 @@ it("runs built help/version without creating private data or importing SQLite", 
   expect(help.status).toBe(0); expect(help.stdout).toContain("Usage: agentprof");
   expect(help.stderr).toBe(""); expect(existsSync(data)).toBe(false);
 });
-it.each(["open"])("returns honest pending command errors: %s", (command) => {
+it.each(["open"])("rejects an unavailable explicit open file without store I/O: %s", (command) => {
   const args = command === "open" ? [command, "FICTITIOUS_AGENTPROF_ARG_SENTINEL.html"] : [command];
   const data = join(temporaryDirectory(), "must-not-create");
   const result = run([...args, "--json", "--data-dir", data]);
@@ -28,7 +28,7 @@ it.each(["open"])("returns honest pending command errors: %s", (command) => {
   expect(result.stderr).not.toContain("SQLite");
   expect(result.status).toBe(2);
   expect(result.stdout).toBe("");
-  expect(JSON.parse(result.stderr).error.code).toBe("NOT_IMPLEMENTED");
+  expect(JSON.parse(result.stderr).error.code).toBe("OPEN_FILE_UNAVAILABLE");
   expect(result.stderr).not.toContain("FICTITIOUS_AGENTPROF_ARG_SENTINEL");
 });
 it("redacts raw unknown options/arguments and retains one structured error envelope", () => {
