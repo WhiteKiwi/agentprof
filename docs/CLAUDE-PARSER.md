@@ -10,7 +10,7 @@ UUID·parent·tool_use/tool_result·session/agent/sidechain 관계는 검증한 
 
 ## Adapter API and bounded state
 
-`src/parsers/claude/index.ts`는 `ClaudeAdapter`, `createClaudeAdapter`, `DEFAULT_CLAUDE_LIMITS`와 HMAC identity helper를 제공한다. `ingest(record, source)`는 immutable upsert batch, `snapshot()`은 canonical execution·turn·usage와 source observations·metadata·capabilities·state counts를 반환한다. `inspectRetainedState()`는 privacy·budget 검사용 안전한 상태만 반환한다. 이는 P4 durable checkpoint API가 아니다.
+`src/parsers/claude/index.ts`는 `ClaudeAdapter`, `createClaudeAdapter`, `DEFAULT_CLAUDE_LIMITS`와 HMAC identity helper를 제공한다. `ingest(record, source)`는 immutable upsert batch, `snapshot()`은 canonical execution·turn·usage와 source observations·metadata·capabilities·state counts를 반환한다. `inspectRetainedState()`는 privacy·budget 검사용 안전한 상태만 반환한다. 이는 P4 durable checkpoint API가 아니다. 추가된 `exportCheckpoint(binding, options?)`와 `ClaudeAdapter.restoreCheckpoint(context, encoded, expectedBinding, limits?)`는 ordinary single-source 상태를 제한된 토큰으로 저장하고 검증 후 새 파서에서 복원한다. 실제 검증과 지원 범위는 [P4-CLAUDE-CHECKPOINT](P4-CLAUDE-CHECKPOINT.md)를 따른다. 이 API는 source bytes 검증·durable storage·scanner resume 지원을 뜻하지 않는다.
 
 Claude 전용 타입은 `src/parsers/claude/types.ts`에 둔다. 공통 `NormalizedEvent`와 timing/status enum을 재사용하되 기존 Codex 출력·타입의 의미와 사용량 매핑은 바꾸지 않는다. source는 file identity·safe alias·byte offset·ordinal을 받는다. raw JSON 안의 annotation을 trusted context로 읽지 않는다.
 

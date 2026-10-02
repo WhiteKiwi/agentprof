@@ -140,3 +140,9 @@ export type ClaudeInputSource = Readonly<{
   ordinal: number;
   trustedFixtureContext?: ClaudeTrustedFixtureContext;
 }>;
+
+/** Caller assertions only: these coordinates do not prove source bytes or an LF boundary. */
+export type ClaudeCheckpointBinding = Readonly<{ sourceId: string; completedOffset: number; nextOrdinal: number }>;
+export type ClaudeCheckpointOptions = Readonly<{ maxBytes?: number }>;
+export type ClaudeCheckpointUnavailableReason = "unsupported_state" | "unsafe_positions" | "incompatible_binding" | "checkpoint_budget";
+export type ClaudeCheckpointExport = Readonly<{ status: "captured"; checkpoint: string } | { status: "unavailable"; reason: ClaudeCheckpointUnavailableReason }>;
