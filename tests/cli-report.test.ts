@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { mkdtemp, mkdir, writeFile, readFile, readdir, stat, rm } from "node:fs/promises";
+import { mkdtemp, realpath, mkdir, writeFile, readFile, readdir, stat, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it, vi } from "vitest";
@@ -23,7 +23,7 @@ function records(provider: "codex" | "claude") {
 }
 async function bytes(dir: string) { return Promise.all((await readdir(dir)).sort().map(async name => ({ name, bytes: await readFile(join(dir, name)), mode: (await stat(join(dir, name))).mode }))); }
 async function fixture(provider: "codex" | "claude" = "codex") {
-  const root = await mkdtemp(join(tmpdir(), "agentprof-cli-report-")), data = join(root, "data"), input = join(root, "input"), output = join(root, "report.html");
+  const root = await mkdtemp(join(await realpath(tmpdir()), "agentprof-cli-report-")), data = join(root, "data"), input = join(root, "input"), output = join(root, "report.html");
   await mkdir(input); const path = join(input, "synthetic.jsonl"); await writeFile(path, records(provider).map(r => JSON.stringify(r)).join("\n") + "\n");
   const scan = await runScan({ dataDir: data, codexRoot: provider === "codex" ? [input] : [], claudeRoot: provider === "claude" ? [input] : [] }); expect(scan.counts.committed).toBe(1);
   const key = JSON.parse(await readFile(join(data, "identity-key.json"), "utf8"));
@@ -59,7 +59,7 @@ it("reads the selected source and both unchanged analyzers once in a single pinn
   finally { store.mockRestore(); summary.mockRestore(); slow.mockRestore(); await rm(f.root, { recursive: true, force: true }); }
 });
 it("rejects incomplete selection, invalid source, roots and terminal-control paths without bootstrap", async () => {
-  const root = await mkdtemp(join(tmpdir(), "agentprof-invalid-report-")); try {
+  const root = await mkdtemp(join(await realpath(tmpdir()), "agentprof-invalid-report-")); try {
     const dataDir = join(root, "absent"), output = join(root, "out.html");
     const cases = [
       [{ dataDir, output }, "REPORT_SELECTION_REQUIRED"], [{ dataDir, source: full }, "REPORT_SELECTION_REQUIRED"],
