@@ -48,7 +48,44 @@ describe.skipIf(!baseline)("exact PR36 binary current-command parity (mandatory 
   expect(bytes(current)).toEqual(before);expect(bytes(old)).toEqual(oldBefore);
  });
  it("preserves all help/version bytes except the frozen additive stats-help hunk",()=>{
-  const data=join(temporaryDirectory(),"absent");for(const args of [["--version"],["--help"],["scan","--help"],["insights","--help"],["open","--help"]])expect(invoke(binary,data,args)).toEqual(invoke(baseline!,data,args));
+  const data=join(temporaryDirectory(),"absent");for(const args of [["--version"],["scan","--help"],["insights","--help"]])expect(invoke(binary,data,args)).toEqual(invoke(baseline!,data,args));
+  const pendingOpenHelp = `Usage: agentprof open [options] <file>
+
+Open a generated report (not implemented yet)
+
+Arguments:
+  file        generated HTML file
+
+Options:
+  -h, --help  display help for command
+`;
+  const trustedOpenHelp = `Usage: agentprof open [options] <file>
+
+Request the system opener for one explicitly trusted local HTML file
+
+Arguments:
+  file        existing local .html/.htm file
+
+Options:
+  -h, --help  display help for command
+
+macOS/Linux only. Open explicitly trusted local files: selected HTML may run scripts or contact remote resources.
+Canonical symlink targets are used; native opening may create OS/browser history.
+No scan, report generation, latest-file search, URLs or report --open. Global data/root options are validated but inert.
+A helper acknowledgement does not verify browser rendering. Timeout may mean the file is already open; no automatic retry.
+`;
+  const oldOpen=invoke(baseline!,data,["open","--help"]),currentOpen=invoke(binary,data,["open","--help"]);
+  expect(oldOpen).toEqual({status:0,stdout:pendingOpenHelp,stderr:""});
+  expect(currentOpen).toEqual({status:0,stdout:trustedOpenHelp,stderr:""});
+  expect(oldOpen.stdout+currentOpen.stdout).not.toMatch(/FICTITIOUS_|SQLite/);
+  expect(oldOpen.stdout+currentOpen.stdout).not.toContain(data);
+  const oldTop=invoke(baseline!,data,["--help"]),currentTop=invoke(binary,data,["--help"]);
+  expect(oldTop.status).toBe(0);expect(oldTop.stderr).toBe("");expect(currentTop.status).toBe(0);expect(currentTop.stderr).toBe("");
+  const pendingOpenRow="  open <file>                Open a generated report (not implemented yet)\n";
+  const trustedOpenRow="  open <file>                Request the system opener for one explicitly\n                             trusted local HTML file\n";
+  expect(oldTop.stdout.split(pendingOpenRow)).toHaveLength(2);expect(currentTop.stdout.split(trustedOpenRow)).toHaveLength(2);
+  expect(oldTop.stdout.split(trustedOpenRow)).toHaveLength(1);expect(currentTop.stdout.split(pendingOpenRow)).toHaveLength(1);
+  expect(currentTop.stdout.replace(trustedOpenRow,pendingOpenRow)).toBe(oldTop.stdout);
   const old=invoke(baseline!,data,["stats","--help"]),current=invoke(binary,data,["stats","--help"]);expect(current.status).toBe(old.status);expect(current.stderr).toBe(old.stderr);
   const option="  --search-recurrence   show completed Claude native search recurrence\n";
   const note="--search-recurrence requires --source and excludes --failures/--read-revisits/--invocation-overlap; Claude parser2 Grep/Glob only; exact request recurrence, not equal results or waste.\n";

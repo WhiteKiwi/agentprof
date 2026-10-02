@@ -222,7 +222,37 @@ describe.skipIf(!baselineBinary)("frozen baseline exact old-command parity", () 
   });
   it("preserves unchanged help/version bytes; report and top-level help intentionally changed", () => {
     const data = join(temporaryDirectory(), "absent");
-    for (const args of [["--version"], ["scan", "--help"], ["insights", "--help"], ["open", "--help"]]) expect(invoke(binary, data, args)).toEqual(invoke(baselineBinary!, data, args));
+    for (const args of [["--version"], ["scan", "--help"], ["insights", "--help"]]) expect(invoke(binary, data, args)).toEqual(invoke(baselineBinary!, data, args));
+    const pendingOpenHelp = `Usage: agentprof open [options] <file>
+
+Open a generated report (not implemented yet)
+
+Arguments:
+  file        generated HTML file
+
+Options:
+  -h, --help  display help for command
+`;
+    const trustedOpenHelp = `Usage: agentprof open [options] <file>
+
+Request the system opener for one explicitly trusted local HTML file
+
+Arguments:
+  file        existing local .html/.htm file
+
+Options:
+  -h, --help  display help for command
+
+macOS/Linux only. Open explicitly trusted local files: selected HTML may run scripts or contact remote resources.
+Canonical symlink targets are used; native opening may create OS/browser history.
+No scan, report generation, latest-file search, URLs or report --open. Global data/root options are validated but inert.
+A helper acknowledgement does not verify browser rendering. Timeout may mean the file is already open; no automatic retry.
+`;
+    const oldOpen = invoke(baselineBinary!, data, ["open", "--help"]), currentOpen = invoke(binary, data, ["open", "--help"]);
+    expect(oldOpen).toEqual({ status: 0, stdout: pendingOpenHelp, stderr: "" });
+    expect(currentOpen).toEqual({ status: 0, stdout: trustedOpenHelp, stderr: "" });
+    expect(oldOpen.stdout + currentOpen.stdout).not.toMatch(/FICTITIOUS_|SQLite/);
+    expect(oldOpen.stdout + currentOpen.stdout).not.toContain(data);
     const old = invoke(baselineBinary!, data, ["stats", "--help"]), current = invoke(binary, data, ["stats", "--help"]);
     expect(current.status).toBe(old.status); expect(current.stderr).toBe(old.stderr);
     let preserved = current.stdout;
