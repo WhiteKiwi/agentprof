@@ -35,7 +35,11 @@ try {
   assert.equal(output, metadata.version);
   const help = npm(["--cache", cache, "--ignore-scripts", "exec", "--yes", "--package", archive, "--", "agentprof", "--help"], execute);
   assert(help.includes("Usage: agentprof"));
-  assert(help.includes("not implemented yet"));
+  assert(help.includes("open <file>"));
+  const openHelp = npm(["--cache", cache, "--ignore-scripts", "exec", "--yes", "--package", archive, "--", "agentprof", "open", "--help"], execute);
+  assert(openHelp.includes("explicitly trusted local"));
+  assert(openHelp.includes("does not verify browser rendering"));
+  assert(openHelp.includes("no automatic retry"));
   npm(["install", "--global", "--prefix", prefix, "--cache", cache, "--ignore-scripts", "--no-audit", "--no-fund", archive], execute);
   const globalVersion = execFileSync(join(prefix, "bin", "agentprof"), ["--version"], { cwd: execute, env: environment, encoding: "utf8" }).trim();
   assert.equal(globalVersion, metadata.version);

@@ -8,6 +8,7 @@ import { formatInsightsResult, runInsights } from "./insights.js";
 import type { InsightsArguments } from "./insights.js";
 import { runReport, formatReportResult } from "./report.js";
 import type { ReportArguments } from "./report.js";
+import { formatOpenResult, runOpen } from "./open.js";
 import { VERSION } from "./version.js";
 
 function collect(value: string, previous: string[]): string[] {
@@ -26,7 +27,6 @@ export async function run(argv: string[]): Promise<void> {
     .exitOverride()
     .configureOutput({ writeErr: () => undefined });
 
-  const pending = () => { throw new SafeError("NOT_IMPLEMENTED"); };
   program.command("scan").description("Collect explicit --codex-root/--claude-root inputs only (at least one required)")
     .addHelpText("after", "\nBounded scan: at most 16 roots, 64 sources, 256 directories, 4096 nodes and yielded entries,\n16 MiB/32768 records per source, 256 diagnostic samples. No aggregation or parser resume.")
     .action(async () => {
@@ -86,8 +86,16 @@ export async function run(argv: string[]): Promise<void> {
     process.stdout.write(formatReportResult(result, options.json === true));
     process.exitCode = result.status === "published" ? 0 : 1;
   });
-  program.command("open").description("Open a generated report (not implemented yet)")
-    .argument("<file>", "generated HTML file").action(pending);
+  program.command("open").description("Request the system opener for one explicitly trusted local HTML file")
+    .argument("<file>", "existing local .html/.htm file")
+    .allowExcessArguments(false)
+    .addHelpText("after", "\nmacOS/Linux only. Open explicitly trusted local files: selected HTML may run scripts or contact remote resources.\nCanonical symlink targets are used; native opening may create OS/browser history.\nNo scan, report generation, latest-file search, URLs or report --open. Global data/root options are validated but inert.\nA helper acknowledgement does not verify browser rendering. Timeout may mean the file is already open; no automatic retry.")
+    .action(async (file: string) => {
+      const options = program.opts<{ json?: boolean }>();
+      const result = await runOpen({ file });
+      process.stdout.write(formatOpenResult(result, options.json === true));
+      process.exitCode = 0;
+    });
 
   try {
     if (argv.length <= 2) {
