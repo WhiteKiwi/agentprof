@@ -6,7 +6,7 @@ import { types } from "node:util";
 import { SafeError } from "../privacy/diagnostics.js";
 import { ensurePrivateDirectory, fileCode, openPrivateFile } from "../privacy/paths.js";
 
-export const DATABASE_SCHEMA_VERSION = 5;
+export const DATABASE_SCHEMA_VERSION = 6;
 
 export function transaction<T>(database: DatabaseSync, operation: (() => T) & (T extends PromiseLike<unknown> ? never : unknown)): T {
   if (types.isAsyncFunction(operation)) throw new SafeError("DATABASE_TRANSACTION_FAILED");
@@ -46,7 +46,7 @@ export function migrate(database: DatabaseSync): void {
       throw new SafeError("DATABASE_MIGRATION_FAILED");
     }
     const recordedVersion = Math.max(1, current);
-    const markers = database.prepare("SELECT CASE WHEN typeof(version)='integer' THEN version ELSE NULL END AS version FROM schema_migrations ORDER BY version LIMIT 6").all();
+    const markers = database.prepare("SELECT CASE WHEN typeof(version)='integer' THEN version ELSE NULL END AS version FROM schema_migrations ORDER BY version LIMIT 7").all();
     if (markers.length !== recordedVersion || markers.some((row, i) => row["version"] !== i + 1)) throw new SafeError("DATABASE_MIGRATION_FAILED");
     if (current < DATABASE_SCHEMA_VERSION) {
       if (current < 2) database.exec(`
@@ -133,6 +133,22 @@ export function migrate(database: DatabaseSync): void {
         ) STRICT;
         INSERT INTO schema_migrations(version) VALUES (5);
         PRAGMA user_version = 5;
+      `);
+      if (current < 6) database.exec(`
+        CREATE TABLE source_parser_checkpoints (
+          source_id TEXT PRIMARY KEY REFERENCES source_event_headers(source_id),
+          contract_version INTEGER NOT NULL CHECK(contract_version = 1),
+          next_ordinal INTEGER NOT NULL CHECK(next_ordinal BETWEEN 0 AND 32768),
+          max_file_bytes INTEGER NOT NULL CHECK(max_file_bytes BETWEEN 1 AND 67108864),
+          max_records INTEGER NOT NULL CHECK(max_records BETWEEN 1 AND 32768 AND next_ordinal <= max_records),
+          max_line_bytes INTEGER NOT NULL CHECK(max_line_bytes BETWEEN 1 AND 1048576),
+          checkpoint_bytes INTEGER NOT NULL CHECK(checkpoint_bytes BETWEEN 1 AND 4194304),
+          checkpoint_json TEXT NOT NULL CHECK(length(CAST(checkpoint_json AS BLOB)) = checkpoint_bytes),
+          adapter_limits_fingerprint TEXT NOT NULL CHECK(length(CAST(adapter_limits_fingerprint AS BLOB)) = 64),
+          generation_seal TEXT NOT NULL CHECK(length(CAST(generation_seal AS BLOB)) <= 128)
+        ) STRICT;
+        INSERT INTO schema_migrations(version) VALUES (6);
+        PRAGMA user_version = 6;
       `);
     }
     database.exec("COMMIT");

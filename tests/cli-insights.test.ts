@@ -105,7 +105,7 @@ it("event-only and unavailable generations succeed without claiming a healthy ze
   before = bytes(f.data); r = await runInsights({ dataDir: f.data, source: f.id });
   expect(r.analysis).toMatchObject({ revision: 3, candidates: null, suppressionReason: "source_unavailable" }); expect(bytes(f.data)).toEqual(before);
 });
-it.each([0, 3, 4, 6])("schema %s preserves exact safe code/message and bytes", async version => {
+it.each([0, 3, 4, 5, 7])("schema %s preserves exact safe code/message and bytes", async version => {
   const f = await fixture(), db = new DatabaseSync(join(f.data, "agentprof.sqlite")); db.exec(`PRAGMA user_version=${version}`); db.close();
   const before = bytes(f.data), r = run(["insights", "--source", f.id, "--data-dir", f.data, "--json"]);
   expect(jsonError(r).error).toEqual({ code: "DATABASE_SCHEMA_INCOMPATIBLE", message: MESSAGES.DATABASE_SCHEMA_INCOMPATIBLE });
