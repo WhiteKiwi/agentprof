@@ -16,6 +16,8 @@ import { CodexAdapter, createCodexAdapter } from "../src/parsers/codex/index.js"
 import { SCAN_LIMITS, scanSources } from "../src/scanner/scan-run.js";
 import { ingestSourceFile } from "../src/scanner/source-ingest.js";
 import { temporaryDirectory } from "./helpers.js";
+import { assertFreshParserVersionParity } from "./claude-parser-version-parity.js";
+import { migrateHistoricalSchema5Copy } from "./claude-historical-schema-copy.js";
 
 type Provider = "codex" | "claude";
 const secret = Buffer.alloc(32, 37), keyId = "4".repeat(32);
@@ -273,20 +275,31 @@ const currentBinary = join(root, "dist/agentprof.cjs"), baselineBinary = process
 const installedBinary = process.env["AGENTPROF_INSTALLED_BINARY"];
 
 describe.skipIf(!baselineBinary)("frozen pre-change CLI byte parity", () => {
-  it.each(fixtureNames)("preserves status/stdout/stderr for fresh and reused %s", name => {
+  it.each(fixtureNames)("preserves status/stdout/stderr for fresh and reused %s", async name => {
     const directory = temporaryDirectory(), provider: Provider = name.startsWith("codex") ? "codex" : "claude", input = join(directory, "input"); mkdirSync(input);
     const path = join(input, name); copyFileSync(join(fixtures, name), path);
     const before = privateData(directory, "baseline"), after = privateData(directory, "current");
     const scan = ["scan", `--${provider}-root`, input];
     const first = invoke(currentBinary, after, [...scan, "--json"]);
-    expect(first).toEqual(invoke(baselineBinary!, before, [...scan, "--json"]));
+    assertFreshParserVersionParity(provider, [...scan, "--json"], first, invoke(baselineBinary!, before, [...scan, "--json"]));
     expect(JSON.parse(first.stdout).result.counts.committed).toBe(1);
     const sourceId = keyed("source", provider, path), frozen = files(after), frozenBaseline = files(before);
+    const rejected = invoke(currentBinary, before, ["stats", "--list-sources", "--json"]);
+    expect(rejected.status).toBe(2); expect(rejected.stdout).toBe("");
+    expect(JSON.parse(rejected.stderr).error).toEqual({ code: "DATABASE_SCHEMA_INCOMPATIBLE", message: "Read-only source commands require a compatible existing database. No migration was attempted." });
+    expect(files(before)).toEqual(frozenBaseline);
+    const historicalCopy = join(directory, "historical-schema6");
+    await migrateHistoricalSchema5Copy(before, historicalCopy);
+    const frozenCopy = files(historicalCopy);
     for (const args of [scan, ["stats", "--list-sources"], ["stats", "--source", sourceId],
       ["insights", "--source", sourceId], ["stats", "--failures", "--source", sourceId]]) {
-      for (const json of [[], ["--json"]]) expect(invoke(currentBinary, after, [...args, ...json])).toEqual(invoke(baselineBinary!, before, [...args, ...json]));
+      for (const json of [[], ["--json"]]) {
+        const selection = [...args, ...json], actual = invoke(currentBinary, after, selection), historical = invoke(baselineBinary!, before, selection);
+        assertFreshParserVersionParity(provider, selection, actual, historical);
+        if (args[0] !== "scan") expect(invoke(currentBinary, historicalCopy, selection)).toEqual(historical);
+      }
     }
-    expect(files(after)).toEqual(frozen); expect(files(before)).toEqual(frozenBaseline);
+    expect(files(after)).toEqual(frozen); expect(files(before)).toEqual(frozenBaseline); expect(files(historicalCopy)).toEqual(frozenCopy);
   }, 30_000);
 });
 

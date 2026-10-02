@@ -216,8 +216,28 @@ The first screen shows measured source-prefix coverage and limitations, followed
 A stable trusted existing parent directory and a previously absent output are required. The report never overwrites a target. Publication is mode 0600 using supported same-directory no-replace hard-link semantics; every error after linking reports that the file was published, with durability and cleanup qualification. This does not promise defense against hostile ancestor replacement races. No JavaScript, external resources, raw data or hidden JSON is embedded. This slice does not complete all P5/P6/P7 scope or the planned full-product flow below.
 
 
+## Ordinary Claude search lookup evidence (2026-10-02)
+
+The reviewed [native search contract](P5-CLAUDE-SEARCH-EVIDENCE.md) makes opaque lookup identity available for ordinary directly recorded Claude Grep/Glob requests in a finite supported input subset. Exact query, project/root, tool, direct provider version, option values and omissions remain distinct; missing or unsupported evidence stays null. No raw request or result content is retained. Shell/MCP/custom/web searches and the documented default native Bash search path are excluded.
+
+This is evidence for future analysis, not a repeated-search ratio, new diagnostic, complete-result claim, Detected Waste total or measured saving. Current Claude interpretation becomes parserVersion 2; historical version1 data stays read-only-compatible and an explicit scan replays an obsolete source once. Prior semantic checkpoints cannot resume under the changed parser. The linked contract records recovery, exact test hashes and executed versus pending verification; the narrow Project owns current status.
+
+## Pinned development toolchain qualification (2026-10-02, PR #37)
+
+Repository development uses mise with Node 24.21.0 and pnpm 10.33.0, a frozen pnpm lockfile, and explicitly disabled dependency-install scripts. Supported product runtimes remain Node >=24.15.0 on macOS/Linux. The CI matrix continues to exercise 24.15.0, 24.21.0 and 26.7.0, with a separate unsupported-runtime rejection check.
+
+The distributed npm package retains its executable, runtime dependency pins, artifact allowlist and installation contract. Development-tool changes must preserve ordinary npm pack, npm exec and global installed CLI behavior without requiring mise or pnpm on the consumer machine. Qualification includes a clean frozen install, full checks, enabled packaging lifecycle, installed artifacts and unsupported-runtime behavior. This contract does not authorize package publication or complete the broader P7 pilot. [TOOLCHAIN](TOOLCHAIN.md) records the reviewed plan and actual evidence.
+
+
 ## Bounded ordinary Claude durable resume
 
 The reviewed [ordinary Claude durable-resume contract](P4-CLAUDE-RESUME.md) supersedes earlier full-replay-only statements only for compatible ordinary Claude source generations. After verifying authenticated bounded state and every previously observed byte including unfinished tails, repeated scans may skip ingestion of the completed prefix and continue at its verified LF boundary. The complete public snapshot, proof, checkpoint and revision remain atomic, with original-generation concurrency checks on every continuation or replay path. Valid incompatibility or stable changed bytes requires full replay; authenticated corruption and observed I/O instability fail without replacing evidence. Optional checkpoint absence remains supported. Changed Codex sources retain full replay. Both public readiness flags remain false, public outputs are unchanged, and no performance, savings or broad P4 completion is claimed. Schema 6 requires an authorized write-open migration before exact-current read-only commands can read an older store.
 
 Local qualification (2026-10-02): the bounded behavior above passed the reviewed synthetic persistence, original-generation race, every-LF continuation, same-read byte-proof and five actual crash/restart gates on Linux. Public CLI/read-only and installed-artifact parity passed within the recorded limits. See [executed verification](P4-CLAUDE-RESUME.md#executed-implementation-verification--2026-10-02t1313z) for exact counts, the two historical-help cases not run, and pending independent-provider integration/remote-CI/macOS gates. Both readiness flags remain false.
+
+
+### Ordinary Claude search durable-upgrade qualification
+
+The existing durable contract also requires an authentic parser-v1 generation to replay once under parser v2, then preserve native search lookup evidence through unchanged reopen and suffix continuation. Corrupt old state and stale original revisions remain hard rejection boundaries. [The integration supplement](P4-CLAUDE-SEARCH-RESUME.md) defines synthetic qualification; public readiness, coverage and performance claims do not change.
+
+The combined ordinary Claude path is now locally qualified on the pinned main106d6c toolchain: authentic old-generation upgrade, unchanged reopen, two suffix continuations, corrupted-state rejection, original-CAS races and strict read-only schema compatibility passed. [Execution receipts](P4-CLAUDE-SEARCH-RESUME.md#integrated-toolchain-and-complete-local-qualification--2026-10-02t1531z) retain optional-test and runtime limits; this does not establish broad provider coverage or measured savings.

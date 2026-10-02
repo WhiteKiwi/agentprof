@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { temporaryDirectory } from "./helpers.js";
+import { assertFreshParserVersionParity } from "./claude-parser-version-parity.js";
+import { migrateHistoricalSchema5Copy } from "./claude-historical-schema-copy.js";
 import { runStats, formatStatsResult } from "../src/cli/stats.js";
 import type { StatsArguments, StatsResult } from "../src/cli/stats.js";
 const runRevisits = async (options: StatsArguments) => await runStats({ ...options, readRevisits: true }) as Extract<StatsResult, {mode:"selected_source_read_revisits"}>;
@@ -190,20 +192,31 @@ function seeded(root: string, name: string) {
   return data;
 }
 describe.skipIf(!baselineBinary)("frozen baseline exact old-command parity", () => {
-  it.each(inheritedFixtures)("retains all initial/reused scans and list/stats/insights/failures for %s", name => {
+  it.each(inheritedFixtures)("retains all initial/reused scans and list/stats/insights/failures for %s", async name => {
     expect(inheritedFixtures).toHaveLength(10);
     const root = temporaryDirectory(), input = join(root, "input"); mkdirSync(input); copyFileSync(join(fixtureDirectory, name), join(input, "synthetic.jsonl"));
     const old = seeded(root, "old"), current = seeded(root, "current"), provider = name.startsWith("codex") ? "codex" : "claude";
     const scan = ["scan", `--${provider}-root`, input];
     const initial = invoke(binary, current, [...scan, "--json"]);
-    expect(initial).toEqual(invoke(baselineBinary!, old, [...scan, "--json"]));
+    assertFreshParserVersionParity(provider, [...scan, "--json"], initial, invoke(baselineBinary!, old, [...scan, "--json"]));
     expect(JSON.parse(initial.stdout).result.counts.committed).toBe(1);
     const sourceId = JSON.parse(invoke(binary, current, ["stats", "--list-sources", "--json"]).stdout).result.catalogue.items[0].sourceId;
     const before = bytes(current), oldBefore = bytes(old);
+    const rejected = invoke(binary, old, ["stats", "--list-sources", "--json"]);
+    expect(rejected.status).toBe(2); expect(rejected.stdout).toBe("");
+    expect(JSON.parse(rejected.stderr).error).toEqual({ code: "DATABASE_SCHEMA_INCOMPATIBLE", message: "Read-only source commands require a compatible existing database. No migration was attempted." });
+    expect(bytes(old)).toEqual(oldBefore);
+    const historicalCopy = join(root, "historical-schema6");
+    await migrateHistoricalSchema5Copy(old, historicalCopy);
+    const copiedBefore = bytes(historicalCopy);
     for (const args of [scan, ["stats", "--list-sources"], ["stats", "--source", sourceId], ["insights", "--source", sourceId], ["stats", "--source", sourceId, "--failures"]]) {
-      for (const json of [[], ["--json"]]) expect(invoke(binary, current, [...args, ...json])).toEqual(invoke(baselineBinary!, old, [...args, ...json]));
+      for (const json of [[], ["--json"]]) {
+        const selection = [...args, ...json], actual = invoke(binary, current, selection), historical = invoke(baselineBinary!, old, selection);
+        assertFreshParserVersionParity(provider, selection, actual, historical);
+        if (args[0] !== "scan") expect(invoke(binary, historicalCopy, selection)).toEqual(historical);
+      }
     }
-    expect(bytes(current)).toEqual(before); expect(bytes(old)).toEqual(oldBefore);
+    expect(bytes(current)).toEqual(before); expect(bytes(old)).toEqual(oldBefore); expect(bytes(historicalCopy)).toEqual(copiedBefore);
     const oldHuman = seeded(root, "old-human"), currentHuman = seeded(root, "current-human");
     expect(invoke(binary, currentHuman, scan)).toEqual(invoke(baselineBinary!, oldHuman, scan));
   });
