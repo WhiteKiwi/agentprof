@@ -222,6 +222,12 @@ The reviewed [native search contract](P5-CLAUDE-SEARCH-EVIDENCE.md) makes opaque
 
 This is evidence for future analysis, not a repeated-search ratio, new diagnostic, complete-result claim, Detected Waste total or measured saving. Current Claude interpretation becomes parserVersion 2; historical version1 data stays read-only-compatible and an explicit scan replays an obsolete source once. Prior semantic checkpoints cannot resume under the changed parser. The linked contract records recovery, exact test hashes and executed versus pending verification; the narrow Project owns current status.
 
+## Pinned development toolchain qualification (2026-10-02, PR #37)
+
+Repository development uses mise with Node 24.21.0 and pnpm 10.33.0, a frozen pnpm lockfile, and explicitly disabled dependency-install scripts. Supported product runtimes remain Node >=24.15.0 on macOS/Linux. The CI matrix continues to exercise 24.15.0, 24.21.0 and 26.7.0, with a separate unsupported-runtime rejection check.
+
+The distributed npm package retains its executable, runtime dependency pins, artifact allowlist and installation contract. Development-tool changes must preserve ordinary npm pack, npm exec and global installed CLI behavior without requiring mise or pnpm on the consumer machine. Qualification includes a clean frozen install, full checks, enabled packaging lifecycle, installed artifacts and unsupported-runtime behavior. This contract does not authorize package publication or complete the broader P7 pilot. [TOOLCHAIN](TOOLCHAIN.md) records the reviewed plan and actual evidence.
+
 
 ## Completed native search recurrence (2026-10-02)
 

@@ -133,3 +133,14 @@ Latest status: the rebased candidate on exact main `ffd87e1dc1bcbc21d925d7466ae1
 Fresh main's six external test/document amendments are preserved: the two shared CLI tests differ from main only by the four exact reviewed help assertions, and the other four external files are byte-identical. Feature production and the six frozen v4 fixture/test files remain identical to the original reviewed implementation. The 208 unaffected inherited files are unchanged.
 
 The 52 optional full-suite skips are disclosed; the recurrence/current-main installed slice separately completed its 12 optional-environment cases. The older historical-baseline suites remain NOT RUN without authentic historical binaries. Previous-base failures and successful retries stay in the historical evidence above; they are not erased or conflated with this fresh-main pass. Root owns final documentation review, fresh ref guard, publication and exact-head remote CI. No merge, deployment, release or broad P5 completion is claimed.
+
+
+## Bounded main toolchain integration (2026-10-02)
+
+PR37 was externally merged to main `106d6c1329499fdb57e63c7aad3f8aac78987249`, tree `b6ff2d34aa5f734edd8550f7413e487618c87c43`. This bounded integration preserves that main's complete ten-path mise/pnpm/workflow/document change, including the removal of package-lock.json, without rewriting its workflow or introducing another dependency update. The intended non-force feature merge has parents existing PR41 head `d76245010a1dbbef64a4c0306c6700ad1e8e6649` and main `106d6c1329499fdb57e63c7aad3f8aac78987249`; it does not merge the feature into main.
+
+All 218 incoming main blobs/modes were verified. The npm and pnpm lockfiles independently match all 84 package-name/version/integrity pairs. All 129 production/test/bin/build/artifact-verifier paths in the incoming baseline match prior main byte-for-byte. Feature production and tests remain byte-identical to published PR41, and each shared document retains the entire incoming main prefix followed by the exact feature-owned suffix and this evidence. No raw-data or behavior change is included.
+
+Prior exact-head CI remains historical evidence: PR41 d7624501 passed hosted Node24.15/24.21/26.7 and unsupported-runtime checks; each supported job recorded 60 files/1,575 passes/52 optional skips and 54-file artifact PASS on an actual checkout with the exact published tree. The previously recorded local current-main/installed recurrence32/32 pass remains unchanged.
+
+Root deliberately did not repeat identical full local suites solely for toolchain-only drift. Local mise/pnpm installation and execution for this integration are NOT RUN. The new exact-head hosted pnpm full/typecheck/build/artifact matrix is a required pending qualification gate after parent publication. Existing skips, historical failures and non-causal metric limits remain visible. No merge into main, release, deployment, toolchain tweak or broad P5 completion is authorized.
