@@ -178,14 +178,14 @@ describe("relationship capture and unchanged source lifecycle", () => {
       const initial = await ingestSourceFile(store, context, { path, provider: "claude", expectedRevision: null, maxFileBytes: SCAN_LIMITS.fileBytes });
       const first = store.readSource(initial.sourceId)!;
       if (migrated) {
-        db.exec("DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DELETE FROM schema_migrations WHERE version=5; PRAGMA user_version=4");
+        db.exec("DROP TABLE source_parser_checkpoints; DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DELETE FROM schema_migrations WHERE version>=5; PRAGMA user_version=4");
         db.close(); db = await openDatabase(directory); store = createSourceStore(db, keyId);
       } else {
         expect(store.replaceSourceSnapshot(snapshotInput(first), 1)).toEqual({ status: "committed", revision: 2 });
       }
       const historical = store.readSource(initial.sourceId)!; expect(historical.relationshipEvidence).toBeNull();
       expect(historical.cacheEvidence).toEqual(first.cacheEvidence); expect(historical.evidence).toEqual(first.evidence); expect(historical.events).toEqual(first.events);
-      const ingest = vi.spyOn(ClaudeAdapter.prototype, "ingest"), replace = vi.fn(store.replaceSourceSnapshot), watched = { ...store, replaceSourceSnapshot: replace };
+      const ingest = vi.spyOn(ClaudeAdapter.prototype, "ingest"), replace = vi.fn(store.replaceSourceSnapshotWithCheckpoint), watched = { ...store, replaceSourceSnapshotWithCheckpoint: replace };
       const run = await scanSources(watched, context, [{ provider: "claude", path }]);
       expect(run.counts).toMatchObject({ committed: 1, unchanged: 0, failed: 0 }); expect(ingest).toHaveBeenCalledTimes(3); expect(replace).toHaveBeenCalledTimes(1);
       const captured = store.readSource(initial.sourceId)!;

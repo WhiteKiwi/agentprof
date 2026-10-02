@@ -265,3 +265,14 @@ A separate development contributor implemented the bounded successor on merged m
 
 
 Parent macOS qualification amendment (2026-10-02): resolve the synthetic temporary parent with `realpath`/`realpathSync` in the two report CLI fixture files before `mkdtemp`, as planned in [P6-SOURCE-REPORT](P6-SOURCE-REPORT.md#independent-parent-qualification-amendment--macos-fixtures-2026-10-02). A separate development contributor makes this bounded test-only correction; parent retains review/publication and the three reserved documents. Verify ordinary macOS temporary paths with every existing assertion and production guard unchanged, then run supported-runtime/full optional/installed/artifact qualification and record browser results distinctly.
+
+
+## P4 Claude durable resume — reviewed slice
+
+Implement [P4-CLAUDE-RESUME](P4-CLAUDE-RESUME.md) on independently verified merged main 063ee04b, preserving PR35 and independent provider slices. The separate developer admission was saved and reloaded in the Project before code.
+
+1. Add schema 6 optional source-owned checkpoint and bounded metadata/payload validation; stream exact canonical public rows into the fixed projection digest. Verify atomic 0–5 migration, exact six markers, original CAS, optional seal and generationDigest guards, current-token projection equality and no-repair corruption.
+2. Add same-descriptor prior-byte verification and suffix decoding with the existing reader. Keep a rolling 4096-byte boundary plus bounded reader chunk and preserve the last complete LF snapshot through pending-tail chunks. Verify exact parsing-read whole-file and boundary proofs, total ordinals, close-before-commit, stable mismatch and hard contradictory-boundary handling.
+3. Route Claude scanning through fresh candidate/confirmation APIs and retain the original predecessor on all fallback paths; preserve Codex behavior and public shapes. Freeze source for independent review before broad tests. Verify focused one-worker/512MiB tests and exact frozen oracles, then separately scheduled SIGKILL/full/installed/artifact gates. Parent owns publication/review; no merge or release is implied.
+
+Executed qualification (2026-10-02): independent source review cleared the seven production files and bounded repair delta; typecheck/build, all 110 new tests including five real SIGKILL gates, the inherited focus, complete default suite and unchanged artifact script passed on Linux. Existing optional installed/current-main parity contributed 38 selected passes, with two historical-help cases explicitly not run against an unsuitable current baseline. A separate seven-variant exact current-main/current/installed help check passed. Detailed commands, counts, failed-development receipts and unrun integration/runtime gates are in [P4-CLAUDE-RESUME](P4-CLAUDE-RESUME.md#executed-implementation-verification--2026-10-02t1313z). No production/test bytes changed after the reviewed V3 freeze.
