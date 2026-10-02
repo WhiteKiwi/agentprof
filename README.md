@@ -60,7 +60,7 @@ The initial implementation plan is TypeScript, Node.js ≥24.15.0, SQLite, and a
 
 ## Development
 
-The repository pins Node 24.21.0 and pnpm 10.33.0 with mise. Review and trust the checked-in tool configuration, then run:
+The repository pins Node 24.21.0 and pnpm 10.34.6 with mise. Review and trust the checked-in tool configuration, then run:
 
 ```bash
 mise trust
