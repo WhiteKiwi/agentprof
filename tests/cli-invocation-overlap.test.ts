@@ -8,17 +8,17 @@ import { describe, expect, it, vi } from "vitest";
 import { temporaryDirectory } from "./helpers.js";
 import { runStats, formatStatsResult } from "../src/cli/stats.js";
 import type { StatsArguments, StatsResult } from "../src/cli/stats.js";
-const runRevisits = async (options: StatsArguments) => await runStats({ ...options, readRevisits: true }) as Extract<StatsResult, {mode:"selected_source_read_revisits"}>;
+const runOverlap = async (options: StatsArguments) => await runStats({ ...options, invocationOverlap: true }) as Extract<StatsResult, {mode:"selected_source_invocation_overlap"}>;
 import { openDatabase } from "../src/db/database.js";
 import { createSourceStore } from "../src/db/source-store.js";
 import * as sourceStoreModule from "../src/db/source-store.js";
-import * as analysisModule from "../src/analysis/source-read-revisits.js";
+import * as analysisModule from "../src/analysis/source-invocation-overlap.js";
 import { loadOrCreateIdentityContext } from "../src/normalize/identity.js";
 import { MESSAGES } from "../src/privacy/diagnostics.js";
 const binary = fileURLToPath(new URL("../dist/agentprof.cjs", import.meta.url));
 const full = "h1:" + "a".repeat(32) + ":source:" + "b".repeat(64);
 const privateSentinel = "FICTITIOUS_FAILURES_PRIVATE_SENTINEL";
-const run = (args: string[]) => spawnSync(process.execPath, [binary, ...args.flatMap(arg => arg === "stats" ? ["stats", "--read-revisits"] : [arg])], { encoding: "utf8", env: { ...process.env, CLAUDE_CONFIG_DIR: "\nINVALID_UNRELATED" } });
+const run = (args: string[]) => spawnSync(process.execPath, [binary, ...args.flatMap(arg => arg === "stats" ? ["stats", "--invocation-overlap"] : [arg])], { encoding: "utf8", env: { ...process.env, CLAUDE_CONFIG_DIR: "\nINVALID_UNRELATED" } });
 function bytes(dir: string) { return readdirSync(dir).sort().map(name => ({ name, bytes: readFileSync(join(dir, name)), mode: statSync(join(dir, name)).mode })); }
 function jsonError(r: ReturnType<typeof run>) { expect(r.status).toBe(2); expect(r.stdout).toBe(""); return JSON.parse(r.stderr); }
 const epoch = Date.UTC(2026, 8, 20), at = (ms: number) => new Date(epoch + ms).toISOString();
@@ -39,13 +39,13 @@ async function fixture(provider: "codex" | "claude" = "codex") {
   await rm(input, { recursive: true });
   const context = await loadOrCreateIdentityContext(data), db = await openDatabase(data), store = createSourceStore(db, context.keyId);
   const id = store.listSources().items[0]!.sourceId, saved = store.readSource(id)!;
-  const expected = analysisModule.analyzeSourceReadRevisits(saved); db.close();
+  const expected = analysisModule.analyzeSourceInvocationOverlap(saved); db.close();
   return { root, data, context, id, saved, expected };
 }
 it.each([
   ["stats"], ["stats", "--source", "bad"], ["stats", "--source", full.slice(0, -1)], ["stats", "--source", full.replace(":source:", ":event:")],
   ["stats", "--source", full, "--source", full], ["stats", "--list-sources"], ["stats", "--last", "7d"], ["stats", "--source", full, "extra"],
-  ["stats", "--source", full, "--failures"], ["stats", "--source", full, "--unknown"], ["stats", "--source", full, "--codex-root", privateSentinel], ["--codex-root", privateSentinel, "stats", "--source", full],
+  ["stats", "--source", full, "--read-revisits"], ["stats", "--source", full, "--failures"], ["stats", "--source", full, "--unknown"], ["stats", "--source", full, "--codex-root", privateSentinel], ["--codex-root", privateSentinel, "stats", "--source", full],
   ["stats", "--source", full, "--claude-root", privateSentinel], ["--claude-root", privateSentinel, "stats", "--source", full],
 ])("rejects unsupported selection before I/O: %j", args => {
   const dir = join(temporaryDirectory(), "must-not-create"), result = run(["--json", "--data-dir", dir, ...args]);
@@ -67,27 +67,27 @@ it("missing store is never created", () => {
   const dir = join(temporaryDirectory(), "absent"), r = run(["stats", "--source", full, "--json", "--data-dir", dir]);
   expect(jsonError(r).error.code).toBe("STORE_NOT_FOUND"); expect(existsSync(dir)).toBe(false);
 });
-it.each(["codex", "claude"] as const)("%s scan -> close -> insights equals exact independent analysis after roots are removed", async provider => {
+it.each(["codex", "claude"] as const)("%s scan -> close -> overlap equals exact independent analysis after roots are removed", async provider => {
   const f = await fixture(provider), before = bytes(f.data);
-  if (provider === "claude") expect(f.expected.partitions[0]).toMatchObject({ validReadN: 5, uniqueFileN: 2, revisitN: 3, revisitRatio: 0.6 });
+  if (provider === "claude") expect(f.expected.partitions[0]).toMatchObject({ intervalLengthSumMs: 16, intervalUnionMs: 4, excessMs: 12, coverage: { admittedTerminalN: 5, positionedN: 4, excludedN: 1 } });
   else expect(f.expected).toMatchObject({ assessment: "suppressed", suppressionReason: "unsupported_provider" });
   for (const args of [["--json", "--data-dir", f.data, "stats", "--source", f.id], ["stats", "--source", f.id, "--data-dir", f.data, "--json"]]) {
     const r = run(args); expect(r.status).toBe(0);
-    expect(r.stdout).toBe(JSON.stringify({ schema: "agentprof.cli/v1", ok: true, command: "stats", result: { mode: "selected_source_read_revisits", analysis: f.expected } }) + "\n");
+    expect(r.stdout).toBe(JSON.stringify({ schema: "agentprof.cli/v1", ok: true, command: "stats", result: { mode: "selected_source_invocation_overlap", analysis: f.expected } }) + "\n");
     expect(r.stdout).not.toMatch(/FICTITIOUS_|synthetic\.jsonl|boundaryFingerprint|sourceRef|operationKey|cacheEvidence|secret/);
   }
-  const result = await runRevisits({ dataDir: f.data, source: f.id }); expect(Object.isFrozen(result)).toBe(true); expect(Object.isFrozen(result.analysis)).toBe(true);
+  const result = await runOverlap({ dataDir: f.data, source: f.id }); expect(Object.isFrozen(result)).toBe(true); expect(Object.isFrozen(result.analysis)).toBe(true);
   const human = run(["stats", "--source", f.id, "--data-dir", f.data]); expect(human.status).toBe(0); expect(human.stdout).toBe(formatStatsResult(result, false));
   expect(bytes(f.data)).toEqual(before);
 });
 it("reads and analyzes exactly one selected generation in a pinned transaction", async () => {
-  const f = await fixture(), originalStore = sourceStoreModule.createSourceStore, originalAnalysis = analysisModule.analyzeSourceReadRevisits;
+  const f = await fixture(), originalStore = sourceStoreModule.createSourceStore, originalAnalysis = analysisModule.analyzeSourceInvocationOverlap;
   let reads = 0, analyses = 0;
   const storeSpy = vi.spyOn(sourceStoreModule, "createSourceStore").mockImplementation((db, key) => {
     const s = originalStore(db, key); return { ...s, listSources() { throw Error("unexpected inventory"); }, readSource(id) { reads++; expect(db.isTransaction).toBe(true); expect(id).toBe(f.id); return s.readSource(id); } };
   });
-  const ruleSpy = vi.spyOn(analysisModule, "analyzeSourceReadRevisits").mockImplementation(s => { analyses++; expect(s.revision).toBe(f.saved.revision); return originalAnalysis(s); });
-  try { expect((await runRevisits({ dataDir: f.data, source: f.id })).analysis).toEqual(f.expected); expect([reads, analyses]).toEqual([1, 1]); }
+  const ruleSpy = vi.spyOn(analysisModule, "analyzeSourceInvocationOverlap").mockImplementation(s => { analyses++; expect(s.revision).toBe(f.saved.revision); return originalAnalysis(s); });
+  try { expect((await runOverlap({ dataDir: f.data, source: f.id })).analysis).toEqual(f.expected); expect([reads, analyses]).toEqual([1, 1]); }
   finally { storeSpy.mockRestore(); ruleSpy.mockRestore(); }
 });
 it("wrong key and missing source fail safely with no mutation, followed by a successful read", async () => {
@@ -95,16 +95,16 @@ it("wrong key and missing source fail safely with no mutation, followed by a suc
   for (const [source, code] of [[full, "INVALID_IDENTITY_KEY"], [f.context.fingerprint("source", ["absent"]), "SOURCE_NOT_FOUND"]]) {
     const r = run(["stats", "--source", source!, "--data-dir", f.data, "--json"]); expect(jsonError(r).error.code).toBe(code); expect(r.stderr).not.toContain(source!); expect(bytes(f.data)).toEqual(before);
   }
-  expect((await runRevisits({ dataDir: f.data, source: f.id })).analysis).toEqual(f.expected); expect(bytes(f.data)).toEqual(before);
+  expect((await runOverlap({ dataDir: f.data, source: f.id })).analysis).toEqual(f.expected); expect(bytes(f.data)).toEqual(before);
 });
 it("event-only and unavailable generations succeed without claiming a healthy zero", async () => {
   const f = await fixture(); const db = await openDatabase(f.data), store = createSourceStore(db, f.context.keyId);
   const { revision, availability, persistedScope, aggregationReady, parserResumeReady, evidence, cacheEvidence, relationshipEvidence, ...input } = f.saved;
   expect(store.replaceSource(input, revision)).toMatchObject({ status: "committed", revision: 2 }); db.close();
-  let before = bytes(f.data), r = await runRevisits({ dataDir: f.data, source: f.id });
+  let before = bytes(f.data), r = await runOverlap({ dataDir: f.data, source: f.id });
   expect(r.analysis).toMatchObject({ revision: 2, suppressionReason: "evidence_absent" }); expect(bytes(f.data)).toEqual(before);
   const writer = await openDatabase(f.data); createSourceStore(writer, f.context.keyId).markUnavailable(f.id, 2); writer.close();
-  before = bytes(f.data); r = await runRevisits({ dataDir: f.data, source: f.id });
+  before = bytes(f.data); r = await runOverlap({ dataDir: f.data, source: f.id });
   expect(r.analysis).toMatchObject({ revision: 3, suppressionReason: "source_unavailable" }); expect(bytes(f.data)).toEqual(before);
 });
 it.each([0, 3, 4, 6])("schema %s preserves exact safe code/message and bytes", async version => {
@@ -142,19 +142,19 @@ it("keeps the selected revision coherent while a normal DELETE writer is pending
       return saved;
     } };
   });
-  try { const r = await runRevisits({ dataDir: f.data, source: f.id }); expect(r.analysis.revision).toBe(1); expect(r.analysis).toEqual(analysisModule.analyzeSourceReadRevisits(returnedGeneration!)); }
+  try { const r = await runOverlap({ dataDir: f.data, source: f.id }); expect(r.analysis.revision).toBe(1); expect(r.analysis).toEqual(analysisModule.analyzeSourceInvocationOverlap(returnedGeneration!)); }
   finally { spy.mockRestore(); peer.close(); }
   const writer = await openDatabase(f.data), store = original(writer, f.context.keyId);
   const { revision, availability, persistedScope, aggregationReady, parserResumeReady, ...input } = f.saved;
   expect(store.replaceSourceSnapshot(input, revision)).toMatchObject({ status: "committed", revision: 2 }); writer.close();
-  const next = await runRevisits({ dataDir: f.data, source: f.id }); expect(next.analysis.revision).toBe(2); expect({ ...next.analysis, revision: 1 }).toEqual(f.expected);
+  const next = await runOverlap({ dataDir: f.data, source: f.id }); expect(next.analysis.revision).toBe(2); expect({ ...next.analysis, revision: 1 }).toEqual(f.expected);
 });
 it("maps unexpected private callback errors safely and cleans up so a subsequent read succeeds", async () => {
   const f = await fixture(), before = bytes(f.data), original = sourceStoreModule.createSourceStore;
   const spy = vi.spyOn(sourceStoreModule, "createSourceStore").mockImplementation((db, key) => ({ ...original(db, key), readSource() { throw Error(privateSentinel); } }));
-  try { await expect(runRevisits({ dataDir: f.data, source: f.id })).rejects.toMatchObject({ code: "DATABASE_ACCESS_FAILED", message: MESSAGES.DATABASE_ACCESS_FAILED }); }
+  try { await expect(runOverlap({ dataDir: f.data, source: f.id })).rejects.toMatchObject({ code: "DATABASE_ACCESS_FAILED", message: MESSAGES.DATABASE_ACCESS_FAILED }); }
   finally { spy.mockRestore(); }
-  expect(bytes(f.data)).toEqual(before); expect((await runRevisits({ dataDir: f.data, source: f.id })).analysis).toEqual(f.expected); expect(bytes(f.data)).toEqual(before);
+  expect(bytes(f.data)).toEqual(before); expect((await runOverlap({ dataDir: f.data, source: f.id })).analysis).toEqual(f.expected); expect(bytes(f.data)).toEqual(before);
 });
 
 it.each(["event", "metric"])("rejects corrupt %s payload without mutation or private error leakage", async kind => {
@@ -165,18 +165,18 @@ it.each(["event", "metric"])("rejects corrupt %s payload without mutation or pri
   expect(jsonError(r).error.code).toBe("DATABASE_ACCESS_FAILED"); expect(r.stderr).not.toContain(privateSentinel); expect(bytes(f.data)).toEqual(before);
 });
 it.each([
-  ['stats','--read-revisits','--source',full], // The test runner already adds the first flag.
+  ['stats','--invocation-overlap','--source',full], // The test runner already adds the first flag.
   ['stats','--list-sources','--source',full],
   ['stats','--source',full,'--list-sources'],
-])('rejects duplicate/incompatible failures selection before storage: %j',args=>{
+])('rejects duplicate/incompatible invocation overlap selection before storage: %j',args=>{
   const data=join(temporaryDirectory(),'absent'),r=run([...args,'--data-dir',data,'--json']);expect(jsonError(r).error.code).toBe('INVALID_ARGUMENT');expect(existsSync(data)).toBe(false);
 });
-it('without read revisits retains the exact old summary result branch and avoids failure analysis',async()=>{
-  const f=await fixture(),spy=vi.spyOn(analysisModule,'analyzeSourceReadRevisits').mockImplementation(()=>{throw Error('must stay lazy');});
+it('without invocation overlap retains the exact old summary result branch and avoids invocation analysis',async()=>{
+  const f=await fixture(),spy=vi.spyOn(analysisModule,'analyzeSourceInvocationOverlap').mockImplementation(()=>{throw Error('must stay lazy');});
   try {const r=await runStats({dataDir:f.data,source:f.id});expect(r.mode).toBe('selected_source');expect(spy).not.toHaveBeenCalled();const list=await runStats({dataDir:f.data,listSources:true});expect(list.mode).toBe('list_sources');expect(spy).not.toHaveBeenCalled();}finally{spy.mockRestore();}
 });
 
-const baselineBinary = process.env["AGENTPROF_BASELINE_BINARY"], installedBinary = process.env["AGENTPROF_INSTALLED_BINARY"];
+const baselineBinary = process.env["AGENTPROF_INVOCATION_BASELINE_BINARY"], installedBinary = process.env["AGENTPROF_INVOCATION_INSTALLED_BINARY"];
 const fixtureDirectory = fileURLToPath(new URL("./fixtures/providers/", import.meta.url));
 const inheritedFixtures = readdirSync(fixtureDirectory).filter(name => /^(claude|codex)-.*\.jsonl$/.test(name)).sort();
 function invoke(binaryPath: string, data: string, args: string[]) {
@@ -200,7 +200,7 @@ describe.skipIf(!baselineBinary)("frozen baseline exact old-command parity", () 
     expect(JSON.parse(initial.stdout).result.counts.committed).toBe(1);
     const sourceId = JSON.parse(invoke(binary, current, ["stats", "--list-sources", "--json"]).stdout).result.catalogue.items[0].sourceId;
     const before = bytes(current), oldBefore = bytes(old);
-    for (const args of [scan, ["stats", "--list-sources"], ["stats", "--source", sourceId], ["insights", "--source", sourceId], ["stats", "--source", sourceId, "--failures"]]) {
+    for (const args of [scan, ["stats", "--list-sources"], ["stats", "--source", sourceId], ["insights", "--source", sourceId], ["stats", "--source", sourceId, "--failures"], ["stats", "--source", sourceId, "--read-revisits"]]) {
       for (const json of [[], ["--json"]]) expect(invoke(binary, current, [...args, ...json])).toEqual(invoke(baselineBinary!, old, [...args, ...json]));
     }
     expect(bytes(current)).toEqual(before); expect(bytes(old)).toEqual(oldBefore);
@@ -216,10 +216,11 @@ describe.skipIf(!baselineBinary)("frozen baseline exact old-command parity", () 
     const removeExactlyOnce = (text: string) => { expect(preserved.split(text)).toHaveLength(2); preserved = preserved.replace(text, ""); };
     removeExactlyOnce("  --invocation-overlap  show observed Claude invocation interval union\n");
     removeExactlyOnce("--invocation-overlap requires --source and excludes --failures/--read-revisits; Claude only, Codex unsupported; no runtime, active-time or savings claim.\n");
-    removeExactlyOnce("  --read-revisits       show completed Claude Read file revisits for one\n                        --source\n");
-    removeExactlyOnce("--read-revisits requires --source and excludes --failures; Claude Read only, Codex unsupported; no same-content or waste claim.\n");
+    const wrappedRead = "  --read-revisits       show completed Claude Read file revisits for one\n                        --source\n";
+    expect(preserved.split(wrappedRead)).toHaveLength(2);
+    preserved = preserved.replace(wrappedRead, "  --read-revisits       show completed Claude Read file revisits for one --source\n");
     for (const [flag, currentPadding, baselinePadding] of [
-      ["--list-sources", 8, 2], ["--failures", 12, 6], ["--source <id>", 9, 3], ["-h, --help", 12, 6],
+      ["--list-sources", 8, 3], ["--read-revisits", 7, 2], ["--failures", 12, 7], ["--source <id>", 9, 4], ["-h, --help", 12, 7],
     ] as const) {
       const exact = `  ${flag}${" ".repeat(currentPadding)}`;
       expect(preserved.split(exact)).toHaveLength(2);
@@ -229,17 +230,17 @@ describe.skipIf(!baselineBinary)("frozen baseline exact old-command parity", () 
     expect(existsSync(data)).toBe(false);
   });
 });
-describe.skipIf(!installedBinary)("script-disabled installed read-revisit artifact", () => {
+describe.skipIf(!installedBinary)("script-disabled installed invocation-overlap artifact", () => {
   it.each(["claude", "codex"] as const)("matches new %s human/JSON with raw roots removed and unchanged private files", async provider => {
     const f = await fixture(provider), before = bytes(f.data);
     for (const json of [[], ["--json"]]) {
-      const args = ["stats", "--read-revisits", "--source", f.id, ...json];
+      const args = ["stats", "--invocation-overlap", "--source", f.id, ...json];
       expect(invoke(installedBinary!, f.data, args)).toEqual(invoke(binary, f.data, args));
     }
     expect(bytes(f.data)).toEqual(before);
     const writer = await openDatabase(f.data); createSourceStore(writer, f.context.keyId).markUnavailable(f.id, f.saved.revision); writer.close();
     const suppressedBefore = bytes(f.data);
-    for (const json of [[], ["--json"]]) expect(invoke(installedBinary!, f.data, ["stats", "--read-revisits", "--source", f.id, ...json])).toEqual(invoke(binary, f.data, ["stats", "--read-revisits", "--source", f.id, ...json]));
+    for (const json of [[], ["--json"]]) expect(invoke(installedBinary!, f.data, ["stats", "--invocation-overlap", "--source", f.id, ...json])).toEqual(invoke(binary, f.data, ["stats", "--invocation-overlap", "--source", f.id, ...json]));
     expect(bytes(f.data)).toEqual(suppressedBefore);
   });
 });
