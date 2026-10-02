@@ -153,3 +153,24 @@ PR43 externally advanced main to `6f7a538d1806a1973a647fb16ab6c1fecc74bd49`, tre
 All 218 main blobs and modes are verified. The pnpm lockfile is byte-identical to the previously qualified main, retaining all 84 package version/integrity pairs. No src, tests, bin, build or artifact-verifier script changes are incoming. All feature production/tests remain byte-identical to published PR41; complete incoming shared-document prefixes precede the preserved feature-owned suffixes. The packageManager/mise pins now select pnpm 10.34.6; no workflow tweaks beyond exact incoming main are added.
 
 The prior PR41 head 3da2b09a passed the hosted pnpm 10.33.0 matrix: all four jobs, 60 test files /1,575 passed /52 optional skipped on each supported runtime, and 54-file artifact verification. Those results remain historical and do not qualify the pnpm 10.34.6 integration. Duplicate local full suites and local installation are deliberately NOT RUN for this toolchain-only delta. A new exact-head hosted pnpm 10.34.6 full/typecheck/build/artifact matrix is required and PENDING after parent publication. Existing optional-skip and historical-baseline limitations remain unchanged. No source behavior change, release, deployment, main merge or broad P5 completion is claimed.
+
+
+## Parent current-main local qualification (2026-10-03)
+
+The parent integrated reviewed main `e1998ccff9f5c86eb52632cfda1ed1e31d2d585a` in non-force candidate `eaf0451601070d823bfddaee453ebc3cf6a2914f`, tree `187c91e328b879451b0c74535b8d36345ace2a2b`, retaining the published source as an ancestor. All230 unowned main blobs/modes are preserved. All four feature production files and six new fixture/test files remain exact published bytes. The two inherited CLI suites retain complete current-main amendments plus exactly four frozen recurrence help-removal lines. The entire main prefixes, source suffixes and new planning/research appendices are preserved in shared documents. Independent original17/17 and parent composition review found no actionable source/test defect; no production implementation correction was required.
+
+Actual macOS arm64 Node24.21.0 / pnpm10.34.6 qualification:
+
+| Gate | Actual result |
+| --- | --- |
+| Frozen installation | PASS; --frozen-lockfile --ignore-scripts |
+| Enabled npm prepack and retained script-disabled isolated consumer | PASS; runtime56 files identical in bytes/modes before/after verification, tool-free help/version/npm exec passed |
+| Unchanged pnpm check chain | PASS; typecheck, build,69 test files;1,921 passed /32 optional shared-baseline cases skipped;58-file artifact PASS |
+| Genuine b8ea155 legacy read-revisit group |11 selected PASS;47 other tests name-filtered, not executed in this focused invocation |
+| Genuine b8ea155 legacy relationship group |10 selected PASS;24 other tests name-filtered |
+| Genuine e199 pre-recurrence current-command group |11 selected PASS;21 other tests name-filtered |
+| Actual installed Node22.16.0 guard |PASS; exit2, empty stdout, UNSUPPORTED_RUNTIME |
+
+The32 full-check shared-baseline skips were all subsequently executed in the three separately configured groups, giving1,953 unique successful test cases across qualification. This is not one zero-skip full-suite invocation. The full check supplied authentic invocation3887159/schema5063ee04 inputs and all current installed supplements. Before execution, all815 tracked files across the four genuine baseline/source trees and183 runtime module bytes/modes were reverified; the e199 baseline is the tree-equal retained PR40 installed runtime. No fake baseline wrapper, timeout adjustment, test weakening or relabeled old-schema database was used. Prior author RED, optional skips and timeout/quiet-slot receipts remain historical.
+
+Only this qualification receipt and its implementation pointer are appended after the immutable local gates. Exact-head hosted qualification, actual merge/main CI and Project closeout remain parent-owned pending gates at this commit; published-head test-merge trees and actual job logs must be verified. No real-user pilot, savings/performance benchmark, npm release, user-store migration or broad P5/P6 completion is claimed.
