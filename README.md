@@ -58,6 +58,21 @@ agentprof report --last 7d --output ./agentprof.html --open
 
 The initial implementation plan is TypeScript, Node.js ≥24.15.0, SQLite, and a single offline HTML report. One-off npm execution and global installation must be verified before public release. `node:sqlite` is treated as a Release candidate API, with explicit runtime and installation checks. Homebrew and Rust are later considerations.
 
+## Development
+
+The repository pins Node 24.21.0 and pnpm 10.33.0 with mise. Review and trust the checked-in tool configuration, then run:
+
+```bash
+mise trust
+mise install
+mise exec -- pnpm install --frozen-lockfile --ignore-scripts
+mise exec -- pnpm check
+# Build and package with the ordinary npm prepack lifecycle enabled.
+mise exec -- npm pack
+```
+
+Dependency installation disables lifecycle scripts. Packaging runs the repository's explicit build. npm remains the distribution channel; an installed CLI needs a supported Node runtime and its runtime dependencies. See [toolchain qualification](docs/TOOLCHAIN.md) for the supported CI matrix, artifact checks and verification limits. Historical npm commands in evidence documents describe the recorded runs.
+
 ## Honest by design
 
 - **Unknown ≠ zero.** Distinguish direct, observed, inferred, and unsupported values, with sample sizes, denominators, and coverage

@@ -278,6 +278,10 @@ The recovered candidate is based on all 209 independently verified Git blobs of 
 
 Independent review's earlier-cwd authority correction separates finite raw shape/version eligibility from project availability. Every eligibility frame uses the same 105-byte ASCII length-only budget stand-in, never an actual or retained identity; the real project is supplied only to normalization. Both directional regressions retain completed 4,000 ms timing, inherited source-order authority and stable subsequent replay. The Project-approved 20th file is an additional inherited fixture-header correction only; no scanner/store/schema/report scope changed.
 
+## Pinned mise and pnpm qualification (2026-10-02, PR #37)
+
+Follow the five ordered steps and concrete Verify entries in [TOOLCHAIN](TOOLCHAIN.md). Separate research verified the pinned action input and the complete immutable npm/pnpm lock graph; preserve its recorded optional-peer encoding exception. Integrate current main without changing inherited production or tests, document the pinned developer commands, and qualify clean scripts-disabled installation, enabled npm prepack and isolated consumers. Run supported local checks with authentic historical baselines and this candidate's installed artifact, then inspect actual current-head hosted matrix logs before merging. The coordinator owns integration/review/publication and the Project-only draft owns the live claim; any implementation correction must return to a separate development contributor under an amended plan first. No package publication or broad P7 completion is included.
+
 
 ## P6 safe standalone opener — reviewed slice
 
