@@ -272,3 +272,15 @@ Independent parent PR40 qualification boundary (2026-10-03): review and integrat
 
 
 Independent parent current-main qualification (2026-10-03) now verifies the bounded ordinary Claude durable-resume/search-upgrade slice on macOS Node24.21.0/pnpm10.34.6: all 1,870 tests without skips, authentic old-version/copy-migration controls, five intended crash placements and isolated installed continuation passed. The [complete parent receipts and limits](P4-CLAUDE-RESUME.md#independent-parent-composed-head-qualification-2026-10-03) preserve author history and the pending hosted/merge/main gate. Both public readiness flags, changed-Codex full replay and separate broad provider/performance acceptance remain unchanged.
+
+
+## Completed native search recurrence (2026-10-02)
+
+Add opt-in `stats --source ID --search-recurrence` per [the reviewed contract](P5-SOURCE-SEARCH-RECURRENCE.md). One stored source-prefix generation yields session-local completed ordinary Claude parser2 Grep/Glob request recurrence. N counts admitted unique invocation IDs, U exact opaque request identities, repeats=N-U, ratio=(N-U)/N. Missing lookup identity makes the whole partition unknown; zero eligible calls are unknown, whereas a nonempty distinct population has measured zero repeats. Historical Claude parser1 stays readable but unsupported for this metric. Inherited provenance suppression remains authoritative. Output contains snapshot-local aliases and safe proof IDs only, with no raw query/key, equivalent-results, waste or savings inference.
+
+
+## PR #41 current-main review contract (2026-10-03)
+
+Review the completed native search recurrence feature on source `c655f7c56b4961b0b4152527d9dc02b311e69ad2` before merging it into current main. Preserve its session-local N/U/repeats/ratio, authoritative whole-session provenance suppression, whole-partition unknown on missing lookup identity, parser1 unsupported status, truthful output caps and safe proof references. Integrate current main's already reviewed count-field validation, source command breakdown and durable Claude checkpoint generation behavior without widening this metric's scope or readiness flags. Existing author evidence remains historical; old-base passes do not qualify the composed tree.
+
+A separate research contributor must inspect all 17 original paths, current-main interactions and historical/installed parity inputs, then append grounded findings before the implementation admission plan. The parent owns shared-document composition, review, packaging/installed qualification, exact-head CI and publication. Any production or test correction requires a preceding plan amendment and a separately registered development contributor. Complete only this narrow Project draft after an actual reviewed merge; broader P5/P6 scope remains separate. No real logs, npm release, user-store migration or persistent service changes are part of this review.
