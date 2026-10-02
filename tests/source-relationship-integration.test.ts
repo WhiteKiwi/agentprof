@@ -17,6 +17,7 @@ import { SCAN_LIMITS, scanSources } from "../src/scanner/scan-run.js";
 import { ingestSourceFile } from "../src/scanner/source-ingest.js";
 import { temporaryDirectory } from "./helpers.js";
 import { assertFreshParserVersionParity } from "./claude-parser-version-parity.js";
+import { migrateHistoricalSchema5Copy } from "./claude-historical-schema-copy.js";
 
 type Provider = "codex" | "claude";
 const secret = Buffer.alloc(32, 37), keyId = "4".repeat(32);
@@ -179,14 +180,14 @@ describe("relationship capture and unchanged source lifecycle", () => {
       const initial = await ingestSourceFile(store, context, { path, provider: "claude", expectedRevision: null, maxFileBytes: SCAN_LIMITS.fileBytes });
       const first = store.readSource(initial.sourceId)!;
       if (migrated) {
-        db.exec("DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DELETE FROM schema_migrations WHERE version=5; PRAGMA user_version=4");
+        db.exec("DROP TABLE source_parser_checkpoints; DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DELETE FROM schema_migrations WHERE version>=5; PRAGMA user_version=4");
         db.close(); db = await openDatabase(directory); store = createSourceStore(db, keyId);
       } else {
         expect(store.replaceSourceSnapshot(snapshotInput(first), 1)).toEqual({ status: "committed", revision: 2 });
       }
       const historical = store.readSource(initial.sourceId)!; expect(historical.relationshipEvidence).toBeNull();
       expect(historical.cacheEvidence).toEqual(first.cacheEvidence); expect(historical.evidence).toEqual(first.evidence); expect(historical.events).toEqual(first.events);
-      const ingest = vi.spyOn(ClaudeAdapter.prototype, "ingest"), replace = vi.fn(store.replaceSourceSnapshot), watched = { ...store, replaceSourceSnapshot: replace };
+      const ingest = vi.spyOn(ClaudeAdapter.prototype, "ingest"), replace = vi.fn(store.replaceSourceSnapshotWithCheckpoint), watched = { ...store, replaceSourceSnapshotWithCheckpoint: replace };
       const run = await scanSources(watched, context, [{ provider: "claude", path }]);
       expect(run.counts).toMatchObject({ committed: 1, unchanged: 0, failed: 0 }); expect(ingest).toHaveBeenCalledTimes(3); expect(replace).toHaveBeenCalledTimes(1);
       const captured = store.readSource(initial.sourceId)!;
@@ -274,7 +275,7 @@ const currentBinary = join(root, "dist/agentprof.cjs"), baselineBinary = process
 const installedBinary = process.env["AGENTPROF_INSTALLED_BINARY"];
 
 describe.skipIf(!baselineBinary)("frozen pre-change CLI byte parity", () => {
-  it.each(fixtureNames)("preserves status/stdout/stderr for fresh and reused %s", name => {
+  it.each(fixtureNames)("preserves status/stdout/stderr for fresh and reused %s", async name => {
     const directory = temporaryDirectory(), provider: Provider = name.startsWith("codex") ? "codex" : "claude", input = join(directory, "input"); mkdirSync(input);
     const path = join(input, name); copyFileSync(join(fixtures, name), path);
     const before = privateData(directory, "baseline"), after = privateData(directory, "current");
@@ -283,15 +284,22 @@ describe.skipIf(!baselineBinary)("frozen pre-change CLI byte parity", () => {
     assertFreshParserVersionParity(provider, [...scan, "--json"], first, invoke(baselineBinary!, before, [...scan, "--json"]));
     expect(JSON.parse(first.stdout).result.counts.committed).toBe(1);
     const sourceId = keyed("source", provider, path), frozen = files(after), frozenBaseline = files(before);
+    const rejected = invoke(currentBinary, before, ["stats", "--list-sources", "--json"]);
+    expect(rejected.status).toBe(2); expect(rejected.stdout).toBe("");
+    expect(JSON.parse(rejected.stderr).error).toEqual({ code: "DATABASE_SCHEMA_INCOMPATIBLE", message: "Read-only source commands require a compatible existing database. No migration was attempted." });
+    expect(files(before)).toEqual(frozenBaseline);
+    const historicalCopy = join(directory, "historical-schema6");
+    await migrateHistoricalSchema5Copy(before, historicalCopy);
+    const frozenCopy = files(historicalCopy);
     for (const args of [scan, ["stats", "--list-sources"], ["stats", "--source", sourceId],
       ["insights", "--source", sourceId], ["stats", "--failures", "--source", sourceId]]) {
       for (const json of [[], ["--json"]]) {
         const selection = [...args, ...json], actual = invoke(currentBinary, after, selection), historical = invoke(baselineBinary!, before, selection);
         assertFreshParserVersionParity(provider, selection, actual, historical);
-        if (args[0] !== "scan") expect(invoke(currentBinary, before, selection)).toEqual(historical);
+        if (args[0] !== "scan") expect(invoke(currentBinary, historicalCopy, selection)).toEqual(historical);
       }
     }
-    expect(files(after)).toEqual(frozen); expect(files(before)).toEqual(frozenBaseline);
+    expect(files(after)).toEqual(frozen); expect(files(before)).toEqual(frozenBaseline); expect(files(historicalCopy)).toEqual(frozenCopy);
   }, 30_000);
 });
 
