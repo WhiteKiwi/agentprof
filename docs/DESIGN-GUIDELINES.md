@@ -154,3 +154,25 @@ Governance: changes to semantic roles update tokens and this guideline together;
 The README follows Kiwi/PIP's wide cover → concise proposition → direct document links → evidence/status → repository map rhythm. Ordinary report surfaces aim for roughly 90% neutral area with one primary accent focus per viewport; this is a design intent, not a measured screenshot result. Static information panels do not acquire pointer/lift/arrow affordances. The requested dark/ember mascot direction is a product-specific brand exception, and the 120ms specimen transition is a short feedback exception to PIP's 150–220ms range. Motion disappears under reduced motion.
 
 The shared public site is [design.whitekiwi.link](https://design.whitekiwi.link/); live access through the research tool was unavailable in this pass, so decisions are grounded in its repository README, DESIGN.md and canonical token source rather than an unobserved live screen. No Kiwi code/font package dependency is imported into the offline scaffold.
+
+## Issue #10 bounded regression clarification — 2026-10-03
+
+The duration primitive preserves full sub-minute precision and the existing
+millisecond-rounded minute display. A remainder rounded to 60 seconds carries
+into the next minute (`119.9999` → `2m`, `3599.9999` → `60m`); no hours unit is
+introduced. Unknown, measured zero and invalid-input behavior are unchanged.
+
+The print view includes every synthetic insight and suppresses the screen-only
+empty-filter notice. Before-print enhancement snapshots disclosure open states
+and the notice's hidden state, expands evidence and hides the notice; after-print
+restores the snapshot without changing the selected filter. Repeated before-print
+notifications must retain the first snapshot, and an extra after-print notification
+must not undo later screen changes. The same restoration path applies to print
+cancellation notifications. Existing print CSS also hides the notice when print
+events do not run.
+
+These are candidate component semantics, not new product capabilities. Ordinary
+Node/VM regression and unchanged static/contrast checks are recorded in
+[DESIGN-QA](DESIGN-QA.md#issue-10-bounded-regression-verification--2026-10-03).
+Actual browser layout, native print/cancellation, accessibility and README GitHub
+rendering remain unverified; the VM fixture supplies no browser-rendering evidence.

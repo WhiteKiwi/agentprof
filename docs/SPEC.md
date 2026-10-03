@@ -443,3 +443,41 @@ The owner requests shared verification for related PRs and oldest-first processi
 ### Evidence-stat human context review amendment
 
 An actual ordinary scan/store/raw-delete/reopen partial-coverage source exposes an applicable token-component fraction6/6 while the new PR126 human view omits native support/coverage, unsupported-record counts and partial-shape limitations. Add existing pinned native/summary context before bounded detail rows in the ten new views. Complete structured JSON, native analyses and projected values/ratios remain unchanged; an eligible component fraction does not establish complete provider or history coverage. Existing36 boolean selections and prior command outputs stay compatible. The linked batch document records this pre-code correction and separate research evidence.
+
+## Design, dated usage and explicit lifecycle integration — 2026-10-04
+
+The owner requests related PRs to share validation while every arrival remains in the oldest-first queue. [DESIGN-USAGE-LIFECYCLE-BATCH](DESIGN-USAGE-LIFECYCLE-BATCH.md) specifies the review of PR141/142/145 on qualified main d89223e after the completed seven-prefix evidence/report group. Preserve prior commands, source/evidence contracts and dated documentation; one composed full/package/installed gate is shared, while distinct design, parser/checkpoint, daily-token and lifecycle behavior receives focused review and actual controls.
+
+The design fix preserves sub-minute precision and unknown/zero validation, carries rounded duration remainders correctly, and restores screen filter/disclosure/empty-notice state after repeated print notifications. Real browser rendering, accessibility, offline and print evidence must remain distinct from VM state tests. The bounded fix and the wider design issue have separate completion criteria.
+
+Usage timestamps are explicit opt-in recorded observations from the same ordinary record. Default parser fields/versions and CLI outputs stay compatible. Versioned admission, checkpoints, resume and mode changes must agree with the selected capture contract. Daily selected-source token evidence preserves final/provisional/cumulative distinctions, response-copy equality/conflict, earliest matching recorded time, missing-time inventories, half-open UTC/fixed offsets, unknown/zero and overflow. Recorded observation dates do not imply billing, completion or per-tool allocation.
+
+Explicit-file lifecycle reconciliation may retire only an authenticated prior generation after verified leaf absence under a stable readable ordinary parent and the original revision guard. Retain historical records; repeated absence is idempotent; restoration and explicitly enumerated moves remain observable. Missing roots, read failures, symlinks, ambiguous selection or changed generations do not prove deletion. Ordinary scan behavior and all selected native/history/report meanings remain compatible. No directory-wide reconciliation or cross-resource atomic guarantee follows.
+
+Separate research begins after this draft and resolves composition/verification questions before a reviewed plan and separate developer. Original feature claims remain history and are not reclaimed by elapsed time. This group does not include the newly opened in-progress PR147, whose source and qualification are still changing; it remains in the queue for its own subsequent review. Broader product/provider support, real-user, representative-performance and release acceptance remain separate.
+
+
+### Usage-mode composition and design verification amendment
+
+Separate post-SPEC research reproduced two integration defects before implementation. Timestamp-only capture must preserve existing native event-copy reconciliation across the explicit Codex1↔2 and Claude2↔3 equivalent contracts, without hiding unknown versions or disagreements in exact event/proof/admission/position evidence. Actual source manifests and checkpoint interpretation retain their selected versions. Matching Codex1/2 header and capability versions must preserve the existing native Active Time analysis; mismatches, future contracts, unsupported providers and absent or contradictory native turn proof stay unavailable. Captured usage timestamps do not become turn-boundary authority or change duration/union/span formulas.
+
+The actual optional browser suite races system-theme event delivery. Wait for the actual state under the specified condition bound while preserving the assertion and all original browser checks; no product-theme correction follows from that test race. Original source tests and reproduced failures are separate from final composed qualification. [The reviewed plan](DESIGN-USAGE-LIFECYCLE-BATCH.md#reviewed-correction-decisions-and-implementation-plan--2026-10-04-kst) defines exact decisions and concrete Verify before a separate developer. Broader design acceptance remains open for unexecuted native print cancellation, assistive technology and real browser zoom.
+
+## Design QA continuation — issue #10 (2026-10-03)
+
+The synthetic design showcase must remain usable across its declared viewport,
+keyboard, reduced-motion, print, and no-JavaScript modes. This continuation verifies
+the existing browser contract and corrects only reproducible design-foundation
+regressions. Preserve the existing product analysis, storage, and CLI contracts and
+all other issue reservations. Record observed passes, failures, and unexecuted
+checks separately; neither static checks nor this specimen establish full product
+or accessibility acceptance. The README's implementation claims must match the
+verified main revision without presenting open feature branches as shipped.
+
+The design duration primitive's existing millisecond-rounded minute display must
+carry a rounded 60-second remainder into the next minute, rather than showing
+`1m 60s`. Preserve existing sub-minute precision, null/unknown semantics, zero,
+input validation, and the minutes-only representation (no new hours unit).
+Printing all synthetic insight cards must suppress the empty-filter notice and
+restore the prior screen filter/disclosure/notice state afterward. Repeated print
+notifications must not overwrite the original state snapshot.
