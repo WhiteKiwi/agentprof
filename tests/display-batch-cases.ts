@@ -124,5 +124,11 @@ export const displayCases = [
     "prop": "durationExclusions",
     "flag": "duration-exclusions",
     "mode": "selected_source_duration_exclusions"
+  },
+  {
+    "pr": 111,
+    "prop": "usageExclusions",
+    "flag": "usage-exclusions",
+    "mode": "selected_source_usage_exclusions"
   }
 ] as const;
