@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync, mkdirSync, symlinkSync, existsSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, symlinkSync, existsSync, rmSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
@@ -15,7 +15,7 @@ function scan(status = "completed") { return { status, stopReason: null, discove
   diagnostics: { observedCount: 1, adapterDroppedCount: 2, sampleDroppedCount: 3, samples: [{ code: "INSUFFICIENT_LOOKUP_EVIDENCE", severity: "warning", sourceAlias: "source-1", byteOffset: 0 }] }, aggregationReady: false, parserResumeReady: false }; }
 let root: string, args: { provider: string; input: string; output: string; dataDir: string }, publication: object, listeners: number;
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), "agentprof-fresh-unit-")); args = { provider: "claude", input: join(root, "PRIVATE_INPUT.jsonl"), output: join(root, "out.html"), dataDir: join(root, "private") };
+  root = mkdtempSync(join(realpathSync(tmpdir()), "agentprof-fresh-unit-")); args = { provider: "claude", input: join(root, "PRIVATE_INPUT.jsonl"), output: join(root, "out.html"), dataDir: join(root, "private") };
   writeFileSync(args.input, "{}\n"); listeners = process.listenerCount("SIGINT");
   publication = { mode: "selected_source", sourceId: id, revision: 7, output: args.output, published: true, bytes: 123, durability: "synced", cleanup: "removed", targetVerification: "verified", status: "published", warnings: [] };
   m.scan.mockReset().mockResolvedValue(scan()); m.report.mockReset().mockResolvedValue(publication); m.open.mockReset().mockResolvedValue({ status: "accepted", opener: "xdg-open", browserVerified: false });
