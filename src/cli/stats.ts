@@ -1,3 +1,4 @@
+import { formatDiagnosticInventory } from "./diagnostic-inventory.js";
 import { formatUsageSelection } from "./usage-selection.js";
 import { formatStatusMix } from "./status-mix.js";
 import { formatCapabilitySummary } from "./capability-summary.js";
@@ -43,8 +44,10 @@ import { formatSourceActiveTime } from "./active-time.js";
 import { formatSourceTokens } from "./tokens.js";
 import { formatSourceTimeBreakdown } from "./time-breakdown.js";
 
-export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean; readRevisits?: boolean; invocationOverlap?: boolean; searchRecurrence?: boolean; recovery?: boolean; retryOverhead?: boolean; activeTime?: boolean; tokens?: boolean; timeBreakdown?: boolean; latency?: boolean; toolBusy?: boolean; cacheShare?: boolean; executionStatus?: boolean; durationCoverage?: boolean; usageCoverage?: boolean; readRatio?: boolean; searchRatio?: boolean; overlapSummary?: boolean; cacheWriteShare?: boolean; reasoningShare?: boolean; outcomeMix?: boolean; timingEvidence?: boolean; durationScope?: boolean; usageFinality?: boolean; capabilities?: boolean; statusMix?: boolean; usageSelection?: boolean }>;
+export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean; readRevisits?: boolean; invocationOverlap?: boolean; searchRecurrence?: boolean; recovery?: boolean; retryOverhead?: boolean; activeTime?: boolean; tokens?: boolean; timeBreakdown?: boolean; latency?: boolean; toolBusy?: boolean; cacheShare?: boolean; executionStatus?: boolean; durationCoverage?: boolean; usageCoverage?: boolean; readRatio?: boolean; searchRatio?: boolean; overlapSummary?: boolean; cacheWriteShare?: boolean; reasoningShare?: boolean; outcomeMix?: boolean; timingEvidence?: boolean; durationScope?: boolean; usageFinality?: boolean; capabilities?: boolean; statusMix?: boolean; usageSelection?: boolean; diagnostics?: boolean }>;
 export type StatsResult = Readonly<
+  { mode: "selected_source_diagnostics"; summary: SourceSummary }
+  |
   { mode: "selected_source_usage_selection"; summary: SourceSummary }
   |
   { mode: "selected_source_status_mix"; summary: SourceSummary }
@@ -97,7 +100,7 @@ export function validateSourceSelection(value: string): string {
   try { const key = keyId(value.split(":")[1]); return identity(value, "source", key); }
   catch { throw new SafeError("INVALID_ARGUMENT"); }
 }
-const displayFlags = ["latency", "toolBusy", "cacheShare", "executionStatus", "durationCoverage", "usageCoverage", "readRatio", "searchRatio", "overlapSummary", "cacheWriteShare", "reasoningShare", "outcomeMix", "timingEvidence", "durationScope", "usageFinality", "capabilities", "statusMix", "usageSelection"] as const;
+const displayFlags = ["latency", "toolBusy", "cacheShare", "executionStatus", "durationCoverage", "usageCoverage", "readRatio", "searchRatio", "overlapSummary", "cacheWriteShare", "reasoningShare", "outcomeMix", "timingEvidence", "durationScope", "usageFinality", "capabilities", "statusMix", "usageSelection", "diagnostics"] as const;
 export function validateStatsArguments(options: StatsArguments): string {
   for (const flag of displayFlags) if (options[flag] !== undefined && typeof options[flag] !== "boolean") throw new SafeError("INVALID_ARGUMENT");
   const selected = displayFlags.filter(flag => options[flag] === true);
@@ -163,6 +166,7 @@ export async function runStats(options: StatsArguments): Promise<StatsResult> {
     if (options.capabilities === true) return Object.freeze({ mode: "selected_source_capabilities", summary: summarizeSource(source) });
     if (options.statusMix === true) return Object.freeze({ mode: "selected_source_status_mix", summary: summarizeSource(source) });
     if (options.usageSelection === true) return Object.freeze({ mode: "selected_source_usage_selection", summary: summarizeSource(source) });
+    if (options.diagnostics === true) return Object.freeze({ mode: "selected_source_diagnostics", summary: summarizeSource(source) });
     if (options.timeBreakdown === true) return Object.freeze({ mode: "selected_source_time_breakdown", summary: summarizeSource(source) });
     if (options.tokens === true) return Object.freeze({ mode: "selected_source_tokens", summary: summarizeSource(source) });
     if (analyzeActiveTime !== null) return Object.freeze({ mode: "selected_source_active_time", analysis: analyzeActiveTime(source) });
@@ -288,6 +292,7 @@ export function formatStatsResult(result: StatsResult, json: boolean): string {
   if (result.mode === "selected_source_capabilities") return formatCapabilitySummary(result.summary);
   if (result.mode === "selected_source_status_mix") return formatStatusMix(result.summary);
   if (result.mode === "selected_source_usage_selection") return formatUsageSelection(result.summary);
+  if (result.mode === "selected_source_diagnostics") return formatDiagnosticInventory(result.summary);
   if (result.mode === "selected_source_time_breakdown") return formatSourceTimeBreakdown(result.summary);
   if (result.mode === "selected_source_tokens") return formatSourceTokens(result.summary);
   if (result.mode === "selected_source_active_time") return formatSourceActiveTime(result.analysis);
