@@ -15,13 +15,13 @@
 
 ## Follow the slow.
 
-AgentProf is a planned local-first performance profiler for Claude Code and Codex logs. It connects **time hotspots, repeated failures, and exploration and validation patterns** to evidence you can inspect and small changes you can test.
+AgentProf is a local-first performance profiler in development for Claude Code and Codex logs. It connects **time hotspots, repeated failures, and exploration and validation patterns** to evidence you can inspect and small changes you can test.
 
 The goal is to **reduce tokens and task elapsed time while preserving output quality**. Start with trustworthy measurements, choose one improvement, and compare the same kind of work under matched conditions.
 
-**Current status: planning and design foundations on main.** The repository includes guidelines and reusable component examples. Provider parsers, the analyzer, and the CLI package are not implemented or released on main. All design-preview data is synthetic. The features and commands below describe the intended product.
+**Current status: bounded development implementation on main.** At `d0f57e6` (October 3, 2026), the repository includes Codex and Claude Code parsers, explicit-root scan and SQLite storage, selected-source stats/insights, offline HTML reports from one stored source or explicit input file, and explicit local HTML opening. These are source-prefix observations with coverage and support limits, not global aggregation, verified savings, or complete P4–P7 acceptance. All design-preview data remains synthetic. See the [specification](docs/SPEC.md) and [recorded acceptance evidence](docs/ACCEPTANCE.md) for the bounded contracts.
 
-As of September 30, 2026, [draft PR #9](https://github.com/WhiteKiwi/agentprof/pull/9) separately contains P0 research and P1 CLI, privacy, bounded-reader, and SQLite foundations. It is not merged. Its analysis commands still return `NOT_IMPLEMENTED`; foundation tests do not establish working profiling or verified savings. See the [measurement review](docs/FINDINGS.md) for revision-specific evidence.
+The separately published [initial npm parser alpha](docs/NPM-ALPHA.md), `0.1.0-dev.0`, is based on the older `baa384f` revision. It provides the bounded Codex parser/reader/privacy APIs and CLI help/version; its analysis commands return `NOT_IMPLEMENTED`. It does not contain the current main implementation or constitute a full profiling product release.
 
 | Start here | Then inspect |
 | --- | --- |
@@ -42,11 +42,11 @@ A dark technical interface with restrained warm-orange accents. The salamander i
 - Offline showcase: download the repository, run `node design/build.mjs`, then open the generated `design/showcase.html` in a browser. The generated file is not committed
 - [QA record](docs/DESIGN-QA.md): completed checks and remaining limitations
 
-Browser rendering and interaction checks are recorded separately from static and color-contrast checks. The showcase is a design foundation for a future local report and dashboard. It is not connected to a working profiler, and it does not include a server, watcher, or live dashboard.
+Browser rendering and interaction checks are recorded separately from static and color-contrast checks. The showcase is a standalone synthetic component specimen, separate from the implemented source-prefix report renderer. It does not load stored sources or include a server, watcher, or live dashboard.
 
 ## Intended workflow
 
-These are **planned, unreleased commands**, not instructions to install `npx agentprof` today. The public package name and publishing rights must be confirmed before release.
+The **full-product workflow below is still planned**. Current main requires explicit scan roots or a single report input, and stats/insights/report do not support `--last` or global aggregation. The historical npm alpha above does not provide main's analysis commands.
 
 ```bash
 # Planned workflow — not available yet
@@ -56,7 +56,7 @@ agentprof insights --last 7d
 agentprof report --last 7d --output ./agentprof.html --open
 ```
 
-The initial implementation plan is TypeScript, Node.js ≥24.15.0, SQLite, and a single offline HTML report. One-off npm execution and global installation must be verified before public release. `node:sqlite` is treated as a Release candidate API, with explicit runtime and installation checks. Homebrew and Rust are later considerations.
+The development implementation uses TypeScript, Node.js ≥24.15.0, SQLite, and offline HTML reports. The parser alpha's recorded installation checks do not establish a full-product release or complete P7 installation/pilot acceptance. `node:sqlite` has explicit runtime and installation checks. Homebrew and Rust are later considerations.
 
 ## Development
 

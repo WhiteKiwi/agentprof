@@ -9,6 +9,7 @@ export function formatDuration(seconds) {
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
   const remainder = Math.round((seconds % 60) * 1000) / 1000;
+  if (remainder === 60) return `${minutes + 1}m`;
   return remainder ? `${minutes}m ${remainder}s` : `${minutes}m`;
 }
 const evidenceRoles = { direct: ['Direct', 'info'], observed: ['Observed', 'observed'], estimated: ['Estimated', 'warning'], unknown: ['Unknown', 'neutral'], unsupported: ['Unsupported', 'neutral'] };

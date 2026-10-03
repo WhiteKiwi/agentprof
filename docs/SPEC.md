@@ -462,3 +462,22 @@ Separate research begins after this draft and resolves composition/verification 
 Separate post-SPEC research reproduced two integration defects before implementation. Timestamp-only capture must preserve existing native event-copy reconciliation across the explicit Codex1↔2 and Claude2↔3 equivalent contracts, without hiding unknown versions or disagreements in exact event/proof/admission/position evidence. Actual source manifests and checkpoint interpretation retain their selected versions. Matching Codex1/2 header and capability versions must preserve the existing native Active Time analysis; mismatches, future contracts, unsupported providers and absent or contradictory native turn proof stay unavailable. Captured usage timestamps do not become turn-boundary authority or change duration/union/span formulas.
 
 The actual optional browser suite races system-theme event delivery. Wait for the actual state under the specified condition bound while preserving the assertion and all original browser checks; no product-theme correction follows from that test race. Original source tests and reproduced failures are separate from final composed qualification. [The reviewed plan](DESIGN-USAGE-LIFECYCLE-BATCH.md#reviewed-correction-decisions-and-implementation-plan--2026-10-04-kst) defines exact decisions and concrete Verify before a separate developer. Broader design acceptance remains open for unexecuted native print cancellation, assistive technology and real browser zoom.
+
+## Design QA continuation — issue #10 (2026-10-03)
+
+The synthetic design showcase must remain usable across its declared viewport,
+keyboard, reduced-motion, print, and no-JavaScript modes. This continuation verifies
+the existing browser contract and corrects only reproducible design-foundation
+regressions. Preserve the existing product analysis, storage, and CLI contracts and
+all other issue reservations. Record observed passes, failures, and unexecuted
+checks separately; neither static checks nor this specimen establish full product
+or accessibility acceptance. The README's implementation claims must match the
+verified main revision without presenting open feature branches as shipped.
+
+The design duration primitive's existing millisecond-rounded minute display must
+carry a rounded 60-second remainder into the next minute, rather than showing
+`1m 60s`. Preserve existing sub-minute precision, null/unknown semantics, zero,
+input validation, and the minutes-only representation (no new hours unit).
+Printing all synthetic insight cards must suppress the empty-filter notice and
+restore the prior screen filter/disclosure/notice state afterward. Repeated print
+notifications must not overwrite the original state snapshot.

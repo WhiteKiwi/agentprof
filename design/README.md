@@ -1,6 +1,6 @@
 # AgentProf component foundation
 
-**Implemented specimen; candidate design.** This directory is a reusable, framework-free design foundation for a future offline report and local dashboard. It does **not** implement scanning, parsing, metrics, diagnostics, a CLI, a server, or a product dashboard. All display data is synthetic. Product contracts remain in [`docs/METRICS.md`](../docs/METRICS.md).
+**Implemented specimen; candidate design.** This directory is a reusable, framework-free design foundation for offline report UI and a future local dashboard. It does **not** implement scanning, parsing, metrics, diagnostics, a CLI, a server, or a product dashboard. Main's bounded parsers, CLI and source-prefix report renderer are separate from this specimen. All display data here is synthetic. Product contracts remain in [`docs/METRICS.md`](../docs/METRICS.md).
 
 Design authority: [`DESIGN.md`](../DESIGN.md) · [Full guideline](../docs/DESIGN-GUIDELINES.md) · [QA evidence](../docs/DESIGN-QA.md)
 
@@ -22,7 +22,7 @@ Optional browser verification requires an existing Playwright installation and a
 CHROMIUM_PATH=/path/to/chromium AP_QA_DIR=/tmp/agentprof-design-qa node design/tests/browser.mjs
 ```
 
-The suite targets 320, 390 and 1440px in light/dark, repeated interactions, keyboard focus, reduced motion, print, no-JavaScript access, safe text and offline requests. A test file's existence is not a passing result; check the dated QA record for what actually ran.
+The suite targets 320, 390 and 1440px in light/dark, repeated interactions, keyboard focus, reduced motion, print (including an empty filter), no-JavaScript access, safe text and offline requests. Ordinary `tests/design-foundation.test.ts` covers duration boundaries and print-event state logic through a small VM DOM seam; it does not verify browser rendering or native print cancellation. A test file's existence is not a passing result; check the dated QA record for what actually ran.
 
 ## Files and reuse
 
@@ -51,7 +51,7 @@ A consumer loads tokens before component styles and uses the semantic classes on
 </details>
 ```
 
-For a single-file report, inline those files using the build pattern. The example above documents local development reuse; the generated file has no external stylesheet requests. Render helpers consume display values, **not** a supported product snapshot schema. Adapt the future normalized snapshot at the boundary and keep calculations out of display components.
+For a single-file report, inline those files using the build pattern. The example above documents local development reuse; the generated file has no external stylesheet requests. Render helpers consume display values, **not** a supported product snapshot schema. Any product integration must adapt its current snapshot contract at the boundary and keep calculations out of display components.
 
 ## Evidence semantics
 
@@ -59,11 +59,13 @@ For a single-file report, inline those files using the build pattern. The exampl
 - The 12s + 8s − 5s = 15s example illustrates interval-union geometry only. Two rows do not establish the product's repeated-error/session/retry diagnostic eligibility
 - The 95s build is a component specimen, not an emitted Slow Tool diagnostic, baseline comparison, or waste contribution
 - Unknown, unsupported, pending, empty, failed and measured zero have separate labels. `chartRow` rejects null, strings and nonfinite numbers rather than coercing them into a zero-width bar
-- Synthetic strings are escaped before HTML insertion. The future product still needs its complete privacy boundary and snapshot integration tests
+- Synthetic strings are escaped before HTML insertion. These checks do not replace the product's privacy boundary or snapshot integration tests
 
 ## State and asset notes
 
 `<button>`, `<select>`, `<input>`, `<details>/<summary>` and table headers remain native. Filtered content announces the remaining count; evidence links clear the filter and focus the disclosure. Without JavaScript, all insights and native disclosures remain available in the default dark theme. Theme/filter actions require JavaScript.
+
+Print styles show every synthetic insight and hide the screen-only empty-filter notice. Print events expand disclosures, then restore their prior open states and the notice's visibility without changing the selected filter. Repeated notifications retain the original snapshot; an `afterprint` notification also restores state after cancellation. Native browser behavior remains an unexecuted QA gate.
 
 The existing repository `assets/reference/salamander2.png` is embedded whole and unmodified. Optional JavaScript reuses the mark's data URL as the favicon, avoiding duplicate image bytes. Without JavaScript the favicon is blank. This is a provisional mark, not a newly designed final logo. No image processing or third-party visual dependency is involved.
 

@@ -687,3 +687,48 @@ The [ordered prefix receipts](P5-P6-INTEGRATION-BATCH.md#developer-focused-prefi
 [DESIGN-USAGE-LIFECYCLE-BATCH](DESIGN-USAGE-LIFECYCLE-BATCH.md#reviewed-correction-decisions-and-implementation-plan--2026-10-04-kst) records the reviewed four-step plan after separate post-SPEC research and48/48 original-delta review. Compose original141/142/145 in order on qualified main d89223e. Correct only explicit timestamp-only native signature equivalence, matching Codex1/2 Active Time admission, and the optional browser suite's bounded asynchronous theme-state assertion. Preserve exact native arithmetic/evidence/conflict rules, default receipt/private-byte parity, strict mode-specific storage/checkpoints, original tests and dated global document prefixes.
 
 The separate registered developer owns ordered original merges, the three admitted corrections, meaningful native-copy/Active Time regressions and focused prefix receipts. Parent owns planning/review/publication and one composed full/genuine-history/package/actual-install gate plus available browser/pixel/PDF QA. Two original self-pack/install assertions are explicitly deferred to that full gate, rather than silently skipped. Prior evidence/report tests retain their genuine predecessor comparison; new controls use genuine current main. Concrete Verify and actual reservations are in [issue148](https://github.com/WhiteKiwi/agentprof/issues/148). Broader design10 and product/provider acceptance stay independent.
+
+## Design QA issue #10: bounded regressions (2026-10-03)
+
+Reviewed source baseline: `d0f57e6ecaf797bfe895bd020cc09ba42dc4c756`.
+Separate research in FINDINGS reproduces minute carry errors and establishes the
+print empty-state contradiction. The existing browser suite cannot launch cloud
+Chromium because local socket creation is denied; automated rendering and visual
+QA remain NOT RUN. No product renderer, CLI, analyzer, parser, storage, dependency,
+or workflow changes belong to this continuation.
+
+1. Correct the duration primitive and print-state handling, using a separate
+   development contributor. Preserve sub-minute output and existing validation;
+   snapshot/restore the empty notice together with disclosures without changing
+   the selected filter. **Verify:** independent minute/hour-boundary oracles,
+   fractional/no-carry/zero/unknown/invalid controls, empty and nonempty print
+   flows, repeated before/after notifications, and cancelled-print restoration.
+2. Add ordinary Vitest coverage in `tests/design-foundation.test.ts`, and extend
+   the existing optional browser suite with the empty-filter print regression.
+   **Verify:** tests fail against original source and pass against the corrected
+   source; existing build/static/72-pair contrast checks remain passing. VM DOM
+   checks establish event-state logic only, not real browser layout or print.
+3. Reconcile narrow README/specimen status wording with this fixed main baseline
+   and record actual QA evidence and remaining gates. **Verify:** no open PR is
+   described as shipped; existing main CLI/parser/report capabilities and the
+   distinct historical parser alpha are accurately bounded. No product release,
+   real-user pilot, full accessibility, or browser PASS is inferred.
+4. Review the scoped delta, run applicable full checks, and publish a Draft PR.
+   **Verify:** final typecheck/build/test/artifact results and exact remote commit
+   checks are reported separately; all changed files fit the reservation; #10
+   remains open for its outstanding browser/visual/README rendering and merge
+   gates. No merge, deployment, release, or broad-parent closeout.
+
+Shared planning documents receive append-only sections. Reservation additionally
+includes the single new ordinary Vitest test above. Historical claims and failures
+are retained; no generated showcase or user data is committed.
+
+Design-contract clarification before publication: root `DESIGN.md` requires the
+canonical guideline and QA evidence to be updated together. Include only an
+additive `docs/DESIGN-GUIDELINES.md` clarification of the already reviewed carry
+and print-state semantics; no palette, layout, product contract, or implementation
+scope changes. Its browser/visual gates remain unverified in this cloud runtime.
+
+### Design141 focused developer receipt — 2026-10-04
+
+The [focused prefix receipt](DESIGN-USAGE-LIFECYCLE-BATCH.md#developer-focused-prefix-evidence--2026-10-04-kst) records the separately registered developer's ordinary original141/current-main composition, exact global-document-prefix preservation and the reviewed2s actual DOM-condition wait. Direct Node24.21.0 typecheck/build and all33 original VM duration/print assertions pass. Browser assertions, product styles and prior component behavior are preserved. The parent's actual browser/pixel/PDF and common full/package/installed/source/main/publication gates remain separate; wider design10 completion is not claimed.
