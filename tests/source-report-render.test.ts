@@ -79,7 +79,7 @@ it("rejects escaped output above1MiB even when each field and collection satisfi
 
 // PR39 accessibility amendment: additive static regressions; browser behavior is not asserted.
 it("gives every bounded table a focusable region labelled by its unique caption",()=>{
- for(const [m,expectedTables] of [[model(),3],[maximumModel(),120]] as const){
+ for(const [m,expectedTables] of [[model(),4],[maximumModel(),121]] as const){
   const html=renderSourceReport(m),ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(match=>match[1]!);
   expect(new Set(ids).size).toBe(ids.length);
   const wrappers=[...html.matchAll(/<div\b([^>]*\bclass="table-wrap"[^>]*)>\s*<table>\s*<caption\b([^>]*)>([\s\S]*?)<\/caption>/g)];

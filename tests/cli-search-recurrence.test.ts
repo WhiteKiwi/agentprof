@@ -71,7 +71,7 @@ Options:
 
 macOS/Linux only. Open explicitly trusted local files: selected HTML may run scripts or contact remote resources.
 Canonical symlink targets are used; native opening may create OS/browser history.
-No scan, report generation, latest-file search, URLs or report --open. Global data/root options are validated but inert.
+No scan, report generation, latest-file search or URLs. Global data/root options are validated but inert.
 A helper acknowledgement does not verify browser rendering. Timeout may mean the file is already open; no automatic retry.
 `;
   const oldOpen=invoke(baseline!,data,["open","--help"]),currentOpen=invoke(binary,data,["open","--help"]);
