@@ -45,6 +45,8 @@ export type UsageObservation = Readonly<{
   sourceRef: ParserSourceRef;
 }>;
 export type SourceObservation = Readonly<{
+  /** Present only in timestamp-capture parser versions; record time, not usage finality. */
+  usageObservedAt?: string | null;
   id: string;
   eventId: string | null;
   turnId: string | null;
@@ -77,7 +79,7 @@ export type MetadataSegment = Readonly<{
 export type CodexShape = "command_item" | "mcp_item" | "function_call" | "custom_call" | "tool_result" | "poll" | "code_wrapper" | "turn" | "response_usage" | "token_snapshot";
 export type ParserCapabilities = Readonly<{
   provider: "codex";
-  parserVersion: 1;
+  parserVersion: 1 | 2;
   support: "shape_verified_only";
   coverage: "recognized_shapes" | "partial";
   observedShapes: readonly CodexShape[];

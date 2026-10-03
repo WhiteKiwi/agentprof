@@ -35,10 +35,14 @@ export async function run(argv: string[]): Promise<void> {
   program.on("option:data-dir", () => { reportDataFlags++; });
   program.on("option:json", () => { reportJsonFlags++; });
 
-  program.command("scan").description("Collect explicit --codex-root/--claude-root inputs only (at least one required)")
+  let usageTimingFlags = 0;
+  const scan = program.command("scan").option("--usage-timing", "opt into versioned record timestamps for history --tokens")
+    .on("option:usage-timing", () => { if (++usageTimingFlags > 1) throw new SafeError("INVALID_ARGUMENT"); })
+    .description("Collect explicit --codex-root/--claude-root inputs only (at least one required)")
     .addHelpText("after", "\nBounded scan: at most 16 roots, 64 sources, 256 directories, 4096 nodes and yielded entries,\n16 MiB/32768 records per source, 256 diagnostic samples. No aggregation or parser resume.")
     .action(async () => {
-      const options = program.opts<ScanArguments & { json?: boolean }>();
+      const options = { ...program.opts(), ...scan.opts() } as ScanArguments & { json?: boolean };
+      if (options.usageTiming && (reportDataFlags > 1 || reportJsonFlags > 1)) throw new SafeError("INVALID_ARGUMENT");
       const result = await runScan(options);
       process.stdout.write(formatScanResult(result, options.json === true));
       process.exitCode = result.status === "completed" ? 0 : result.status === "aborted" ? 130 : 1;
