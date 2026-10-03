@@ -142,5 +142,11 @@ export const displayCases = [
     "prop": "outputComposition",
     "flag": "output-composition",
     "mode": "selected_source_output_composition"
+  },
+  {
+    "pr": 114,
+    "prop": "inventory",
+    "flag": "inventory",
+    "mode": "selected_source_inventory"
   }
 ] as const;
