@@ -629,3 +629,10 @@ Direct actual Node24.21.0/darwin-arm64 typecheck/build and 121 focused passes wi
 ### Active Time parent qualification before publication
 
 The [parent qualification](P5-SOURCE-ACTIVE-TIME.md#parent-qualification-before-publication--2026-10-03) completes fourteen-path review, original/current-main ancestry preservation and direct Node24.21.0 typecheck/build/full actual-schema5 verification:2665 PASS/76 existing optional SKIP/0 FAIL of2741; all122 new active cases PASS. The allowlisted70-file artifact and real scripts-disabled installed metric match built raw-deleted human/JSON, while both maximum persisted geometry variants and database/key bytes/modes passed independent parent assertions. Hosted exact-source/merged-main/manual narrow58 gates remain pending here.
+
+
+## Selected-source observed final-response tokens review — 2026-10-03
+
+[PR61/#60](P5-SOURCE-TOKENS.md#reviewed-correction-plan-and-concrete-verify--2026-10-03) follows qualified Recovery/retry/Active Time. Initial SPEC preceded separate research; 11 original-head paths and 43 unchanged source-summary controls confirm that the existing token authority already produces the correct values. The actual 4,096-cohort human output is oversized and lacks partial-source context. The reviewed three-step plan and concrete Verify admit current-main CLI integration, bounded evidence-aware human formatting and independent package/full/source/main qualification.
+
+Reuse one pinned unchanged source summary. Keep complete JSON and source-wide response dispositions/conflict/exclusion counts before human clipping; at most 6 deterministic cohort details carry exact omissions. Provider/mapping/finality/session separation, null/zero/overflow and cache/reasoning subset semantics remain unchanged. The separate developer owns only the tokens formatter, necessary main/stats hunks, new support/tests and additive implementation receipts. Parent owns planning/review/publication and narrow #60 closeout after merged-main gates. Existing native/parser/store/schema/tests/dependencies/workflows and broader P5 acceptance remain separate.
