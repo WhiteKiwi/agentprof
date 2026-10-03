@@ -164,3 +164,8 @@ it("PR111 independently frozen fields and denominators", async () => {
   const x = await persisted(snapshot()), r = await runStats({ dataDir: x.data, source: x.sourceId, usageExclusions: true }), text = formatStatsResult(r, false);
   for (const expected of ["provisional: n=1; share of excluded rows=1", "conflicted response groups=0"]) expect(text).toContain(expected);
 });
+
+it("PR112 independently frozen fields and denominators", async () => {
+  const x = await persisted(snapshot()), r = await runStats({ dataDir: x.data, source: x.sourceId, cacheComponents: true }), text = formatStatsResult(r, false);
+  for (const expected of ["input=80; cached input=20; cache write input=5; uncached input=unavailable"]) expect(text).toContain(expected);
+});

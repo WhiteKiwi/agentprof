@@ -130,5 +130,11 @@ export const displayCases = [
     "prop": "usageExclusions",
     "flag": "usage-exclusions",
     "mode": "selected_source_usage_exclusions"
+  },
+  {
+    "pr": 112,
+    "prop": "cacheComponents",
+    "flag": "cache-components",
+    "mode": "selected_source_cache_components"
   }
 ] as const;
