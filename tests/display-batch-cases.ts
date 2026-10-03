@@ -70,5 +70,11 @@ export const displayCases = [
     "prop": "outcomeMix",
     "flag": "outcome-mix",
     "mode": "selected_source_outcome_mix"
+  },
+  {
+    "pr": 92,
+    "prop": "timingEvidence",
+    "flag": "timing-evidence",
+    "mode": "selected_source_timing_evidence"
   }
 ] as const;
