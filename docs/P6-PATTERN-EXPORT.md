@@ -34,4 +34,36 @@ Provider evidence/timestamps, daily token calculations, latest-source lifecycle,
 
 ## Execution record
 
-Plan recorded before implementation. No new test PASS asserted yet.
+Initial planning receipt: plan recorded before implementation, with no new test PASS asserted at that stage.
+
+### Executed source qualification — 2026-10-03
+
+Published [Draft PR #134](https://github.com/WhiteKiwi/agentprof/pull/134), tracked by [issue #133](https://github.com/WhiteKiwi/agentprof/issues/133). Planning commit `b010988b76846106b9379dce8b9338ae0b25c8fc` precedes implementation. Code/test head is `cc419303a0b6ca8f24a0cbb3af0aee17a0986fbe`, a non-force descendant of the fixed PR132 parent `bc9b2782218914d53fc9b59e27e0ba0e267fbcb4`.
+
+[Foundation run 37126153945](https://github.com/WhiteKiwi/agentprof/actions/runs/37126153945) completed successfully in all four jobs: Node24.15.0/24.21.0/26.7.0 `pnpm check` and unsupported Node22 early guard. Directly read Node26.7 job `111211729462`: actual checkout is test merge `1b4d365ab4dff0a71b3f3969c922c05b80895a6f`, merging this source into the fixed parent. This is GitHub's synthetic test merge, not an authorized PR merge.
+
+| Check | Observed result |
+| --- | --- |
+| Production typecheck / build | PASS |
+| Full source suite, directly inspected Node26.7 log | **2,771 PASS / 68 inherited conditional SKIP / 0 FAIL**; 110 files (108 PASS / 2 SKIP) |
+| New pattern-export suites | **34 PASS / no new skips**: page14 + CLI19 + installed1 |
+| Previously delivered history export suites | All29 tests execute and PASS again on this combined parent/child stack |
+| Existing artifact verifier | **84 package files PASS**, scripts disabled; tarball npm-exec/global install and existing read-only stats/insights/failures; published:false |
+| Dedicated installed pattern-export scenario | Actual script-disabled install outside repo, ordinary Codex/Claude scan, raw-input deletion, installed/built HTML and old human/JSON parity, mode0600 and unchanged DB/key bytes PASS |
+| Single-generation path | One runPatterns, one pinned readSource and one native failure-admission pass, verified by spies and transaction assertion |
+| Output safety | Existing/private-store/symlink destination refusal, duplicate/invalid options before I/O, wrong key/missing source, and truthful post-link warning receipts PASS |
+| Display semantics | Four positive normalized-evidence rule controls, unknown/suppressed/empty/zero states, exact first-result/scope denominators, query clipping vs qualification witnesses, privacy/escaping/hash-CSP/internal links and deterministic caps PASS |
+
+No new test failure was observed in the first published source run. Skipped inherited optional scenarios are not counted as passes and are not required for the new installed scenario, which executes without a skip condition.
+
+The ordinary Claude Edit/Bash/Bash input produces an observed cycle and first-pass1/1 while keeping declared validation scope unknown and full-validation ratio null. Ordinary Codex input without error identity remains not_evaluable; the report does not manufacture a retry diagnosis. Positive retry/error/context/validation controls use synthetic normalized evidence and are not an ordinary provider-support upgrade. The independent retry12/error8/overlap5=>union15 case is a synthetic interval/display control, not a captured user-log performance claim.
+
+The many-session controls verify12/20 time and validation partitions,16/60 cycles and exact candidate omissions with resolving links. A100-event episode retains all analysis evidence while showing12/100 event aliases and16/98 witnesses. These are correctness/display-bound tests, not representative performance benchmarks or exhaustive maximum combinations. No browser was launched; static markup/CSS/CSP tests are not visual, screen-reader, keyboard, print or offline browser-runtime qualification.
+
+### Review handoff and remaining work
+
+The exact compare contains eight scoped paths. The only inherited production edit is `src/cli/patterns.ts` registration/dispatch: export option, export-only global duplicate guards and lazy export action. Its existing validator, runPatterns and default formatter are unchanged. All analyzers, history, common helper/writer/style, main, old report/insights/stats, parser/store/schema/normalizer, dependencies and CI remain untouched.
+
+This final documentation-only commit records the already executed source qualification; its own hosted result is checked and recorded in PR134/issue133 separately. Release only this issue's active implementation reservation at handoff, leaving independent maintainer review, parent-first latest-main integration/regression and authorized merge open. No other contributor's reservations or broad #6/#7 status are changed.
+
+Still unimplemented by these exports: ordinary provider error/content/change/validation-scope/usage-timestamp capture and associated parser/checkpoint compatibility, daily token attribution, latest-source deletion/move lifecycle, and broader unified report behavior. macOS/browser/real-user usefulness/false-positive/performance and release acceptance remain separate. No real user logs, secrets, automatic experiments, package publication or main merge were performed.
