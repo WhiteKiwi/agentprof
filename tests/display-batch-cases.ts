@@ -112,5 +112,11 @@ export const displayCases = [
     "prop": "diagnostics",
     "flag": "diagnostics",
     "mode": "selected_source_diagnostics"
+  },
+  {
+    "pr": 109,
+    "prop": "shapeCoverage",
+    "flag": "shape-coverage",
+    "mode": "selected_source_shape_coverage"
   }
 ] as const;
