@@ -167,8 +167,11 @@ describe("generation and publication failure boundaries", () => {
     const x = await freshFixture();
     vi.spyOn(patterns, "analyzeSourcePatterns").mockImplementationOnce(() => { throw new Error("FICTITIOUS_PRIVATE_FAILURE"); });
     const result = await runFreshAnalysis("patterns", x.options);
-    expect(result.report).toMatchObject({ status: "failed", error: { code: "INTERNAL_ERROR" } });
+    // The existing pinned read boundary maps unexpected callback errors to this safe code.
+    // Preserve that contract rather than changing shared storage behavior for this workflow.
+    expect(result.report).toMatchObject({ status: "failed", error: { code: "DATABASE_ACCESS_FAILED" } });
     expect(result.scan.counts.committed).toBe(1);
+    expect(existsSync(x.output)).toBe(false);
     expect(formatFreshAnalysis(result, true) + formatFreshAnalysis(result, false)).not.toContain("FICTITIOUS_PRIVATE_FAILURE");
   });
   it("cleans its signal listener when collection throws", async () => {
