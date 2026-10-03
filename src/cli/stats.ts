@@ -1,3 +1,4 @@
+import { formatSourceCacheShare } from "./cache-share.js";
 import type { SourceToolBusyAnalysis } from "../analysis/source-tool-busy.js";
 import { formatSourceToolBusy } from "./tool-busy.js";
 import { formatSourceLatency } from "./latency.js";
@@ -27,8 +28,10 @@ import { formatSourceActiveTime } from "./active-time.js";
 import { formatSourceTokens } from "./tokens.js";
 import { formatSourceTimeBreakdown } from "./time-breakdown.js";
 
-export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean; readRevisits?: boolean; invocationOverlap?: boolean; searchRecurrence?: boolean; recovery?: boolean; retryOverhead?: boolean; activeTime?: boolean; tokens?: boolean; timeBreakdown?: boolean; latency?: boolean; toolBusy?: boolean }>;
+export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean; readRevisits?: boolean; invocationOverlap?: boolean; searchRecurrence?: boolean; recovery?: boolean; retryOverhead?: boolean; activeTime?: boolean; tokens?: boolean; timeBreakdown?: boolean; latency?: boolean; toolBusy?: boolean; cacheShare?: boolean }>;
 export type StatsResult = Readonly<
+  { mode: "selected_source_cache_share"; summary: SourceSummary }
+  |
   { mode: "selected_source_tool_busy"; analysis: SourceToolBusyAnalysis }
   |
   { mode: "selected_source_latency"; summary: SourceSummary }
@@ -49,7 +52,7 @@ export function validateSourceSelection(value: string): string {
   try { const key = keyId(value.split(":")[1]); return identity(value, "source", key); }
   catch { throw new SafeError("INVALID_ARGUMENT"); }
 }
-const displayFlags = ["latency", "toolBusy"] as const;
+const displayFlags = ["latency", "toolBusy", "cacheShare"] as const;
 export function validateStatsArguments(options: StatsArguments): string {
   for (const flag of displayFlags) if (options[flag] !== undefined && typeof options[flag] !== "boolean") throw new SafeError("INVALID_ARGUMENT");
   const selected = displayFlags.filter(flag => options[flag] === true);
@@ -96,6 +99,7 @@ export async function runStats(options: StatsArguments): Promise<StatsResult> {
     if (source === null) throw new SafeError("SOURCE_NOT_FOUND");
     if (options.latency === true) return Object.freeze({ mode: "selected_source_latency", summary: summarizeSource(source) });
     if (displayToolBusy !== null) return Object.freeze({ mode: "selected_source_tool_busy", analysis: displayToolBusy(source) });
+    if (options.cacheShare === true) return Object.freeze({ mode: "selected_source_cache_share", summary: summarizeSource(source) });
     if (options.timeBreakdown === true) return Object.freeze({ mode: "selected_source_time_breakdown", summary: summarizeSource(source) });
     if (options.tokens === true) return Object.freeze({ mode: "selected_source_tokens", summary: summarizeSource(source) });
     if (analyzeActiveTime !== null) return Object.freeze({ mode: "selected_source_active_time", analysis: analyzeActiveTime(source) });
@@ -205,6 +209,7 @@ export function formatStatsResult(result: StatsResult, json: boolean): string {
   if (json) return JSON.stringify({ schema: "agentprof.cli/v1", ok: true, command: "stats", result }) + "\n";
   if (result.mode === "selected_source_latency") return formatSourceLatency(result.summary);
   if (result.mode === "selected_source_tool_busy") return formatSourceToolBusy(result.analysis);
+  if (result.mode === "selected_source_cache_share") return formatSourceCacheShare(result.summary);
   if (result.mode === "selected_source_time_breakdown") return formatSourceTimeBreakdown(result.summary);
   if (result.mode === "selected_source_tokens") return formatSourceTokens(result.summary);
   if (result.mode === "selected_source_active_time") return formatSourceActiveTime(result.analysis);

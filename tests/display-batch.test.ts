@@ -64,3 +64,8 @@ it("PR65 latency preserves fractional quantiles, overflow means and low-N19/20",
   const x = await persisted(snapshot()), r = await runStats({ dataDir: x.data, source: x.sourceId, latency: true }), text = formatStatsResult(r, false);
   expect(text).toContain("mean=0.15000000000000002 ms"); expect(text).toContain("mean=unavailable ms"); expect(text).toContain("n=19"); expect(text).toContain("n=20"); expect(text).toContain("low-N=false"); expect(text).toContain("numeric_overflow"); expect(text).toContain("pending=1");
 });
+
+it("PR72 independently frozen fields and denominators", async () => {
+  const x = await persisted(snapshot()), r = await runStats({ dataDir: x.data, source: x.sourceId, cacheShare: true }), text = formatStatsResult(r, false);
+  for (const expected of ["cache read share=0.25", "provisional=1"]) expect(text).toContain(expected);
+});
