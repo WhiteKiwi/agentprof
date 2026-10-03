@@ -16,5 +16,11 @@ export const displayCases = [
     "prop": "cacheShare",
     "flag": "cache-share",
     "mode": "selected_source_cache_share"
+  },
+  {
+    "pr": 73,
+    "prop": "executionStatus",
+    "flag": "execution-status",
+    "mode": "selected_source_execution_status"
   }
 ] as const;
