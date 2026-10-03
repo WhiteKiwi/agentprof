@@ -82,17 +82,27 @@ export function registerPatternCommand(program: Command): void {
   program.on("option:json", () => { jsonFlags++; });
   const command = program.command("patterns").description("Inspect one stored source's observed validation cycles and evidence-gated patterns")
     .option("--source <id>", "one full stored source ID", validateSourceSelection)
+    .option("--provider <provider>", "fresh input provider: codex or claude; requires --input and --output")
+    .option("--input <file>", "collect one explicit regular .jsonl file before export; excludes --source/roots")
     .option("--from <utc>", "inclusive UTC contribution boundary; requires --to")
     .option("--to <utc>", "exclusive UTC contribution boundary; requires --from")
     .option("--output <file>", "write a new offline .html/.htm report; stdout becomes a publication receipt")
     .allowExcessArguments(false)
-    .addHelpText("after", "\nRead-only; no scan/migration. Missing error/content/scope proof stays unavailable.\nCycle counts describe the stored prefix; time boundaries clip contributions, not all rule windows.\nSlow Tool and exploration are separate. Pattern time is not avoided time or savings.");
-  for (const name of ["source", "from", "to", "output"]) {
+    .addHelpText("after", "\nStored mode is read-only; no scan/migration. Missing error/content/scope proof stays unavailable.\nFresh --provider/--input mode requires --output; only the scan-receipt generation is exported.\nPartial evidence keeps exit1; failed/stale/aborted collection never falls back to old data.\nCycle counts describe the stored prefix; time boundaries clip contributions, not all rule windows.\nSlow Tool and exploration are separate. Pattern time is not avoided time or savings.");
+  for (const name of ["source", "from", "to", "output", "provider", "input"]) {
     let n = 0;
     command.on(`option:${name}`, () => { if (++n > 1) throw new SafeError("INVALID_ARGUMENT"); });
   }
   command.action(async () => {
-    const options = { ...program.opts(), ...command.opts() } as PatternArguments & { json?: boolean; output?: string };
+    const options = { ...program.opts(), ...command.opts() } as PatternArguments & { json?: boolean; output?: string; provider?: string; input?: string };
+    if (options.provider !== undefined || options.input !== undefined) {
+      if (dataFlags > 1 || jsonFlags > 1) throw new SafeError("INVALID_ARGUMENT");
+      const { runFreshAnalysis, formatFreshAnalysis, freshAnalysisExitCode } = await import("./fresh-analysis.js");
+      const result = await runFreshAnalysis("patterns", options);
+      process.stdout.write(formatFreshAnalysis(result, options.json === true));
+      process.exitCode = freshAnalysisExitCode(result);
+      return;
+    }
     if (options.output !== undefined) {
       if (dataFlags > 1 || jsonFlags > 1) throw new SafeError("INVALID_ARGUMENT");
       const { runPatternExport, formatPatternExport, patternExportExitCode } = await import("./pattern-export.js");
