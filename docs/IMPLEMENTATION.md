@@ -4,7 +4,7 @@
 
 Draft, 2026-10-01 KST. [SPEC.md](SPEC.md)의 사용자 동작, [ARCHITECTURE.md](ARCHITECTURE.md)의 불변 조건, [METRICS.md](METRICS.md)의 계산 계약을 구현하는 계획이다. `36bb389`의 개정 계획에 따른 P0 계약 검토와 P1 실행 기반 검증을 완료했으며 [PR #9](https://github.com/WhiteKiwi/agentprof/pull/9)는 main `c3856249bdc0a9c19b856ca32c97d3484e189176`에 병합되었다. P2 Codex 계약·bounded 검증은 [CODEX-PARSER.md](CODEX-PARSER.md)·[CODEX-EVIDENCE.md](CODEX-EVIDENCE.md)·[ACCEPTANCE.md](ACCEPTANCE.md)에 있다. P3의 별도 조사·구현·검증 계약은 [CLAUDE-PARSER.md](CLAUDE-PARSER.md)에 둔다. [FINDINGS.md](FINDINGS.md)는 조사 근거이며 사양을 덮어쓰지 않는다. 디자인 기반은 아래 별도 트랙으로 유지하고 데이터 파서·분석기 구현과 구분한다.
 
-새 지표 제안을 반영해 v0.1에 10개 지표와 6개 자동 진단을 포함했다. 이 계획을 검토한 뒤 개발 서브세션이 구현한다. 제품 범위를 바꾸면 SPEC, 구조·불변 조건은 ARCHITECTURE, 계산 의미는 METRICS, 접근·선행 조건은 이 문서를 먼저 갱신한다. 실행 작업·Verify·담당·상태는 [Project](https://github.com/users/WhiteKiwi/projects/2)의 해당 draft ticket에 반영한다. repository issue를 새로 만들지 않는다.
+새 지표 제안을 반영해 v0.1에 10개 지표와 6개 자동 진단을 포함했다. 이 계획을 검토한 뒤 개발 서브세션이 구현한다. 제품 범위를 바꾸면 SPEC, 구조·불변 조건은 ARCHITECTURE, 계산 의미는 METRICS, 접근·선행 조건은 이 문서를 먼저 갱신한다. 실행 작업·Verify·담당·상태는 [저장소 Issues](https://github.com/WhiteKiwi/agentprof/issues)의 해당 이슈에 반영한다. 2026-10-03 사용자 요청이 이전 Project 전용 규칙을 대체한다. 날짜가 있는 기존 Project 참조·계획·검증 기록은 당시 이력으로 보존하며 현재 담당·완료 기준은 이슈를 따른다.
 
 ## Selected Approach
 
@@ -49,16 +49,16 @@ docs/          specification, evidence, plans and acceptance
 
 | ID | 결과물 | 선행 조건 | 마일스톤 | 초기 추정 |
 | --- | --- | --- | --- | --- |
-| [P0](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258832949) | 실로그 의미·coverage, 로그·지표 계약, 합성 기대값 | 없음 | v0.1-alpha | 1–2 작업일 |
-| [P1](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258832975) | CLI 기반, 타입·개인정보·설치 검증 | P0 | v0.1-alpha | 1–2 작업일 |
-| [P2](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833002) | Codex adapter | P0, P1 | v0.1-alpha | 1–2 작업일 |
-| [P3](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833029) | Claude adapter | P0, P1 | v0.1-alpha | 1–2 작업일 |
-| [P4](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833059) | SQLite·증분 scan | P1, P2, P3 | v0.1-alpha | 1–2 작업일 |
-| [P5](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833093) | 최소 세로 단면 → 10 지표·6 진단·stats·insights | P0, P2, P3, P4 | v0.1-alpha | 3–5 작업일 |
-| [P6](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833122) | single HTML·타임라인·open | P5 | v0.1 | 2–4 작업일 |
-| [P7](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833142) | packed artifact·파일럿·출시 준비 | P6 | v0.1 | 1–2 작업일 |
+| [P0 · archive](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258832949) | 실로그 의미·coverage, 로그·지표 계약, 합성 기대값 | 없음 | v0.1-alpha | 1–2 작업일 |
+| [P1 · archive](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258832975) | CLI 기반, 타입·개인정보·설치 검증 | P0 | v0.1-alpha | 1–2 작업일 |
+| [P2 · archive](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833002) | Codex adapter | P0, P1 | v0.1-alpha | 1–2 작업일 |
+| [P3 · archive](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833029) | Claude adapter | P0, P1 | v0.1-alpha | 1–2 작업일 |
+| [P4](https://github.com/WhiteKiwi/agentprof/issues/5) | SQLite·증분 scan | P1, P2, P3 | v0.1-alpha | 1–2 작업일 |
+| [P5](https://github.com/WhiteKiwi/agentprof/issues/6) | 최소 세로 단면 → 10 지표·6 진단·stats·insights | P0, P2, P3, P4 | v0.1-alpha | 3–5 작업일 |
+| [P6](https://github.com/WhiteKiwi/agentprof/issues/7) | single HTML·타임라인·open | P5 | v0.1 | 2–4 작업일 |
+| [P7](https://github.com/WhiteKiwi/agentprof/issues/8) | packed artifact·파일럿·출시 준비 | P6 | v0.1 | 1–2 작업일 |
 
-한 명의 순차 작업 기준 11–21 작업일의 초기 추정이다. 출시일 약속이 아니며 공급자·시간 의미 대조 결과로 다시 산정한다. 각 draft ticket의 구현 단계에 구체적인 Verify를 둔다. 2026-10-01 기존 이슈의 본문·Verify·담당·진행 상태를 Project 전용 draft로 이관했다. 진행 상태는 Project, 설계상 선행 조건은 본 계획, 실제 실행 증거는 ACCEPTANCE를 따른다.
+한 명의 순차 작업 기준 11–21 작업일의 초기 추정이다. 출시일 약속이 아니며 공급자·시간 의미 대조 결과로 다시 산정한다. 각 작업 이슈의 구현 단계에 구체적인 Verify를 둔다. P0–P3 archive 링크는 완료 이력이며 재개할 작업이 아니다. 진행 상태는 Issues, 설계상 선행 조건은 본 계획, 실제 실행 증거는 ACCEPTANCE를 따른다. 2026-10-01 Project 이관은 당시 이력이고, 2026-10-03 역이관의 대응 관계·운영 규칙은 [TODO.md](TODO.md)에 있다.
 
 ### P0 — Empirical Contracts Before Parsers
 
@@ -84,7 +84,7 @@ P0에서 허용된 로컬 실로그의 소규모 층화 표본을 수작업으�
 
 ### P2 / P3 — Provider Adapters
 
-P2 Codex의 실제 shape·API·pairing·privacy·검증 세부는 [CODEX-PARSER.md](CODEX-PARSER.md), P3 Claude의 별도 계약은 [CLAUDE-PARSER.md](CLAUDE-PARSER.md)에 둔다. 해당 Project draft의 작업과 Verify를 먼저 확정한 뒤 개발 서브세션이 구현한다. P1 PR #9 병합 후 P2 PR은 main을 기준으로 검토한다.
+P2 Codex의 실제 shape·API·pairing·privacy·검증 세부는 [CODEX-PARSER.md](CODEX-PARSER.md), P3 Claude의 별도 계약은 [CLAUDE-PARSER.md](CLAUDE-PARSER.md)에 둔다. 후속 작업은 해당 이슈의 작업과 Verify를 먼저 확정한 뒤 개발 서브세션이 구현한다. P1 PR #9 병합 후 P2 PR은 main을 기준으로 검토한다.
 
 Codex는 검증된 구조화 `item_completed`를 우선하고 같은 response를 중복 세지 않는다. namespace·call ID·content-block output과 직접 duration을 처리한다. Claude는 transcript UUID·API message ID·tool ID를 구분해 연결한다. call/result latency는 invocation 관측이며 background acknowledgement는 process 종결이 아니다. 직접 turn duration은 scope·경계 불명을 유지한다. cache read/create를 포함한 all-input과 uncached input을 보존하고, 실제 transcript의 finality가 검증되지 않은 usage는 provisional로 남긴다.
 
@@ -149,9 +149,9 @@ Homebrew tap·formula 게시, npm 공개와 license 선택은 이 계획의 구�
 
 ## Verification and Handoff
 
-[GitHub Project](https://github.com/users/WhiteKiwi/projects/2)의 draft item마다 구현 체크·담당·Verify가 있다. [TODO.md](TODO.md)는 티켓 링크와 보드 운영 규칙을 안내하며 상태를 복제하지 않는다. [ACCEPTANCE.md](ACCEPTANCE.md)는 실행 전 NOT RUN이고, 실행 후 revision·환경·명령·기대값·실제 결과를 기록한다. fixture·개인정보·DB 복구·지표 일치·offline UI·설치 시험을 변경 범위에 맞게 수행한다.
+[GitHub Issues](https://github.com/WhiteKiwi/agentprof/issues)의 작업 이슈마다 구현 체크·담당·의존성·Verify가 있다. [TODO.md](TODO.md)는 티켓 링크와 이슈 운영 규칙을 안내하며 상태를 복제하지 않는다. 열린 작업은 `status:todo` 또는 `status:in-progress` 중 하나로 관리한다. [ACCEPTANCE.md](ACCEPTANCE.md)는 실행 전 NOT RUN이고, 실행 후 revision·환경·명령·기대값·실제 결과를 기록한다. fixture·개인정보·DB 복구·지표 일치·offline UI·설치 시험을 변경 범위에 맞게 수행한다.
 
-개발 서브세션에는 SPEC·FINDINGS·ARCHITECTURE·METRICS·IMPLEMENTATION, Project의 해당 draft·Verify·선행 조건을 전달한다. 구현 결정 변경은 해당 문서와 draft부터 반영하고 parent에 변경·검증·한계를 보고한다. parent는 계획·변경·검증 증거를 검토하고 저장소 수준 게시를 맡는다.
+개발 서브세션에는 SPEC·FINDINGS·ARCHITECTURE·METRICS·IMPLEMENTATION, 해당 이슈·Verify·선행 조건을 전달한다. 구현 결정 변경은 해당 문서와 이슈부터 반영하고 parent에 변경·검증·한계를 보고한다. parent는 계획·변경·검증 증거를 검토하고 저장소 수준 게시를 맡는다. 자신의 Verify와 코드·문서 PR 병합 후에만 이슈를 완료 처리하며, 부분 작업으로 넓은 부모 이슈를 닫지 않는다.
 
 
 ## Design Foundation Track (2026-09-30)
@@ -160,7 +160,7 @@ Homebrew tap·formula 게시, npm 공개와 license 선택은 이 계획의 구�
 
 1. 제공 이미지·design-guidelines skill·Design Index·Recent를 검토하고 [canonical guideline](DESIGN-GUIDELINES.md)과 [간결한 실행 계약](../DESIGN.md)을 작성한다.
 2. 별도 구현 세션에서 framework-free `design/`의 semantic CSS tokens·native HTML primitives·최소 vanilla 동작과 합성 오프라인 single-file showcase를 만든다. 재사용 소스를 커밋하고 생성 HTML은 로컬에만 둔다.
-3. dark/light·320px/phone/desktop·keyboard·reduced-motion·privacy·contrast·print를 검증하고 [DESIGN-QA](DESIGN-QA.md)에 실제 결과와 제한을 기록한다. README는 배포/측정된 제품인 것처럼 표시하지 않는다. 남은 브라우저·README 검증은 [Design 티켓](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=258833178)에서 추적한다.
+3. dark/light·320px/phone/desktop·keyboard·reduced-motion·privacy·contrast·print를 검증하고 [DESIGN-QA](DESIGN-QA.md)에 실제 결과와 제한을 기록한다. README는 배포/측정된 제품인 것처럼 표시하지 않는다. 남은 브라우저·README 검증은 [Design 이슈 #10](https://github.com/WhiteKiwi/agentprof/issues/10)에서 추적한다.
 
 제품 적용은 P5 최소 report부터 시작한다. 실제 snapshot 연결·파서·injection 방어의 제품 acceptance는 그대로 미실행이다. 전역 framework/package 구성을 만들거나 watcher·server·배포를 추가하지 않는다.
 
@@ -558,3 +558,20 @@ The [fresh-input review evidence](P6-FRESH-INPUT-REPORT.md#independent-released-
 Linux14 original cases include built/actual-installed fresh6 and stored wrapper1/55inner controls using the entire genuine pre-fresh PR47 consumer61/Commander15. Six extra realSIGINT130 scenarios preserve publication/store/one-argv/started-helper outcome; no native opener is used. Current62-module consumer and all1302 historical source/295 runtime/dependency inputs remain unchanged. Archive54901d0b passes enabled prepack, scripts-disabled/tool-free installation and Node22 guard.
 
 Private receipt parser failures are retained: developer JSON failure text abbreviated complete-help/SafeError codes, and an optional feedback evaluations field was null. Correcting readback parsers repeated no test/build. One Linux receipt initially called its14 executed cases unique despite listing one cross-platform duplicate; only the private label was corrected to14 executed/13 additional unique, retaining the original receipt. After the initial macOS full failure, the actual fixture source changed under prior plan/admission, so the new frozen full qualification was required and executed once. Final evidence changes only three document EOFs; every other frozen input stays exact. Hosted source/test-merge checks, merge/main CI and narrow Project release remain separate gates, not inferred from these local passes.
+
+## Repository issue tracking migration plan (2026-10-03)
+
+The owner's new tracking instruction and the [SPEC transition](SPEC.md#repository-issue-tracking-transition-2026-10-03) supersede the prior Project-only operating rule. Separate post-SPEC research read all six unfinished drafts and the five corresponding historical issue bodies completely; its [Findings](FINDINGS.md#2026-10-03-repository-issue-tracking-migration-research) distinguish current acceptance from released reservations and dated unchecked history. This transition changes tracking and documentation only.
+
+The parent coordinator `01a0f182-0d47-7d50-acfe-c003c004822e` owns inventory, tracker publication, review, Git publication and closure. Research contributor `/root/issue_migration_research` returned its unique FINDINGS EOF. A separately registered development contributor owns the instructions/navigation/template updates only after the migration issue claim is saved and read back. The eight-path ceiling is `AGENTS.md`, `README.md`, `docs/TODO.md`, `docs/SPEC.md`, `docs/IMPLEMENTATION.md`, `docs/FINDINGS.md`, `docs/ACCEPTANCE.md` and `.github/ISSUE_TEMPLATE/task.yml`; existing product source, tests, package, lockfile, CI, assets and dated evidence remain unchanged.
+
+1. Freeze and review the mapping, then register the migration issue. **Verify:** complete paginated Project inventory is 32 unarchived drafts, 26 Done and six unfinished; five counterparts are #5/#6/#7/#8/#10, exploration has no counterpart. Read original histories/checklists/fields and preserved owner/session/dependency/milestone metadata. Review SPEC → separate Findings → this plan, save the actual coordinator/contributor/branch/scope and all four concrete Verify entries in one migration issue, and read back the claim before execution. No new Project draft or extra parallel ticket is assigned.
+2. Migrate active execution records sequentially. **Verify:** reopen the five existing identities and create exactly one exploration issue, keeping unrelated issue metadata and the three known owner/session identities. Preserve every old issue body in an attributed archive comment before replacement. Copy current P4/P6 acceptance gates exactly, retain Design's completed foundation steps, and keep all original Project records as clearly dated immutable history. Bound each authored payload by a conservative 60,000-character and UTF-8-byte budget; split P4 history into contiguous comments and verify stored reconstruction against its original 100,871 bytes/hash. Read back all six bodies, labels, open state, milestones, dependencies, current checks and archives. Do not add them to the historical Project or mark product acceptance complete.
+3. Publish the replacement workflow through separate development and review. **Verify:** actual developer identity/owned paths are registered before GO; AGENTS/TODO/README/current IMPLEMENTATION point to Issues, each open work issue has exactly one `status:todo` or `status:in-progress` label, and the task form uses the already existing Todo label without automatic project/assignee assignment. Check YAML/schema fields, local document links/anchors, whitespace, original shared-document history and every unowned tracked blob/mode. Review the exact eight-file diff, publish without rewriting history, observe final-source CI, merge only the reviewed head and verify synchronized main plus its CI. Keep dated Project references as historical evidence.
+4. Close the historical tracker and finish only the migration issue. **Verify:** after the six mappings and published workflow qualify, prepend a dated issue mapping to the Project README while retaining its entire old README, close Project2 and read back `closed=true`. All 32 original draft IDs/bodies/fields remain unchanged with zero live Issue/PullRequest items. Existing workflow enabled flags are retained; no unsupported pause/disable claim is made. Record final issue/PR/CI/closure evidence, release migration contributors, close only its issue as completed, and capture/read back/private-sync the grounded tracking decision. Broad P4/P5/P6/P7/Design acceptance and the exploration implementation remain open behind their own Verify gates.
+
+## Repository issue workflow implementation receipt (2026-10-03)
+
+After the reviewed SPEC → separate FINDINGS → four-step migration plan, the parent saved and read back development contributor `/root/issue_migration_development` in [Workflow #49](https://github.com/WhiteKiwi/agentprof/issues/49) before GO. The contributor updated current authority/navigation in AGENTS, README, TODO and this plan's entry points; the reviewed migration plan and dated evidence remain unchanged. The task form supplies scope, maintained-plan links, dependencies, ordered work with concrete Verify, and the actual ownership/handoff fields. Its only default label is the already existing `status:todo`; it assigns no Project or owner.
+
+The dated [migration acceptance receipt](ACCEPTANCE.md#repository-issue-tracking-migration--2026-10-03) records the six mapped issues, preserved histories and static verification. Product source, tests, package/lockfile, CI and mascot assets are outside this implementation. Final-source CI, reviewed-head merge, main CI and Project closure remain parent gates; neither this implementation nor a narrow PR completes the broader product issues. Workflow #49 uses `Refs` and closes manually only after the final closure gate.

@@ -1,0 +1,81 @@
+name: Task
+description: Track one planned scope with ownership, dependencies and concrete verification.
+title: "[Task] "
+labels: ["status:todo"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use repository Issues for active work. Search for an existing issue with the same scope before creating another.
+        Follow SPEC → separate research/FINDINGS → IMPLEMENTATION → issue/Verify → plan review → separate development.
+        Read the [tracking and claim rules](https://github.com/WhiteKiwi/agentprof/blob/main/docs/TODO.md) and [agent workflow](https://github.com/WhiteKiwi/agentprof/blob/main/AGENTS.md).
+        Keep actual user logs, prompts, source, tool output and secrets out of issues; use synthetic evidence.
+  - type: textarea
+    id: scope
+    attributes:
+      label: Goal and scope
+      description: Define the observable outcome, included changes, exclusions and completion criteria for this issue.
+      placeholder: |
+        Goal:
+        Included changes:
+        Exclusions:
+        Completion criteria:
+    validations:
+      required: true
+  - type: textarea
+    id: plans
+    attributes:
+      label: Maintained plan links
+      description: Link the specification, independent research findings and implementation plan prepared before this issue. Review the plan before development starts.
+      placeholder: |
+        Specification:
+        Independent research / FINDINGS:
+        Implementation plan:
+        Relevant architecture / metrics / evidence:
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and linked work
+      description: Link required contracts, issues, PRs and verification gates. State None when independent. A narrow child does not complete its broader parent.
+      placeholder: |
+        Dependencies / waiting for:
+        Parent or related issues:
+        Linked PRs:
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Ordered work and Verify
+      description: Give concrete commands or observations, expected results and evidence for each step. Plans with three or more steps require a Verify for every step. Keep unchecked or NOT RUN gates honest.
+      placeholder: |
+        - [ ] Step 1. **Verify:** <command/observation, expected result and evidence location>
+        - [ ] Step 2. **Verify:** <command/observation, expected result and evidence location>
+        - [ ] Step 3. **Verify:** <command/observation, expected result and evidence location>
+    validations:
+      required: true
+  - type: textarea
+    id: claim
+    attributes:
+      label: Work claim
+      description: Say Unclaimed until assigned. Before starting, register real coordinator and contributor identities and read them back. One active ticket per session; preserve existing ownership and use an isolated branch/worktree.
+      placeholder: |
+        - Coordinator session: <actual Codex session ID, or Unclaimed>
+        - Owner: <actual session ID, or coordinator ID + actual agent name; Unclaimed if unassigned>
+        - Contributors: <research/development/review sessions and scope>
+        - Branch / worktree: <branch and isolated worktree>
+        - Scope / reserved files: <phase and owned paths>
+        - Dependencies / waiting for: <required contract, issue or verification>
+        - Next Verify: <concrete next check>
+        - Updated: <timestamp with timezone>
+        - Handoff / PR: <link, remaining work or returned reservations>
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        This form starts with `status:todo` and assigns no owner or Project. After claim readback, replace it with `status:in-progress`; preserve unrelated metadata.
+        Record actual revision/environment/command/result/limitations in maintained evidence and link it here.
+        Close as completed only after this issue's own Verify gates pass and its code or documentation PR merges. Use `Refs #...` when post-merge gates remain, then close manually after they pass.

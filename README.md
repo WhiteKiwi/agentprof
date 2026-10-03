@@ -10,7 +10,7 @@
   <a href="docs/SPEC.md">Product spec</a> ·
   <a href="docs/DESIGN-GUIDELINES.md">Design guidelines</a> ·
   <a href="design/README.md">Component system</a> ·
-  <a href="https://github.com/users/WhiteKiwi/projects/2">Roadmap</a>
+  <a href="https://github.com/WhiteKiwi/agentprof/issues">Roadmap</a>
 </p>
 
 ## Follow the slow.
@@ -91,9 +91,9 @@ The v0.1 target is 10 metrics, 6 diagnostic rules, and a manual [quality-preserv
 2. **P4–P5 · Can we trust it?** Build incremental storage, a minimal time/failure/retry CLI and HTML path, metrics, and diagnostics with false-positive checks
 3. **P6–P7 · Can we use it?** Add offline evidence navigation, installation and resource-budget verification, and a local pilot
 
-The [implementation priorities](docs/IMPLEMENTATION.md#efficiency-review-priorities) put freshness and coverage before hotspots, actionable suggestions, and matched verification. [GitHub Project draft tickets](https://github.com/users/WhiteKiwi/projects/2) track the broader work, with task checklists, owners, dependencies and verification. New work stays in the Project without creating repository issues.
+The [implementation priorities](docs/IMPLEMENTATION.md#efficiency-review-priorities) put freshness and coverage before hotspots, actionable suggestions, and matched verification. [GitHub Issues](https://github.com/WhiteKiwi/agentprof/issues) track the work, with task checklists, owners, dependencies and concrete Verify entries. Follow the [tracking and claim rules](docs/TODO.md); each session owns one active ticket. This replaces the earlier Project-only workflow. The [historical Project](https://github.com/users/WhiteKiwi/projects/2) retains dated records.
 
-Maintained planning documents define the detailed scope and verification criteria. Keep each draft ticket synchronized with its plan. Completing the design showcase does not complete P5/P6 product implementation.
+Maintained planning documents define the detailed scope and verification criteria. Keep each issue synchronized with its plan. Close it as completed only after its own verification passes and its PR merges; a narrow child does not complete broader product acceptance. Completing the design showcase does not complete P5/P6 product implementation.
 
 ## Documentation
 
@@ -106,7 +106,7 @@ The README is in English. Detailed planning and research documents are currently
 | [ARCHITECTURE](docs/ARCHITECTURE.md) | Data flow, storage, identity, and privacy boundaries |
 | [METRICS](docs/METRICS.md) | Metrics, diagnostic rules, aggregation, and improvement cards |
 | [IMPLEMENTATION](docs/IMPLEMENTATION.md) | Implementation order, trade-offs, and verification |
-| [GitHub Project](https://github.com/users/WhiteKiwi/projects/2) · [Tracking rules](docs/TODO.md) | Draft ticket ownership, progress, checklists, and Verify entries |
+| [GitHub Issues](https://github.com/WhiteKiwi/agentprof/issues) · [Tracking rules](docs/TODO.md) | Issue ownership, progress, dependencies, checklists, and Verify entries |
 | [ACCEPTANCE](docs/ACCEPTANCE.md) | Recorded product and foundation verification evidence |
 | [DESIGN](DESIGN.md) · [Guidelines](docs/DESIGN-GUIDELINES.md) | Concise execution rules and design rationale |
 | [Brand references](docs/DESIGN.md) · [BACKLOG](docs/BACKLOG.md) | Supplied artwork and deferred ideas |
