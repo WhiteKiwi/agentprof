@@ -12,7 +12,7 @@ import { SafeError } from "../src/privacy/diagnostics.js";
 import * as stores from "../src/db/source-store.js";
 import * as pathProof from "../src/scanner/lifecycle-path.js";
 import * as scanner from "../src/scanner/scan-run.js";
-import { freshFixture, records, appendExecution, window } from "./fresh-analysis-fixture.js";
+import { freshFixture, appendExecution, window } from "./fresh-analysis-fixture.js";
 import { bytes } from "./recovery-fixture.js";
 import { runHistory } from "../src/cli/history.js";
 
@@ -185,13 +185,15 @@ describe("post-preflight changes and generation guards", () => {
     const result = await runReconcileScan(x.options); expect(result.files[0]).toMatchObject({ status: "stale", revisionAfter: 2 });
     expect((await selected(x.data, x.sourceId)).revision).toBe(2);
   });
-  it("does not remove a corrupt checkpoint while retiring a missing source", async () => {
-    const x = await seed(); await unlink(x.input); const db = await openDatabase(x.data);
-    try { expect(db.prepare("UPDATE source_parser_checkpoints SET checkpoint_json='{}' WHERE source_id=?").run(x.sourceId).changes).toBe(1); }
+  it.each(providers)("does not remove a corrupt %s checkpoint while retiring a missing source", async provider => {
+    const x = await seed(provider); await unlink(x.input); const db = await openDatabase(x.data);
+    // Keep SQL's payload-length check satisfied; the unchanged seal and malformed adapter state must be rejected by authenticated reads.
+    try { expect(db.prepare("UPDATE source_parser_checkpoints SET checkpoint_json='{}', checkpoint_bytes=2 WHERE source_id=?").run(x.sourceId).changes).toBe(1); }
     finally { db.close(); }
     const before = await bytes(x.data);
     await expect(runReconcileScan(x.options)).rejects.toMatchObject({ code: "DATABASE_ACCESS_FAILED" });
     expect(await bytes(x.data)).toEqual(before);
+    expect((await selected(x.data, x.sourceId)).availability).toBe("available");
   });
   it("does not reset a store when the installed key ID changes", async () => {
     const x = await seed(); await unlink(x.input); const path = join(x.data, "identity-key.json");
