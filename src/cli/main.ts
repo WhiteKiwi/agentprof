@@ -62,6 +62,7 @@ export async function run(argv: string[]): Promise<void> {
     .option("--outcome-mix", "show source-local outcome-mix evidence")
     .option("--timing-evidence", "show source-local timing-evidence evidence")
     .option("--duration-scope", "show source-local duration-scope evidence")
+    .option("--usage-finality", "show source-local usage-finality evidence")
     .option("--time-breakdown", "show recorded tool/command/category durations")
     .option("--invocation-overlap", "show observed Claude invocation interval union")
     .option("--read-revisits", "show completed Claude Read file revisits for one --source")
@@ -118,6 +119,8 @@ export async function run(argv: string[]): Promise<void> {
   stats.on("option:timing-evidence", () => { if (++timingEvidenceFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   let durationScopeFlags = 0;
   stats.on("option:duration-scope", () => { if (++durationScopeFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
+  let usageFinalityFlags = 0;
+  stats.on("option:usage-finality", () => { if (++usageFinalityFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   stats.action(async () => {
     const options = { ...program.opts(), ...stats.opts() } as StatsArguments & { json?: boolean };
     const result = await runStats(options);
