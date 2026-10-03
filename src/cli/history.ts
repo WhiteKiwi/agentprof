@@ -97,15 +97,23 @@ export function registerHistoryCommand(program: Command): void {
     .option("--to <utc>", "exclusive UTC timestamp, required; at most 366 days")
     .option("--offset <offset>", "fixed daily offset such as +09:00; default +00:00, no DST")
     .option("--session <id>", "filter daily rows by one exact session identity", sessionSelection)
+    .option("--output <file>", "write a new offline .html/.htm report; stdout becomes a publication receipt")
     .allowExcessArguments(false)
     .addHelpText("after", "\nExplicit sources only; no scan/list/migration. Conflicting copies are withheld, not resolved by recency.\nCompletion counts and clipped interval time have different boundary populations.\nNo daily tokens, global busy time or complete-history claim. Unknown time has no invented day.");
-  for (const flag of ["from", "to", "offset", "session"]) {
+  for (const flag of ["from", "to", "offset", "session", "output"]) {
     let n = 0;
     command.on(`option:${flag}`, () => { if (++n > 1) throw new SafeError("INVALID_ARGUMENT"); });
   }
   command.action(async () => {
     if (dataFlags > 1 || jsonFlags > 1) throw new SafeError("INVALID_ARGUMENT");
-    const options: HistoryArguments = { ...program.opts(), ...command.opts() };
+    const options: HistoryArguments & { output?: string } = { ...program.opts(), ...command.opts() };
+    if (options.output !== undefined) {
+      const { runHistoryExport, formatHistoryExport, historyExportExitCode } = await import("./history-export.js");
+      const result = await runHistoryExport(options);
+      process.stdout.write(formatHistoryExport(result, options.json === true));
+      process.exitCode = historyExportExitCode(result);
+      return;
+    }
     const result = await runHistory(options);
     process.stdout.write(formatHistoryResult(result, options.json === true));
     process.exitCode = 0;
