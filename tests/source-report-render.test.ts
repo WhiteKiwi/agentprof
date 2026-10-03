@@ -1,3 +1,5 @@
+import { buildSourceInvocationTimeline } from "../src/report/invocation-timeline.js";
+import { analyzeSourceInvocationOverlap } from "../src/analysis/source-invocation-overlap.js";
 import { buildSourceCommandBreakdown } from "../src/report/command-breakdown.js";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -13,7 +15,7 @@ const context=createIdentityContext(new Uint8Array(32).fill(11),"1".repeat(32));
 function model(){
  const events=Array.from({length:6},(_,i)=>normalizeEvent({provider:"codex",eventIdentity:`e${i}`,sessionIdentity:"render",kind:"shell",toolName:"exec_command",command:i<5?"npm test safe":"cargo build",status:"completed",statusEvidence:"explicit",exitCode:0,durationMs:i<5?4:80,timingEvidence:"source_reported",durationScope:"process_runtime",sourceRef:{fileIdentity:"render",byteOffset:10+i,recordType:"event_msg"}},context).event!);
  const source:StoredSource={sourceId:events[0]!.sourceRef.fileId,provider:"codex",parserVersion:1,normalizationVersion:1,keyVersion:1,keyId:context.keyId,revision:1,availability:"available",completedOffset:10000,observedSize:10005,boundaryFingerprint:context.fingerprint("content",["b"]),cacheEvidence:null,events,persistedScope:"events_and_metric_evidence",aggregationReady:false,parserResumeReady:false,evidence:{turns:[],usage:[],diagnostics:[],observations:events.map(e=>({id:context.fingerprint("source",["obs",e.id]),eventId:e.id,turnId:null,usageId:null,representation:"structured",origin:"ordinary",transportStatus:"completed",observedUsage:null,sourceRef:{fileId:e.sourceRef.fileId,byteOffset:e.sourceRef.byteOffset}})),capabilities:{provider:"codex",parserVersion:1,support:"shape_verified_only",coverage:"recognized_shapes",observedShapes:[],unsupportedRecords:0,ambiguousRecords:0,stateLimited:false,diagnosticsDropped:0}}};
- const slow=analyzeSourceSlowTool(source); return buildSourceReportModel(summarizeSource(source),slow,buildSourceCommandBreakdown(source,slow));
+ const slow=analyzeSourceSlowTool(source); return buildSourceReportModel(summarizeSource(source),slow,buildSourceCommandBreakdown(source,slow),buildSourceInvocationTimeline(source,analyzeSourceInvocationOverlap(source)));
 }
 it("renders deterministic semantic HTML with exact static CSS hash and no dynamic style",()=>{
  const m=model(),html=renderSourceReport(m);expect(renderSourceReport(m)).toBe(html);expect(Buffer.byteLength(html)).toBeLessThanOrEqual(1048576);
@@ -53,6 +55,7 @@ function maximumModel() {
  const m=structuredClone(model()) as Mutable<ReturnType<typeof model>>,baseRow=structuredClone(m.summary.durations![0]!),basePartition=structuredClone(m.slowTool.partitions[0]!),baseCard=structuredClone(m.slowTool.candidates![0]!);
  const baseContext=structuredClone(m.commandBreakdown.contexts[0]!);m.commandBreakdown.contexts=[];
  const sessions=Array.from({length:6},(_,i)=>context.fingerprint("session",["max",i])).sort(),shapes=[['invocation_latency','paired_timestamps'],['invocation_latency','source_reported'],['item_lifecycle','paired_timestamps'],['process_runtime','source_reported']] as const;
+ m.invocationTimeline.partitions=[];m.invocationTimeline.selection.sessions={total:0,shown:0,omitted:0};
  m.selection.shownSessionIds=sessions;m.selection.sessionCounts=[];m.selection.partitionCounts=[];m.summary.durations=[];m.summary.usage=[];m.slowTool.partitions=[];m.slowTool.candidates=[];
  for(const [si,sessionId]of sessions.entries()){
   m.selection.sessionCounts.push({sessionId,partitions:{total:4,shown:4,omitted:0},usage:{total:4,shown:4,omitted:0}});
