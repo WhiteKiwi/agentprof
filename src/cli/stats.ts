@@ -22,8 +22,9 @@ import { formatSourceRetryOverhead } from "./retry-overhead.js";
 import type { SourceActiveTimeAnalysis } from "../analysis/source-active-time.js";
 import { formatSourceActiveTime } from "./active-time.js";
 import { formatSourceTokens } from "./tokens.js";
+import { formatSourceTimeBreakdown } from "./time-breakdown.js";
 
-export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean; readRevisits?: boolean; invocationOverlap?: boolean; searchRecurrence?: boolean; recovery?: boolean; retryOverhead?: boolean; activeTime?: boolean; tokens?: boolean }>;
+export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean; readRevisits?: boolean; invocationOverlap?: boolean; searchRecurrence?: boolean; recovery?: boolean; retryOverhead?: boolean; activeTime?: boolean; tokens?: boolean; timeBreakdown?: boolean }>;
 export type StatsResult = Readonly<
   { mode: "list_sources"; catalogue: SourceCatalogue }
   | { mode: "selected_source"; sourceFreshnessChecked: false; summary: SourceSummary }
@@ -35,12 +36,15 @@ export type StatsResult = Readonly<
   | { mode: "selected_source_retry_overhead"; analysis: SourceRetryOverheadAnalysis }
   | { mode: "selected_source_active_time"; analysis: SourceActiveTimeAnalysis }
   | { mode: "selected_source_tokens"; summary: SourceSummary }
+  | { mode: "selected_source_time_breakdown"; summary: SourceSummary }
 >;
 export function validateSourceSelection(value: string): string {
   try { const key = keyId(value.split(":")[1]); return identity(value, "source", key); }
   catch { throw new SafeError("INVALID_ARGUMENT"); }
 }
 export function validateStatsArguments(options: StatsArguments): string {
+  if (options.timeBreakdown !== undefined && typeof options.timeBreakdown !== "boolean") throw new SafeError("INVALID_ARGUMENT");
+  if (options.timeBreakdown === true && (options.tokens || options.activeTime || options.retryOverhead || options.recovery || options.searchRecurrence || options.invocationOverlap || options.readRevisits || options.failures || options.listSources || options.source === undefined)) throw new SafeError("INVALID_ARGUMENT");
   if (options.tokens !== undefined && typeof options.tokens !== "boolean") throw new SafeError("INVALID_ARGUMENT");
   if (options.tokens === true && (options.activeTime || options.retryOverhead || options.recovery || options.searchRecurrence || options.invocationOverlap || options.readRevisits || options.failures || options.listSources || options.source === undefined)) throw new SafeError("INVALID_ARGUMENT");
   if (options.activeTime !== undefined && typeof options.activeTime !== "boolean") throw new SafeError("INVALID_ARGUMENT");
@@ -78,6 +82,7 @@ export async function runStats(options: StatsArguments): Promise<StatsResult> {
     try { identity(options.source, "source", key); } catch { throw new SafeError("INVALID_IDENTITY_KEY"); }
     const source = store.readSource(options.source!);
     if (source === null) throw new SafeError("SOURCE_NOT_FOUND");
+    if (options.timeBreakdown === true) return Object.freeze({ mode: "selected_source_time_breakdown", summary: summarizeSource(source) });
     if (options.tokens === true) return Object.freeze({ mode: "selected_source_tokens", summary: summarizeSource(source) });
     if (analyzeActiveTime !== null) return Object.freeze({ mode: "selected_source_active_time", analysis: analyzeActiveTime(source) });
     if (analyzeRetryOverhead !== null) return Object.freeze({ mode: "selected_source_retry_overhead", analysis: analyzeRetryOverhead(source) });
@@ -184,6 +189,7 @@ function formatSelectedSource(s: SourceSummary): string[] {
 
 export function formatStatsResult(result: StatsResult, json: boolean): string {
   if (json) return JSON.stringify({ schema: "agentprof.cli/v1", ok: true, command: "stats", result }) + "\n";
+  if (result.mode === "selected_source_time_breakdown") return formatSourceTimeBreakdown(result.summary);
   if (result.mode === "selected_source_tokens") return formatSourceTokens(result.summary);
   if (result.mode === "selected_source_active_time") return formatSourceActiveTime(result.analysis);
   if (result.mode === "selected_source_retry_overhead") return formatSourceRetryOverhead(result.analysis);
