@@ -1,3 +1,4 @@
+import { checkpointVersionSupported, hasUsageTiming } from "../parsers/capture.js";
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { Hash } from "node:crypto";
 import { types } from "node:util";
@@ -44,8 +45,11 @@ export function adapterLimitsFingerprint(provider: SourceProvider = "claude"): s
     : sha(JSON.stringify(["agentprof.claude-limits/v1", Object.entries(DEFAULT_CLAUDE_LIMITS)]));
 }
 function checkpointMaximum(provider: SourceProvider): number { return provider === "codex" ? MAX_CODEX_CHECKPOINT_BYTES : MAX_CLAUDE_CHECKPOINT_BYTES; }
-function currentParserVersion(context: IdentityContext, provider: SourceProvider): number {
-  return (provider === "codex" ? createCodexAdapter(context) : createClaudeAdapter(context)).snapshot().capabilities.parserVersion;
+function compatibleParser(context: IdentityContext, provider: SourceProvider, version: number): boolean {
+  if (!checkpointVersionSupported(provider, version)) return false;
+  const mode = { usageTiming: hasUsageTiming(provider, version) };
+  return (provider === "codex" ? createCodexAdapter(context, {}, mode) : createClaudeAdapter(context, {}, mode))
+    .snapshot().capabilities.parserVersion === version;
 }
 function boundedInteger(value: unknown, maximum: number, minimum = 0): number {
   const result = integer(value, minimum);
@@ -107,15 +111,16 @@ function requireGeneration(source: SourceHeaderInput, hasEvidence: boolean, cach
 /** Current-compatible tokens are decoded strictly and must project to this generation. */
 export function restoreSourceCheckpoint(context: IdentityContext, source: SourceHeaderInput, capture: SourceCheckpointCapture, projection: string): ClaudeAdapter | CodexAdapter {
   const binding = { sourceId: source.sourceId, completedOffset: source.completedOffset, nextOrdinal: capture.nextOrdinal };
-  const currentVersion = currentParserVersion(context, source.provider);
+  if (!compatibleParser(context, source.provider, source.parserVersion)) invalid();
+  const currentVersion = source.parserVersion, mode = { usageTiming: hasUsageTiming(source.provider, source.parserVersion) };
   const decoded = source.provider === "codex"
     ? decodeCodexCheckpoint(context, capture.checkpoint, binding, DEFAULT_CODEX_LIMITS, currentVersion)
     : decodeClaudeCheckpoint(context, capture.checkpoint, binding, DEFAULT_CLAUDE_LIMITS, currentVersion);
   const p = decoded.position;
   if (p.recordCount !== capture.nextOrdinal || (p.recordCount === 0 ? p.firstOrdinal !== null || p.lastOrdinal !== null || p.lastByteOffset !== null
     : p.firstOrdinal !== 0 || p.lastOrdinal !== capture.nextOrdinal - 1)) invalid();
-  const restored = source.provider === "codex" ? CodexAdapter.restoreCheckpoint(context, capture.checkpoint, binding)
-    : ClaudeAdapter.restoreCheckpoint(context, capture.checkpoint, binding);
+  const restored = source.provider === "codex" ? CodexAdapter.restoreCheckpoint(context, capture.checkpoint, binding, {}, mode)
+    : ClaudeAdapter.restoreCheckpoint(context, capture.checkpoint, binding, {}, mode);
   if (restored.status !== "restored") invalid();
   const snapshot = restored.adapter.snapshot();
   const encoded = encodeSourceSnapshot({ ...source, events: snapshot.events,
@@ -133,7 +138,7 @@ function headerOnly(source: SourceHeaderInput): SourceHeaderInput {
 export function validateCapture(value: unknown, encoded: EncodedSnapshot, context: IdentityContext): SourceCheckpointCapture {
   const h = encoded.header, capture = captureFields(value, h.provider);
   requireGeneration(h, true, encoded.cacheEvidence, relationshipCurrent(encoded.relationships?.evidence));
-  if (h.parserVersion !== currentParserVersion(context, h.provider) || h.observedSize > capture.maxFileBytes) invalid();
+  if (!compatibleParser(context, h.provider, h.parserVersion) || h.observedSize > capture.maxFileBytes) invalid();
   restoreSourceCheckpoint(context, h, capture, encodedProjection(encoded));
   return capture;
 }
@@ -168,7 +173,7 @@ export function readCheckpoint(database: DatabaseSync, sourceId: string, source:
   if (Buffer.byteLength(capture.checkpoint) !== checkpointBytes) invalid();
   const expected = generationSeal(context, source, source.revision, source.cacheEvidence!, capture, limits, projection!);
   if (!timingSafeEqual(Buffer.from(expected), Buffer.from(seal))) invalid();
-  if (source.parserVersion === currentParserVersion(context, source.provider) && limits === adapterLimitsFingerprint(source.provider)) {
+  if (compatibleParser(context, source.provider, source.parserVersion) && limits === adapterLimitsFingerprint(source.provider)) {
     restoreSourceCheckpoint(context, headerOnly(source), capture, projection!);
   }
   return Object.freeze({ ...capture, contractVersion: 1, checkpointBytes, adapterLimitsFingerprint: limits, generationSeal: seal });

@@ -67,6 +67,8 @@ export type ClaudeResultObservation = Readonly<{
   durationScope: DurationScope;
 }>;
 export type ClaudeSourceObservation = Readonly<{
+  /** Present only in timestamp-capture parser versions; record time, not usage finality. */
+  usageObservedAt?: string | null;
   id: string;
   sessionId: string | null;
   eventId: string | null;
@@ -94,7 +96,7 @@ export type ClaudeMetadata = Readonly<{
 export type ClaudeShape = "tool_use" | "tool_result" | "message_link" | "message_usage" | "background_acknowledgement" | "turn_duration";
 export type ClaudeCapabilities = Readonly<{
   provider: "claude";
-  parserVersion: 1 | 2;
+  parserVersion: 1 | 2 | 3;
   support: "shape_verified_only";
   coverage: "recognized_shapes" | "partial";
   observedShapes: readonly ClaudeShape[];

@@ -1,3 +1,5 @@
+import { validateCaptureOptions } from "../capture.js";
+import type { ParserCaptureOptions } from "../capture.js";
 import { types } from "node:util";
 import { checkpointBinding, checkpointBudget, decodeClaudeCheckpoint, encodeClaudeCheckpoint } from "./checkpoint.js";
 import type { CheckpointPosition, ExecutionState, MessageState, Position, SafeResult, SourceState, StreamState, UsageOrder } from "./checkpoint.js";
@@ -29,6 +31,7 @@ type WorkBatch = { events: Map<string, NormalizedEvent>; turns: Map<string, Clau
 export class ClaudeAdapter {
   readonly #context: IdentityContext;
   readonly #limits: ClaudeLimits;
+  readonly #usageTiming: boolean;
   readonly #sources = new Map<string, SourceState>();
   readonly #streams = new Map<string, StreamState>();
   readonly #events = new Map<string, ExecutionState>();
@@ -55,13 +58,14 @@ export class ClaudeAdapter {
   #checkpointUnavailable: ClaudeCheckpointUnavailableReason | null = null;
   #continuation: ClaudeCheckpointBinding | null = null;
 
-  constructor(context: IdentityContext, limits: Partial<ClaudeLimits> = {}) {
+  constructor(context: IdentityContext, limits: Partial<ClaudeLimits> = {}, capture: ParserCaptureOptions = {}) {
+    this.#usageTiming = validateCaptureOptions(capture);
     const selected = { ...DEFAULT_CLAUDE_LIMITS, ...limits };
     if (Object.keys(selected).some((key) => !Object.hasOwn(DEFAULT_CLAUDE_LIMITS, key)) || Object.values(selected).some((value) => !Number.isSafeInteger(value) || value < 1 || value > 1_000_000)) throw new SafeError("INVALID_ARGUMENT");
     this.#context = context; this.#limits = Object.freeze(selected);
   }
   #capabilities(): ClaudeCapabilities {
-    return Object.freeze({ provider: "claude", parserVersion: 2, support: "shape_verified_only", coverage: this.#partial ? "partial" : "recognized_shapes", observedShapes: Object.freeze([...this.#shapes].sort()), unsupportedRecords: this.#unsupported, ambiguousRecords: this.#ambiguous, stateLimited: this.#limited, diagnosticsDropped: this.#diagnosticsDropped });
+    return Object.freeze({ provider: "claude", parserVersion: this.#usageTiming ? 3 : 2, support: "shape_verified_only", coverage: this.#partial ? "partial" : "recognized_shapes", observedShapes: Object.freeze([...this.#shapes].sort()), unsupportedRecords: this.#unsupported, ambiguousRecords: this.#ambiguous, stateLimited: this.#limited, diagnosticsDropped: this.#diagnosticsDropped });
   }
   #warn(code: DiagnosticCode, input: Input | null, batch: WorkBatch, position: Position | null = null): void {
     this.#partial = true;
@@ -79,7 +83,7 @@ export class ClaudeAdapter {
     const id = this.#context.fingerprint("source", ["claude_observation", input.fileId, input.sourceRef.byteOffset, representation, eventId, usageId, turnId]);
     if (this.#observations.has(id)) return false;
     if (!this.#room(this.#observations.size, this.#limits.observations, input, batch)) return false;
-    const value: ClaudeSourceObservation = Object.freeze({ id, sessionId: input.streamId, messageId: input.messageId, eventId, usageId, turnId, representation, origin: input.origin, observedUsage, observedResult, sourceRef: input.sourceRef });
+    const value: ClaudeSourceObservation = Object.freeze({ ...(this.#usageTiming ? { usageObservedAt: representation === "usage" ? input.at : null } : {}), id, sessionId: input.streamId, messageId: input.messageId, eventId, usageId, turnId, representation, origin: input.origin, observedUsage, observedResult, sourceRef: input.sourceRef });
     this.#observations.set(id, value); batch.observations.set(id, value); return true;
   }
   #unsupportedRecord(input: Input, batch: WorkBatch): void {
@@ -123,10 +127,10 @@ export class ClaudeAdapter {
     } catch { return Object.freeze({ status: "unavailable", reason: "incompatible_binding" }); }
   }
   /** Validate first, then expose one fresh owned instance. No existing adapter is mutated. */
-  static restoreCheckpoint(context: IdentityContext, encoded: unknown, expectedBinding: ClaudeCheckpointBinding, limits: Partial<ClaudeLimits> = {}):
+  static restoreCheckpoint(context: IdentityContext, encoded: unknown, expectedBinding: ClaudeCheckpointBinding, limits: Partial<ClaudeLimits> = {}, capture: ParserCaptureOptions = {}):
     Readonly<{ status: "restored"; adapter: ClaudeAdapter } | { status: "rejected"; reason: "invalid_checkpoint" }> {
     try {
-      const adapter = new ClaudeAdapter(context, limits), binding = checkpointBinding(expectedBinding, context);
+      const adapter = new ClaudeAdapter(context, limits, capture), binding = checkpointBinding(expectedBinding, context);
       const decoded = decodeClaudeCheckpoint(context, encoded, binding, adapter.#limits, adapter.#capabilities().parserVersion), s = decoded.state;
       for (const [key, value] of s.sources) adapter.#sources.set(key, value);
       for (const [key, value] of s.streams) adapter.#streams.set(key, value);
@@ -557,4 +561,4 @@ export class ClaudeAdapter {
   }
 }
 
-export function createClaudeAdapter(context: IdentityContext, limits: Partial<ClaudeLimits> = {}): ClaudeAdapter { return new ClaudeAdapter(context, limits); }
+export function createClaudeAdapter(context: IdentityContext, limits: Partial<ClaudeLimits> = {}, capture: ParserCaptureOptions = {}): ClaudeAdapter { return new ClaudeAdapter(context, limits, capture); }

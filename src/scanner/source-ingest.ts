@@ -1,3 +1,4 @@
+import { validateCaptureOptions } from "../parsers/capture.js";
 import { adapterLimitsFingerprint, validateIngestionCandidate, validatePredecessor } from "../db/source-checkpoint-validation.js";
 import { resolve } from "node:path";
 import type { createSourceStore, SourceIngestionCandidate, SourceSnapshotInput } from "../db/source-store.js";
@@ -11,7 +12,7 @@ import type { SafeDiagnostic } from "../privacy/diagnostics.js";
 import { ownInput, readSourcePrefixWithProof, readSourceSuffixWithProof, sourcePrefixOptions, validSourcePath } from "./source-prefix.js";
 import type { ProvenSourcePrefixResult, SourcePrefixOptions } from "./source-prefix.js";
 
-export type SourceIngestInput = SourcePrefixOptions & Readonly<{ path: string; provider: "codex" | "claude"; expectedRevision: number | null }>;
+export type SourceIngestInput = SourcePrefixOptions & Readonly<{ path: string; provider: "codex" | "claude"; expectedRevision: number | null; usageTiming?: boolean }>;
 type IngestEvidence = Readonly<{
   sourceId: string; persistedScope: "events_and_metric_evidence"; aggregationReady: false; parserResumeReady: false;
   capabilities: ParserCapabilities | ClaudeCapabilities; diagnostics: readonly SafeDiagnostic[]; readerDiagnostics: readonly SafeDiagnostic[];
@@ -30,7 +31,8 @@ export async function ingestSourceFileFromCheckpoint(store: ReturnType<typeof cr
   return ingest(store, context, input, validateIngestionCandidate(candidate, context.keyId));
 }
 async function ingest(store: ReturnType<typeof createSourceStore>, context: IdentityContext, input: SourceIngestInput, candidate?: SourceIngestionCandidate): Promise<SourceIngestResult> {
-  const value = ownInput(input, ["path", "provider", "expectedRevision", "maxFileBytes", "maxRecords", "maxLineBytes", "chunkBytes", "signal"]);
+  const value = ownInput(input, ["path", "provider", "expectedRevision", "maxFileBytes", "maxRecords", "maxLineBytes", "chunkBytes", "signal", "usageTiming"]);
+  const mode = { usageTiming: validateCaptureOptions(value["usageTiming"] === undefined ? {} : { usageTiming: value["usageTiming"] as boolean }) };
   const path = value["path"], provider = value["provider"], expectedRevision = value["expectedRevision"];
   validSourcePath(path);
   if (provider !== "codex" && provider !== "claude") throw new SafeError("INVALID_ARGUMENT");
@@ -38,7 +40,7 @@ async function ingest(store: ReturnType<typeof createSourceStore>, context: Iden
   const { maxFileBytes, maxRecords, maxLineBytes, chunkBytes, signal } = sourcePrefixOptions({ maxFileBytes: value["maxFileBytes"], maxRecords: value["maxRecords"], maxLineBytes: value["maxLineBytes"], chunkBytes: value["chunkBytes"], signal: value["signal"] });
   const options: SourcePrefixOptions = { maxFileBytes, maxRecords, maxLineBytes, chunkBytes, ...(signal === undefined ? {} : { signal }) };
   const fileIdentity = resolve(path), sourceId = context.fingerprint("source", [provider, fileIdentity]);
-  let adapter = provider === "codex" ? createCodexAdapter(context) : createClaudeAdapter(context);
+  let adapter = provider === "codex" ? createCodexAdapter(context, {}, mode) : createClaudeAdapter(context, {}, mode);
   const parserVersion = adapter.snapshot().capabilities.parserVersion;
   if (candidate !== undefined) {
     if (candidate.source !== null && (candidate.source.sourceId !== sourceId || candidate.source.provider !== provider
@@ -59,8 +61,8 @@ async function ingest(store: ReturnType<typeof createSourceStore>, context: Iden
     && checkpoint.maxFileBytes === maxFileBytes && checkpoint.maxRecords === maxRecords && checkpoint.maxLineBytes === maxLineBytes) {
     if (old.cacheEvidence === null || old.availability !== "available") throw new SafeError("DATABASE_ACCESS_FAILED");
     const binding = { sourceId, completedOffset: old.completedOffset, nextOrdinal: checkpoint.nextOrdinal };
-    const restored = provider === "codex" ? CodexAdapter.restoreCheckpoint(context, checkpoint.checkpoint, binding)
-      : ClaudeAdapter.restoreCheckpoint(context, checkpoint.checkpoint, binding);
+    const restored = provider === "codex" ? CodexAdapter.restoreCheckpoint(context, checkpoint.checkpoint, binding, {}, mode)
+      : ClaudeAdapter.restoreCheckpoint(context, checkpoint.checkpoint, binding, {}, mode);
     if (restored.status !== "restored") throw new SafeError("DATABASE_ACCESS_FAILED");
     adapter = restored.adapter; ordinal = checkpoint.nextOrdinal;
     const suffix = await readSourceSuffixWithProof(fileIdentity, context, { ...contract, completedOffset: old.completedOffset, observedSize: old.observedSize,
@@ -68,7 +70,7 @@ async function ingest(store: ReturnType<typeof createSourceStore>, context: Iden
       maxFileBytes: checkpoint.maxFileBytes, maxRecords: checkpoint.maxRecords, maxLineBytes: checkpoint.maxLineBytes }, consume, options);
     if (suffix.status === "corrupt_checkpoint") throw new SafeError("DATABASE_ACCESS_FAILED");
     if (suffix.status === "mismatch") {
-      adapter = provider === "codex" ? createCodexAdapter(context) : createClaudeAdapter(context); ordinal = 0;
+      adapter = provider === "codex" ? createCodexAdapter(context, {}, mode) : createClaudeAdapter(context, {}, mode); ordinal = 0;
       prefix = await readSourcePrefixWithProof(fileIdentity, context, contract, consume, options);
     } else prefix = suffix;
   } else prefix = await readSourcePrefixWithProof(fileIdentity, context, contract, consume, options);
