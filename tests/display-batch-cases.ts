@@ -40,5 +40,11 @@ export const displayCases = [
     "prop": "readRatio",
     "flag": "read-ratio",
     "mode": "selected_source_read_ratio"
+  },
+  {
+    "pr": 82,
+    "prop": "searchRatio",
+    "flag": "search-ratio",
+    "mode": "selected_source_search_ratio"
   }
 ] as const;
