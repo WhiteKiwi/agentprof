@@ -4,6 +4,7 @@ import { formatScanResult, runScan, validateCliPath } from "./scan.js";
 import type { ScanArguments } from "./scan.js";
 import { formatStatsResult, runStats, validateSourceSelection } from "./stats.js";
 import type { StatsArguments } from "./stats.js";
+import { EVIDENCE_STATS_OPTIONS } from "./evidence-stats.js";
 import { formatInsightsResult, runInsights } from "./insights.js";
 import type { InsightsArguments } from "./insights.js";
 import { runReport, formatReportResult } from "./report.js";
@@ -50,6 +51,12 @@ export async function run(argv: string[]): Promise<void> {
     .option("--failures", "show confirmed native failure evidence for one --source")
     .option("--source <id>", "select one full source ID from list/scan JSON", validateSourceSelection)
     .addHelpText("after", "\nExactly one selection mode is required. Existing private DELETE-mode store only; no scan or migration.\nNo --last, global totals, freshness check or cross-source reconciliation. Suppression and unknown values remain visible.\n--failures requires --source; status/timing coverage stay separate; generic Codex nonzero statuses may be unknown.\n--read-revisits requires --source and excludes --failures; Claude Read only, Codex unsupported; no same-content or waste claim.\n--invocation-overlap requires --source and excludes --failures/--read-revisits; Claude only, Codex unsupported; no runtime, active-time or savings claim.\n--search-recurrence requires --source and excludes --failures/--read-revisits/--invocation-overlap; Claude parser2 Grep/Glob only; exact request recurrence, not equal results or waste.\n--recovery requires --source and excludes other stats modes; Codex same-turn operation only; observed recovery, no retry-loop or savings claim.");
+  for (const [, flag, description] of EVIDENCE_STATS_OPTIONS) {
+    stats.option(`--${flag}`, description);
+    let occurrences = 0;
+    stats.on(`option:${flag}`, () => { if (++occurrences > 1) throw new SafeError("INVALID_ARGUMENT"); });
+  }
+  stats.addHelpText("after", "\nEvidence views require --source and exclude every other stats view. JSON retains native evidence and explicit fraction denominators.");
   let selections = 0;
   for (const flag of ["list-sources", "source"]) stats.on(`option:${flag}`, () => {
     if (++selections > 1) throw new SafeError("INVALID_ARGUMENT");
