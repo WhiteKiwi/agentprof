@@ -881,3 +881,19 @@ The narrow publication scope is eight files: current instructions in AGENTS, REA
 Recommended four admission gates: (1) freeze complete inventory/source histories and verify one-to-one counterpart/owner/dependency mapping; (2) publish/reopen the six mapped issues and verify stored history reconstruction, current checks, labels, milestone and ownership; (3) independently review the separate developer's exact eight-file documentation/template change, local links/YAML/whitespace and actual final-source CI/merge/main; (4) only then close the Project, verify its 32 unchanged drafts/fields and forward README, and close only the migration Workflow issue. No tracker mutation, new issue number, documentation implementation PASS, Project closure or product acceptance PASS is inferred by this research.
 
 ObsDog retrieval used the historical `v0.1-alpha` / `v0.1` milestone distinction from `AgentProf — 초기 설계와 작업계획`, then checked it against current issue metadata. That note's old Project-only instructions are historical and superseded by the owner's new request. The parent owns canonical capture/reconciliation and final synchronization; this research creates no duplicate memory note.
+
+## 2026-10-03 PR52 concurrency research
+
+Reviewed [PR #52](https://github.com/WhiteKiwi/agentprof/pull/52) at `1e5008a32a9bd6569bf7497426d8f0047b7658e0` against the [CI review contract](SPEC.md#ci-optimization-review-contract-2026-10-03-pr-52). Confirmed P2: every `main` push uses the same `foundation-Foundation checks-refs/heads/main` group, so independent integration qualifications can be lost.
+
+GitHub's default concurrency queue retains one running and one pending run. A new queued run replaces the existing pending run even when `cancel-in-progress` is false; that flag controls cancellation of the running run. Thus A running / B pending / C arriving cancels B. This follows the [official concurrency contract](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency) and [workflow syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#concurrency).
+The minimal correction is `foundation-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}`, retaining `cancel-in-progress: ${{ github.event_name == 'pull_request' }}`. A PR keeps its stable number group; separate main runs get unique IDs. [Contexts](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#github-context) define run IDs as unique per repository and unchanged on reruns. `queue: max` adds serial queuing and cannot combine with true cancellation, so it does not fit the preserved PR policy.
+
+Synthetic context/key assertions passed 6/6; these model the proposed expression and policy, not GitHub's expression parser or hosted scheduling:
+
+- Original main A/B/C: identical groups and false cancellation; the documented pending-replacement rule applies.
+- Corrected main A/B/C: three distinct groups and false cancellation.
+- Two runs of PR #52: identical groups and true cancellation; PR #52 / #53: distinct groups.
+- PR / main groups and otherwise identical contexts in differently named workflows: distinct groups.
+
+The changed trigger filter and 15/5-minute job bounds match the contract; the diff preserves runtime matrix, rejection guard, historical seed, verifier, permissions and action pins. No further blocking defect was established. Actual hosted cancellation experiments, final-source CI and merged-main CI were NOT RUN by this research session and remain separate verification evidence.
