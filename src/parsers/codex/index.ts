@@ -1,4 +1,5 @@
-import { validateCaptureOptions } from "../capture.js";
+import { evidenceOmitted, observedErrorFingerprint } from "../pattern-evidence.js";
+import { captureMode } from "../capture.js";
 import type { ParserCaptureOptions } from "../capture.js";
 import { types } from "node:util";
 import { checkpointBinding, checkpointBudget, checkpointLimits, decodeCodexCheckpoint, encodeCodexCheckpoint } from "./checkpoint.js";
@@ -55,6 +56,7 @@ export class CodexAdapter {
   readonly #context: IdentityContext;
   readonly #limits: CodexLimits;
   readonly #usageTiming: boolean;
+  readonly #patternEvidence: boolean;
   readonly #sources = new Map<string, SourceState>();
   readonly #streams = new Map<string, StreamState>();
   readonly #events = new Map<string, ExecutionState>();
@@ -85,7 +87,8 @@ export class CodexAdapter {
   #continuation: CodexCheckpointBinding | null = null;
 
   constructor(context: IdentityContext, limits: Partial<CodexLimits> = {}, capture: ParserCaptureOptions = {}) {
-    this.#usageTiming = validateCaptureOptions(capture);
+    const mode = captureMode(capture);
+    this.#usageTiming = mode.usageTiming; this.#patternEvidence = mode.patternEvidence;
     this.#context = context;
     const selected = { ...DEFAULT_CODEX_LIMITS, ...limits };
     if (Object.keys(selected).some((key) => !Object.hasOwn(DEFAULT_CODEX_LIMITS, key)) || Object.values(selected).some((value) => !Number.isSafeInteger(value) || value < 1 || value > 1_000_000)) throw new SafeError("INVALID_ARGUMENT");
@@ -93,7 +96,7 @@ export class CodexAdapter {
   }
 
   #capabilities(): ParserCapabilities {
-    return Object.freeze({ provider: "codex", parserVersion: this.#usageTiming ? 2 : 1, support: "shape_verified_only", coverage: this.#partial ? "partial" : "recognized_shapes", observedShapes: Object.freeze([...this.#shapes].sort()), unsupportedRecords: this.#unsupported, ambiguousRecords: this.#ambiguous, stateLimited: this.#limited, diagnosticsDropped: this.#diagnosticsDropped });
+    return Object.freeze({ provider: "codex", parserVersion: this.#patternEvidence ? 3 : this.#usageTiming ? 2 : 1, support: "shape_verified_only", coverage: this.#partial ? "partial" : "recognized_shapes", observedShapes: Object.freeze([...this.#shapes].sort()), unsupportedRecords: this.#unsupported, ambiguousRecords: this.#ambiguous, stateLimited: this.#limited, diagnosticsDropped: this.#diagnosticsDropped });
   }
   #warn(code: DiagnosticCode, input: Input | null, batch: WorkBatch): void {
     this.#partial = true;
@@ -382,7 +385,7 @@ export class CodexAdapter {
       if (durationMs !== null) this.#warn("TIMING_SCOPE_UNKNOWN", input, batch);
       durationMs = null;
     }
-    const result = shell ? readOutput({ output: field(item, "output") }, streamId, this.#context, "other", input.completeOutput) : readOutput(field(item, "result"), streamId, this.#context, "mcp", input.completeOutput);
+    const result = shell ? readOutput({ output: field(item, "output") }, streamId, this.#context, "other", input.completeOutput, this.#patternEvidence) : readOutput(field(item, "result"), streamId, this.#context, "mcp", input.completeOutput, this.#patternEvidence);
     if (!shell && durationMs === 0 && !object(field(item, "result"))) {
       durationMs = null; this.#warn("TIMING_SCOPE_UNKNOWN", input, batch);
     }
@@ -411,7 +414,11 @@ export class CodexAdapter {
       status: completed ? "unknown" : "pending", statusEvidence: "explicit", recordType: "event_msg",
     });
     if (event === null) return;
-    const errorFingerprint = status === "failed" ? shell && code !== null && result.contentFingerprint !== null
+    const observedOutput = field(item, "output"), aggregatedOutput = field(item, "aggregated_output");
+    const conflictingOutput = observedOutput !== undefined && aggregatedOutput !== undefined && canonical(observedOutput) !== canonical(aggregatedOutput);
+    const errorFingerprint = status === "failed" ? this.#patternEvidence && shell && !evidenceOmitted(item)
+      ? conflictingOutput ? null : observedErrorFingerprint(this.#context, "codex", "process_exit", aggregatedOutput ?? observedOutput, code)
+      : shell && code !== null && result.contentFingerprint !== null
       ? this.#context.fingerprint("error", ["process_exit", code, result.contentFingerprint]) : result.errorFingerprint : null;
     event = Object.freeze({ ...event, id, commandPattern: classified?.commandPattern ?? null,
       operationKey: classified !== null ? classified.operationKey : event.operationKey ?? prior?.event.operationKey ?? null,
@@ -554,9 +561,9 @@ export class CodexAdapter {
   }
   #safeResult(payload: unknown, streamId: string, input: Input): SafeResult {
     const output = field(payload, "output");
-    const exec = readOutput(output, streamId, this.#context, "exec", input.completeOutput);
-    const mcp = readOutput(jsonObject(output) ?? output, streamId, this.#context, "mcp", input.completeOutput);
-    const other = readOutput(output, streamId, this.#context, "other", input.completeOutput);
+    const exec = readOutput(output, streamId, this.#context, "exec", input.completeOutput, this.#patternEvidence);
+    const mcp = readOutput(jsonObject(output) ?? output, streamId, this.#context, "mcp", input.completeOutput, this.#patternEvidence);
+    const other = readOutput(output, streamId, this.#context, "other", input.completeOutput, this.#patternEvidence);
     // Opaque payload digest detects replay conflicts even when completeness is unknown.
     const encoded = canonical(output);
     if (encoded === null && output !== null) throw new SafeError("INVALID_RECORD");

@@ -96,7 +96,7 @@ export type ClaudeMetadata = Readonly<{
 export type ClaudeShape = "tool_use" | "tool_result" | "message_link" | "message_usage" | "background_acknowledgement" | "turn_duration";
 export type ClaudeCapabilities = Readonly<{
   provider: "claude";
-  parserVersion: 1 | 2 | 3;
+  parserVersion: 1 | 2 | 3 | 4;
   support: "shape_verified_only";
   coverage: "recognized_shapes" | "partial";
   observedShapes: readonly ClaudeShape[];
