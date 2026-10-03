@@ -54,6 +54,7 @@ describe("compatible pattern interval sweep", () => {
     expect(p?.positionedEventIds).toHaveLength(2);
   });
   it.each([{ startMs: 0, endMs: 0 }, { startMs: 10, endMs: 1 }, { startMs: NaN, endMs: 2 }, { startMs: 0.5, endMs: 2 },
+    { startMs: 8800000000000000, endMs: 8800000000001000 },
     { startMs: -8000000000000000, endMs: 8000000000000000 }])("rejects invalid query %j", period => expect(() => validatePatternPeriod(period)).toThrow());
   it("is immutable, permutation invariant and bounded at 4096 independent executions", () => {
     const xs = Array.from({ length: 4096 }, (_, i) => interval(`e${i}`, i * 2, i * 2 + 1));

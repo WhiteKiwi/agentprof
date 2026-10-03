@@ -34,6 +34,7 @@ export function addSafe(a: number | null, b: number | null): number | null {
 }
 export function validatePatternPeriod(period: PatternPeriod | null): void {
   if (period !== null && (!Number.isSafeInteger(period.startMs) || !Number.isSafeInteger(period.endMs)
+    || Math.abs(period.startMs) > 8_640_000_000_000_000 || Math.abs(period.endMs) > 8_640_000_000_000_000
     || period.endMs <= period.startMs || !Number.isSafeInteger(period.endMs - period.startMs))) {
     throw new RangeError("invalid_pattern_period");
   }

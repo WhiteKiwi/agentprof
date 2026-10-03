@@ -44,7 +44,7 @@ function position(e: NormalizedEvent, observations: readonly Observation[]): Pos
     }
     if (o.sourceRef.byteOffset !== e.sourceRef.byteOffset
       || (structured ? o.representation !== "structured" : o.representation !== "result" && o.representation !== "poll")) continue;
-    if (o.turnId !== null && o.turnId !== e.turnId) return "contradictory_turn_proof";
+    if (structured ? o.turnId !== e.turnId : o.turnId !== null && o.turnId !== e.turnId) return "contradictory_turn_proof";
     if ("observedResult" in o && o.observedResult?.observedAt !== e.endAt) return "contradictory_terminal_time";
     if (terminal === null || lexical(o.id, terminal.id) < 0) terminal = o;
   }

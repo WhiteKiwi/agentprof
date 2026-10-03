@@ -104,9 +104,8 @@ export function evaluatePatternRules(context: PatternContext, cycles: EditValida
         if (e.errorFingerprint === null) { missing.add(e.id); reasons.add("missing_error_identity"); continue; }
         // Without a query, missing timing must not erase a confirmed occurrence. With a query, population membership needs a start.
         if (period !== null) {
-          const start = e.startAt === null ? NaN : Date.parse(e.startAt);
-          if (!Number.isSafeInteger(start)) { missing.add(e.id); reasons.add("unpositioned_query_population"); continue; }
-          if (start < period.startMs || start >= period.endMs) continue;
+          if (p === undefined) { missing.add(e.id); reasons.add("unpositioned_query_population"); continue; }
+          if (p.interval.startMs < period.startMs || p.interval.startMs >= period.endMs) continue;
         }
         if (p === undefined) { missing.add(e.id); reasons.add("untimed_confirmed_occurrence"); }
         population.push({ event: e, proofIds: context.proofIdsByEvent.get(e.id) ?? [] }); eligible.add(e.id);
