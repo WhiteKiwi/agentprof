@@ -51,6 +51,7 @@ export async function run(argv: string[]): Promise<void> {
     .option("--latency", "show admitted recorded tool latency quantiles")
     .option("--tool-busy", "show supported positioned terminal interval union")
     .option("--cache-share", "show observed cached-input share")
+    .option("--execution-status", "show normalized execution status inventory")
     .option("--time-breakdown", "show recorded tool/command/category durations")
     .option("--invocation-overlap", "show observed Claude invocation interval union")
     .option("--read-revisits", "show completed Claude Read file revisits for one --source")
@@ -85,6 +86,8 @@ export async function run(argv: string[]): Promise<void> {
   stats.on("option:tool-busy", () => { if (++toolBusyFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   let cacheShareFlags = 0;
   stats.on("option:cache-share", () => { if (++cacheShareFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
+  let executionStatusFlags = 0;
+  stats.on("option:execution-status", () => { if (++executionStatusFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   stats.action(async () => {
     const options = { ...program.opts(), ...stats.opts() } as StatsArguments & { json?: boolean };
     const result = await runStats(options);
