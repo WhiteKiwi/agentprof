@@ -64,7 +64,8 @@ describe("fresh workflow precode baseline controls", () => {
     expect(html).toContain('Included duration observations: 3 / 3 terminal candidates');
     expect(html).toContain('<dt>duration exclusion / pending</dt><dd>2</dd>');
     expect(html).toContain('<dt>usage eligibility / exclusions / provisional</dt><dd>1</dd>');
-    expect(html.match(/<p class="state">Usage unavailable: none<\/p>/g)).toHaveLength(2);
+    expect(html.split('<p>No eligible response-usage cohort in this displayed session.</p>')).toHaveLength(3);
+    expect(html).not.toContain('<p class="state">Usage unavailable: none</p>');
     expect(html).not.toContain('<th scope="row">reasoningOutput</th>');
     for (const [ms, rows] of [[2000, 1], [3000, 2]]) {
       const cells = `<td>1</td><td>${ms}</td><td>${ms}</td><td>${ms}</td><td>${ms}</td><td>${ms}<p class="muted">low sample</p></td>`;
