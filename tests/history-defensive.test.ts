@@ -24,19 +24,19 @@ it("splits a half-hour negative offset at its actual local midnight", () => {
     .toEqual([["2026-10-02", 1000, 0], ["2026-10-03", 2000, 1]]);
 });
 it("refuses over-8-MiB JSON from real bounded analysis instead of clipping its proofs", () => {
-  const t = Date.parse(period.from), q = { ...parseHistoryQuery(period), endMs: t + 10 * HISTORY_DAY_MS };
+  const t = Date.parse(period.from), q = { ...parseHistoryQuery(period), endMs: t + 20 * HISTORY_DAY_MS };
   const es = Array.from({ length: 1000 }, (_, n) => event(`json-limit-${n}`, t, q.endMs,
     { sessionId: id("session", `limit-session-${n}`) }));
   const a = analyzeSelectedHistory([source(es)], q);
   expect(a.reconciliation.counts.admittedExecutions).toBe(1000);
-  expect(a.days).toHaveLength(10000);
+  expect(a.days).toHaveLength(20000);
   expect(a.reconciliation.executions.every(e => e.copies[0]!.proofIds.length === 1)).toBe(true);
   const bytes = Buffer.byteLength(JSON.stringify({ schema: "agentprof.cli/v1", ok: true, command: "history", result: a }) + "\n");
   expect(bytes).toBeGreaterThan(HISTORY_LIMITS.jsonBytes);
   expect(() => formatHistoryResult(a, true)).toThrowError(new SafeError("INVALID_ARGUMENT"));
   const human = formatHistoryResult(a, false);
-  expect(human).toContain("shown=8/10000; omitted=9992");
+  expect(human).toContain("shown=8/20000; omitted=19992");
   expect(Buffer.byteLength(human)).toBeLessThan(32768);
   expect(human.split("\n").length).toBeLessThan(160);
-  expect(a.days).toHaveLength(10000);
+  expect(a.days).toHaveLength(20000);
 }, 15000);
