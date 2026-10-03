@@ -94,3 +94,8 @@ it("PR82 canonical JSON is complete unchanged native authority", async () => {
   const x = await persisted(snapshot()), authority = (await import("../src/analysis/source-search-recurrence.js")).analyzeSourceSearchRecurrence(x.source), r = await runStats({ dataDir: x.data, source: x.sourceId, searchRatio: true });
   expect(JSON.parse(formatStatsResult(r, true)).result).toEqual({ mode: "selected_source_search_ratio", analysis: authority });
 });
+
+it("PR83 canonical JSON is complete unchanged native authority", async () => {
+  const x = await persisted(snapshot()), authority = (await import("../src/analysis/source-invocation-overlap.js")).analyzeSourceInvocationOverlap(x.source), r = await runStats({ dataDir: x.data, source: x.sourceId, overlapSummary: true });
+  expect(JSON.parse(formatStatsResult(r, true)).result).toEqual({ mode: "selected_source_overlap_summary", analysis: authority });
+});

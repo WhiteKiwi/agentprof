@@ -56,6 +56,7 @@ export async function run(argv: string[]): Promise<void> {
     .option("--usage-coverage", "show stored response-usage eligibility counts")
     .option("--read-ratio", "show source-local read-ratio evidence")
     .option("--search-ratio", "show source-local search-ratio evidence")
+    .option("--overlap-summary", "show source-local overlap-summary evidence")
     .option("--time-breakdown", "show recorded tool/command/category durations")
     .option("--invocation-overlap", "show observed Claude invocation interval union")
     .option("--read-revisits", "show completed Claude Read file revisits for one --source")
@@ -100,6 +101,8 @@ export async function run(argv: string[]): Promise<void> {
   stats.on("option:read-ratio", () => { if (++readRatioFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   let searchRatioFlags = 0;
   stats.on("option:search-ratio", () => { if (++searchRatioFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
+  let overlapSummaryFlags = 0;
+  stats.on("option:overlap-summary", () => { if (++overlapSummaryFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   stats.action(async () => {
     const options = { ...program.opts(), ...stats.opts() } as StatsArguments & { json?: boolean };
     const result = await runStats(options);
