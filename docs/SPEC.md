@@ -426,3 +426,8 @@ The optional `stats --source FULL_ID --time-breakdown` presents existing admitte
 Human detail presents at most six identity-ordered compatible partitions and, per shown partition, three known-sum and three unknown-sum cohorts with exact omissions. Known sums compare only within their partition; unknown sums stay unranked. Complete JSON and all source-wide eligibility/reason counters remain available with inherited source support, limitations and readiness context.
 
 Expose source generation, availability and capability/readiness limits. Preserve every earlier command and selected view when the flag is absent/false; reject conflicting selections before storage. [P5-SOURCE-TIME-BREAKDOWN](P5-SOURCE-TIME-BREAKDOWN.md) records separate research and subsequent reviewed correction/verification. Broad P5 acceptance remains independent.
+
+
+## Selected-source display batch specification — 2026-10-03
+
+The owner's grouped-validation instruction is recorded in [P5-SOURCE-DISPLAY-BATCH](P5-SOURCE-DISPLAY-BATCH.md#initial-specification). Twenty-six consecutive thin views share authoritative persisted evidence, source context and common validation; each new flag retains complete original JSON and its own fields/denominators. Bounded human detail, exact omissions, null/zero/suppression distinctions, strict source/metric selection and compatible interval semantics are required. Source CI and oldest-first head/tree guards remain per PR; the composed group's full/package/install/merged-main checks are shared. Separate research resolves the open questions before a reviewed final plan and separate development. This does not complete broad P5.
