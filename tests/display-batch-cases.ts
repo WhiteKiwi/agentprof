@@ -58,5 +58,11 @@ export const displayCases = [
     "prop": "cacheWriteShare",
     "flag": "cache-write-share",
     "mode": "selected_source_cache_write_share"
+  },
+  {
+    "pr": 85,
+    "prop": "reasoningShare",
+    "flag": "reasoning-share",
+    "mode": "selected_source_reasoning_share"
   }
 ] as const;
