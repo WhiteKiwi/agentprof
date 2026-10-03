@@ -64,5 +64,11 @@ export const displayCases = [
     "prop": "reasoningShare",
     "flag": "reasoning-share",
     "mode": "selected_source_reasoning_share"
+  },
+  {
+    "pr": 91,
+    "prop": "outcomeMix",
+    "flag": "outcome-mix",
+    "mode": "selected_source_outcome_mix"
   }
 ] as const;
