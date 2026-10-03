@@ -11,7 +11,7 @@ export const omission = (label: string, shown: number, total: number): string =>
 export function bounded<T>(rows: readonly T[], identity: (row: T) => string): T[] {
   return [...rows].sort((a, b) => compare(identity(a), identity(b))).slice(0, detailLimit);
 }
-export function context(title: string, s: SourceSummary): string[] { return [title, ...sourceSummaryContext(s)]; }
+export function context(title: string, s: SourceSummary): string[] { return [title, ...sourceSummaryContext(s), `Stored event inventory state: ${s.inventory.events === 0 ? "present_empty" : "observed_prefix"}`, `Stored usage inventory state: ${usageState(s)}`]; }
 export function durationState(s: SourceSummary): string {
   return s.suppressionReason !== null ? `suppressed (${s.suppressionReason})` : s.inventory.events === 0 ? "present_empty" : s.durations === null ? "no_eligible_observations" : "eligible_observed_subset";
 }

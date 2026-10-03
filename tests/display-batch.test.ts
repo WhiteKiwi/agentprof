@@ -129,3 +129,8 @@ it("PR94 independently frozen fields and denominators", async () => {
   const x = await persisted(snapshot()), r = await runStats({ dataDir: x.data, source: x.sourceId, usageFinality: true }), text = formatStatsResult(r, false);
   for (const expected of ["source_terminal: n=1; share=0.5", "trusted_partial: n=1; share=0.5"]) expect(text).toContain(expected);
 });
+
+it("PR95 independently frozen fields and denominators", async () => {
+  const x = await persisted(snapshot()), r = await runStats({ dataDir: x.data, source: x.sourceId, capabilities: true }), text = formatStatsResult(r, false);
+  for (const expected of ["parser version=1", "support=shape_verified_only", "Observed shape n=1"]) expect(text).toContain(expected);
+});
