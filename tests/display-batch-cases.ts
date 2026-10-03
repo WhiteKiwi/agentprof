@@ -136,5 +136,11 @@ export const displayCases = [
     "prop": "cacheComponents",
     "flag": "cache-components",
     "mode": "selected_source_cache_components"
+  },
+  {
+    "pr": 113,
+    "prop": "outputComposition",
+    "flag": "output-composition",
+    "mode": "selected_source_output_composition"
   }
 ] as const;

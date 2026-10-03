@@ -71,6 +71,7 @@ export async function run(argv: string[]): Promise<void> {
     .option("--duration-exclusions", "show source-local duration-exclusions evidence")
     .option("--usage-exclusions", "show source-local usage-exclusions evidence")
     .option("--cache-components", "show source-local cache-components evidence")
+    .option("--output-composition", "show source-local output-composition evidence")
     .option("--time-breakdown", "show recorded tool/command/category durations")
     .option("--invocation-overlap", "show observed Claude invocation interval union")
     .option("--read-revisits", "show completed Claude Read file revisits for one --source")
@@ -145,6 +146,8 @@ export async function run(argv: string[]): Promise<void> {
   stats.on("option:usage-exclusions", () => { if (++usageExclusionsFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   let cacheComponentsFlags = 0;
   stats.on("option:cache-components", () => { if (++cacheComponentsFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
+  let outputCompositionFlags = 0;
+  stats.on("option:output-composition", () => { if (++outputCompositionFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   stats.action(async () => {
     const options = { ...program.opts(), ...stats.opts() } as StatsArguments & { json?: boolean };
     const result = await runStats(options);
