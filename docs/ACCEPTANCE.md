@@ -188,6 +188,18 @@ Bounded PR37 main integration: preserve exact main106d6c1329499fdb57e63c7aad3f8a
 Bounded PR43 integration: preserve exact main6f7a538d1806a1973a647fb16ab6c1fecc74bd49 eight-path toolchain/document delta and full shared prefixes, unchanged lockfile/84 dependency pairs and identical feature production/tests. Local duplicate full suites and installation are NOT RUN; new exact-head hosted pnpm10.34.6 qualification remains PENDING. Prior pnpm10.33 results are historical. See [the integration note](P5-SOURCE-SEARCH-RECURRENCE.md#bounded-pnpm-10346-main-integration-2026-10-02).
 
 
+## Source-prefix token-evidence qualification (2026-10-02)
+
+The focused report suite passes 159 tests, and typecheck/build pass. Full qualification: 64 files, 1,825 passed / 43 skipped. With all installed-binary controls enabled: 64 files, 1,836 passed / 32 skipped; both runs total 1,868 tests. The unchanged artifact verifier passes with 58 packed files; retained script-disabled installation preserves every packed byte and mode. Sixteen baseline/current/installed CLI cases preserve status/stdout/stderr. The positive-usage combined maximum is 748,789 UTF-8 bytes under the unchanged one-MiB limit, and escaped overflow remains REPORT_LIMIT. The synthetic installed report retains the literal 6 stored / 2 selected / 1 duplicate / 3 excluded / N2 row oracle, timeline and native command sections; input removal does not affect regeneration, and key/store bytes and modes remain unchanged. Browser acceptance, publication and broad P6 completion remain separate. See [P6-TOKEN-EVIDENCE](P6-TOKEN-EVIDENCE.md).
+
+These 2026-10-02 results qualify the earlier token candidate only. Current-main composition on 2026-10-03 requires fresh qualification; its results are recorded separately in the token-evidence contract.
+
+
+## Token-evidence current-main qualification (2026-10-03)
+
+Fresh composition onto main `8e3118155038a04adcf08f97113186af4243bc2d` passes typecheck/build, 199 focused tests, default aggregate (2,088 passed / 57 skipped) and installed aggregate (2,101 passed / 44 skipped), both 2,145 total. Artifact and enabled-prepack/script-disabled retained installation pass with 62 exact byte/mode matches. Eighteen current-main/candidate/installed CLI cases agree. Genuine retained schema5 read-only report rejection preserves the original/copy and creates no HTML. The positive-usage combined ceiling is 750,079 UTF-8 bytes; escaped overflow remains rejected. See [the complete current-main token qualification](P6-TOKEN-EVIDENCE.md#current-main-qualification-2026-10-03) for actual local Node/pnpm versions, synthetic-data boundaries, skipped tests and pending hosted/browser gates.
+
+
 ## Ordinary Codex durable-source continuation (2026-10-02)
 
 Refreshed foundation precode: 79 focused cases = 3 independent oracle passes + 76 expected feature failures (74 absent captures, scanner full replay4 versus suffix2, legacy candidate guard rejection). Exact-foundation build PASS. Crash6 prerequisite RED: four missing captures, two first-generation child exit1; no successful kill/recovery assertion. All235 base files and five frozen tests unchanged. Serial one-worker stages used NODE_OPTIONS=--max-old-space-size=512 and timeout600s with existing dependencies. Implementation-present focused/crash, inherited suites, typecheck, aggregate, artifact and installed parity remain NOT RUN.
