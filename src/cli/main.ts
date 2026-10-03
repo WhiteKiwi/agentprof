@@ -13,6 +13,7 @@ import { runFreshReport, formatFreshReportResult, freshReportExitCode } from "./
 import type { FreshReportArguments } from "./report-fresh.js";
 import { VERSION } from "./version.js";
 import { registerPatternCommand } from "./patterns.js";
+import { registerHistoryCommand } from "./history.js";
 
 function collect(value: string, previous: string[]): string[] {
   validateCliPath(value);
@@ -86,6 +87,7 @@ export async function run(argv: string[]): Promise<void> {
     process.exitCode = 0;
   });
   registerPatternCommand(program);
+  registerHistoryCommand(program);
   const report = program.command("report").description("Write a new offline HTML report from one stored source or explicit input file")
     .option("--provider <provider>", "explicit input provider: claude or codex")
     .option("--input <file>", "one explicit regular uncompressed .jsonl file")
