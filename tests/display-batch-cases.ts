@@ -46,5 +46,11 @@ export const displayCases = [
     "prop": "searchRatio",
     "flag": "search-ratio",
     "mode": "selected_source_search_ratio"
+  },
+  {
+    "pr": 83,
+    "prop": "overlapSummary",
+    "flag": "overlap-summary",
+    "mode": "selected_source_overlap_summary"
   }
 ] as const;
