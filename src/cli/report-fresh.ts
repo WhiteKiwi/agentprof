@@ -36,6 +36,12 @@ export function selectFreshReportGeneration(scan: ScanResult, provider: Provider
 
 /** All selection/path validation and stable-path preflight precede bootstrap. */
 async function prepare(options: FreshReportArguments): Promise<{ provider: Provider; input: string; dataDir: string; output: string }> {
+  if (options.unified !== undefined && typeof options.unified !== "boolean") throw new SafeError("INVALID_ARGUMENT");
+  if (options.unified === true && (
+    options.codexRoot !== undefined && (!Array.isArray(options.codexRoot) || options.codexRoot.length !== 0)
+    || options.claudeRoot !== undefined && (!Array.isArray(options.claudeRoot) || options.claudeRoot.length !== 0)
+    || options.open !== undefined && typeof options.open !== "boolean")) throw new SafeError("INVALID_ARGUMENT");
+  if (options.unified === true && (typeof options.output !== "string" || !/\.(?:html|htm)$/i.test(options.output))) throw new SafeError("INVALID_ARGUMENT");
   if (options.source !== undefined || (options.codexRoot?.length ?? 0) || (options.claudeRoot?.length ?? 0)
     || (options.provider !== "claude" && options.provider !== "codex") || options.input === undefined || options.output === undefined) throw new SafeError("INVALID_ARGUMENT");
   validateCliPath(options.input);
@@ -72,7 +78,7 @@ export async function runFreshReport(options: FreshReportArguments): Promise<Fre
     if (controller.signal.aborted || scan.status === "aborted") report = Object.freeze({ status: "skipped", reason: "aborted" });
     else if (generation === null) report = Object.freeze({ status: "skipped", reason: "scan_ineligible" });
     else {
-      const selected = { dataDir: prepared.dataDir, source: generation.sourceId, output: prepared.output };
+      const selected = { dataDir: prepared.dataDir, source: generation.sourceId, output: prepared.output, ...(options.unified === undefined ? {} : { unified: options.unified }) };
       try {
         report = options.open === true
           ? await runReportAndOpen(selected, { expectedRevision: generation.revision, signal: controller.signal })

@@ -4,10 +4,12 @@ import { validateSourceSelection } from "./stats.js";
 import { identity } from "../db/source-validation.js";
 import { validateReportPath,writeReportOutput } from "../report/write-output.js";
 import type { Publication } from "../report/write-output.js";
-export type ReportArguments=Readonly<{dataDir?:string;source?:string;output?:string;codexRoot?:readonly string[];claudeRoot?:readonly string[]}>;
+export type ReportArguments=Readonly<{unified?:boolean;dataDir?:string;source?:string;output?:string;codexRoot?:readonly string[];claudeRoot?:readonly string[]}>;
 export type ReportResult=Publication&Readonly<{mode:"selected_source";sourceId:string;revision:number}>;
 export type ReportInternalOptions=Readonly<{expectedRevision?:number}>;
 export async function runReport(options:ReportArguments, internal:ReportInternalOptions={}):Promise<ReportResult>{
+ if(options.unified!==undefined&&typeof options.unified!=="boolean")throw new SafeError("INVALID_ARGUMENT");
+ if(options.unified===true){const {runUnifiedReport}=await import("./report-unified.js");return runUnifiedReport(options,internal);}
  if(internal.expectedRevision!==undefined&&(!Number.isSafeInteger(internal.expectedRevision)||internal.expectedRevision<=0))throw new SafeError("INVALID_ARGUMENT");
  if((options.codexRoot?.length??0)||(options.claudeRoot?.length??0))throw new SafeError("INVALID_ARGUMENT");
  if(options.source!==undefined)validateSourceSelection(options.source);if(options.output!==undefined)validateReportPath(options.output);if(options.dataDir!==undefined)validateReportPath(options.dataDir);

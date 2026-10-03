@@ -95,13 +95,15 @@ export async function run(argv: string[]): Promise<void> {
     .option("--source <id>", "select one full source ID", validateSourceSelection)
     .option("--output <file>", "new output HTML file; existing files are never overwritten")
     .option("--open", "request the system opener after verified HTML publication")
+    .option("--unified", "combine existing measurements and evidence-gated diagnostics in one source report")
     .addHelpText("after", "\nChoose --source or exactly --provider claude|codex --input FILE.jsonl; --output is required.\nStored --source reads the existing store; explicit input scans once then reports its exact generation.\nNo roots or --last. Partial evidence may report with exit 1; failed selection never opens old data.\nBounded source-prefix observations only; no global totals, freshness check or savings claim.\n--open requires local .html/.htm output and completed publication with a verified target.\nNative opening may create OS/browser history; helper acceptance does not verify browser rendering.\nTimeout may mean the file is already open; no automatic retry.");
-  for (const name of ["source", "output", "open", "provider", "input"]) {
+  for (const name of ["source", "output", "open", "provider", "input", "unified"]) {
     let count = 0;
     report.on(`option:${name}`, () => { if (++count > 1) throw new SafeError("INVALID_ARGUMENT"); });
   }
   report.action(async () => {
     const options = { ...program.opts(), ...report.opts() } as FreshReportArguments & { json?: boolean };
+    if (options.unified === true && (reportDataFlags > 1 || reportJsonFlags > 1)) throw new SafeError("INVALID_ARGUMENT");
     if (options.provider !== undefined || options.input !== undefined) {
       if (reportDataFlags > 1 || reportJsonFlags > 1) throw new SafeError("INVALID_ARGUMENT");
       const result = await runFreshReport(options);
