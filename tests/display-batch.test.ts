@@ -99,3 +99,8 @@ it("PR83 canonical JSON is complete unchanged native authority", async () => {
   const x = await persisted(snapshot()), authority = (await import("../src/analysis/source-invocation-overlap.js")).analyzeSourceInvocationOverlap(x.source), r = await runStats({ dataDir: x.data, source: x.sourceId, overlapSummary: true });
   expect(JSON.parse(formatStatsResult(r, true)).result).toEqual({ mode: "selected_source_overlap_summary", analysis: authority });
 });
+
+it("PR84 independently frozen fields and denominators", async () => {
+  const x = await persisted(snapshot()), r = await runStats({ dataDir: x.data, source: x.sourceId, cacheWriteShare: true }), text = formatStatsResult(r, false);
+  for (const expected of ["cache write share=0.0625", "input=80; cache write=5"]) expect(text).toContain(expected);
+});
