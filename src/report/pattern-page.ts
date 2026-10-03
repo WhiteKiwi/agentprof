@@ -11,7 +11,10 @@ function reasonText(reasons: readonly string[]): string {
   return `${shown.map(r => `<p>${htmlText(r)}</p>`).join("") || "<p>None recorded.</p>"}${omissions("Reasons", shown.length, ordered.length)}`;
 }
 /** SourcePatternAnalysis is the unchanged analyzer's owned DTO, not user-supplied HTML/JSON. */
-export function renderPatternPage(a: SourcePatternAnalysis): string {
+export type PatternSectionOptions = Readonly<{
+  sessionAliases?: ReadonlyMap<string, string>; eventAliases?: ReadonlyMap<string, string>; embedded?: boolean;
+}>;
+export function renderPatternSections(a: SourcePatternAnalysis, options: PatternSectionOptions = {}): string {
   if (a.schema !== "agentprof.source-patterns/v1" || a.candidates.length > 4096 || a.rules.length !== PATTERN_RULES.length
     || new Set(a.rules.map(r => r.ruleId)).size !== PATTERN_RULES.length) throw new SafeError("INVALID_ARGUMENT");
   const candidateIndex = new Map(a.candidates.map(c => [c.id, c]));
@@ -21,11 +24,11 @@ export function renderPatternPage(a: SourcePatternAnalysis): string {
   const cycleIndex = new Map(a.editValidation.cycles.map(c => [c.id, c]));
   const candidateAliases = evidenceAliases(candidateIndex.keys(), "candidate"), cycleAliases = evidenceAliases(cycleIndex.keys(), "cycle");
   const shownCandidates = new Set(candidates.map(c => c.id)), shownCycles = new Set(cycles.map(c => c.id));
-  const sessionAliases = evidenceAliases([
+  const sessionAliases = options.sessionAliases ?? evidenceAliases([
     ...a.editValidation.partitions.map(p => p.sessionId), ...(a.timePartitions ?? []).map(p => p.sessionId),
     ...a.candidates.flatMap(c => c.sessionIds), ...a.editValidation.cycles.map(c => c.sessionId),
   ], "session");
-  const eventAliases = evidenceAliases([
+  const eventAliases = options.eventAliases ?? evidenceAliases([
     ...candidates.flatMap(c => [...c.evidenceEventIds, ...c.includedEventIds, ...c.untimedContributionEventIds,
       ...c.windowWitnesses.flatMap(w => [w.firstEventId, w.lastEventId])]),
     ...cycles.flatMap(c => [...c.editEventIds, ...c.validationEventIds, c.firstValidationEventId, ...(c.successfulValidationEventId === null ? [] : [c.successfulValidationEventId])]),
@@ -51,7 +54,7 @@ export function renderPatternPage(a: SourcePatternAnalysis): string {
       reasonText(r.reasons), omissions("Candidate links", linked.length, r.candidateIds.length),
       `<p>${linked.map(id => evidenceLink(evidenceAlias(candidateAliases, id), evidenceAlias(candidateAliases, id))).join(" ") || "No candidate detail links in this display."}</p></article>`);
   }
-  body.push(`<div class="notice"><h3>Diagnoses outside this report</h3>${a.omittedDiagnoses.map(d => `<p>${htmlText(d)}</p>`).join("")}</div></section><section id="time"><h2>Compatible observed time</h2><p>Meaning: ${htmlText(a.patternTimeMeaning)}. Pattern-associated time is not avoidable time, savings or productivity. Different sessions/scopes/evidence are not summed. Per-rule unions may overlap.</p>`,
+  body.push(`<div class="notice"><h3>${options.embedded === true ? "Diagnoses outside this pattern section" : "Diagnoses outside this report"}</h3>${a.omittedDiagnoses.map(d => `<p>${htmlText(d)}</p>`).join("")}</div></section><section id="time"><h2>Compatible observed time</h2><p>Meaning: ${htmlText(a.patternTimeMeaning)}. Pattern-associated time is not avoidable time, savings or productivity. Different sessions/scopes/evidence are not summed. Per-rule unions may overlap.</p>`,
     omissions("Time partitions", time.length, a.timePartitions?.length ?? 0));
   if (a.timePartitions === null) body.push(`<p class="notice">Time analysis is suppressed; there is no measured zero total.</p>`);
   else if (time.length === 0) body.push(`<p>No positioned intervals selected. A complete-history zero is not established.</p>`);
@@ -98,5 +101,8 @@ export function renderPatternPage(a: SourcePatternAnalysis): string {
       `<p>${linkedCycles.map(id => evidenceLink(evidenceAlias(cycleAliases, id), evidenceAlias(cycleAliases, id))).join(" ") || "No displayed related cycles."}</p></details></article>`);
   }
   body.push(`</section>`);
-  return evidencePage("Observed patterns and validation", "Rule evidence, compatible pattern time and ordered edit-validation cycles from one stored source generation.", body.join(""), a.limitations);
+  return body.join("");
+}
+export function renderPatternPage(a: SourcePatternAnalysis): string {
+  return evidencePage("Observed patterns and validation", "Rule evidence, compatible pattern time and ordered edit-validation cycles from one stored source generation.", renderPatternSections(a), a.limitations);
 }
