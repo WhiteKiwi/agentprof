@@ -417,3 +417,12 @@ The bounded detail view preserves all admitted turn membership in JSON and exact
 The optional `stats --source FULL_ID --tokens` presents observed admitted final-response token components from one existing stored source prefix, grouped by session/provider/mapping/finality. Preserve response duplicate/conflict handling, eligibility/exclusion counts and known zero versus unknown/suppressed/overflow components. Codex cache/reasoning subsets are not added again; Claude normalized input retains its established uncached/cache-read/cache-write meaning.
 
 Source availability, partial capability coverage and unreconciled prefix/readiness limits remain explicit in human/JSON output. Human detail stays bounded with exact omissions while complete bounded evidence and source-wide counters remain available in JSON. No new per-tool token attribution, account/session total, population coverage, cost, waste or savings follows. All earlier CLI behavior remains compatible when the flag is absent/false. [P5-SOURCE-TOKENS](P5-SOURCE-TOKENS.md) records the focused review/research/verification contract; this narrow view does not complete broad P5 acceptance.
+
+
+## P5 source-prefix recorded duration breakdown review — 2026-10-03
+
+The optional `stats --source FULL_ID --time-breakdown` presents existing admitted recorded-duration cohorts by session, duration scope and timing evidence, with category/tool/safe command labels and their recorded sample statistics. Preserve excluded/suppressed/partial evidence, unknown or overflow sums/means, known quantiles and low-sample p95. Recorded sums can overlap and do not establish elapsed/busy time, time shares, optimization priority, waste or savings.
+
+Human detail presents at most six identity-ordered compatible partitions and, per shown partition, three known-sum and three unknown-sum cohorts with exact omissions. Known sums compare only within their partition; unknown sums stay unranked. Complete JSON and all source-wide eligibility/reason counters remain available with inherited source support, limitations and readiness context.
+
+Expose source generation, availability and capability/readiness limits. Preserve every earlier command and selected view when the flag is absent/false; reject conflicting selections before storage. [P5-SOURCE-TIME-BREAKDOWN](P5-SOURCE-TIME-BREAKDOWN.md) records separate research and subsequent reviewed correction/verification. Broad P5 acceptance remains independent.
