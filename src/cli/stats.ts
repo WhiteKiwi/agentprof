@@ -1,3 +1,5 @@
+import type { SourceToolBusyAnalysis } from "../analysis/source-tool-busy.js";
+import { formatSourceToolBusy } from "./tool-busy.js";
 import { formatSourceLatency } from "./latency.js";
 import { SafeError } from "../privacy/diagnostics.js";
 import { resolveDataDirectory } from "../privacy/paths.js";
@@ -25,8 +27,10 @@ import { formatSourceActiveTime } from "./active-time.js";
 import { formatSourceTokens } from "./tokens.js";
 import { formatSourceTimeBreakdown } from "./time-breakdown.js";
 
-export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean; readRevisits?: boolean; invocationOverlap?: boolean; searchRecurrence?: boolean; recovery?: boolean; retryOverhead?: boolean; activeTime?: boolean; tokens?: boolean; timeBreakdown?: boolean; latency?: boolean }>;
+export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean; readRevisits?: boolean; invocationOverlap?: boolean; searchRecurrence?: boolean; recovery?: boolean; retryOverhead?: boolean; activeTime?: boolean; tokens?: boolean; timeBreakdown?: boolean; latency?: boolean; toolBusy?: boolean }>;
 export type StatsResult = Readonly<
+  { mode: "selected_source_tool_busy"; analysis: SourceToolBusyAnalysis }
+  |
   { mode: "selected_source_latency"; summary: SourceSummary }
   |
   { mode: "list_sources"; catalogue: SourceCatalogue }
@@ -45,7 +49,7 @@ export function validateSourceSelection(value: string): string {
   try { const key = keyId(value.split(":")[1]); return identity(value, "source", key); }
   catch { throw new SafeError("INVALID_ARGUMENT"); }
 }
-const displayFlags = ["latency"] as const;
+const displayFlags = ["latency", "toolBusy"] as const;
 export function validateStatsArguments(options: StatsArguments): string {
   for (const flag of displayFlags) if (options[flag] !== undefined && typeof options[flag] !== "boolean") throw new SafeError("INVALID_ARGUMENT");
   const selected = displayFlags.filter(flag => options[flag] === true);
@@ -83,6 +87,7 @@ export async function runStats(options: StatsArguments): Promise<StatsResult> {
   const analyzeRecovery = options.recovery === true ? (await import("../analysis/source-recovery.js")).analyzeSourceRecovery : null;
   const analyzeRetryOverhead = options.retryOverhead === true ? (await import("../analysis/source-retry-overhead.js")).analyzeSourceRetryOverhead : null;
   const analyzeActiveTime = options.activeTime === true ? (await import("../analysis/source-active-time.js")).analyzeSourceActiveTime : null;
+  const displayToolBusy = options.toolBusy === true ? (await import("../analysis/source-tool-busy.js")).analyzeSourceToolBusy : null;
   return withReadOnlyStore(directory, (db, key) => {
     const store = createSourceStore(db, key);
     if (options.listSources) return Object.freeze({ mode: "list_sources", catalogue: store.listSources() });
@@ -90,6 +95,7 @@ export async function runStats(options: StatsArguments): Promise<StatsResult> {
     const source = store.readSource(options.source!);
     if (source === null) throw new SafeError("SOURCE_NOT_FOUND");
     if (options.latency === true) return Object.freeze({ mode: "selected_source_latency", summary: summarizeSource(source) });
+    if (displayToolBusy !== null) return Object.freeze({ mode: "selected_source_tool_busy", analysis: displayToolBusy(source) });
     if (options.timeBreakdown === true) return Object.freeze({ mode: "selected_source_time_breakdown", summary: summarizeSource(source) });
     if (options.tokens === true) return Object.freeze({ mode: "selected_source_tokens", summary: summarizeSource(source) });
     if (analyzeActiveTime !== null) return Object.freeze({ mode: "selected_source_active_time", analysis: analyzeActiveTime(source) });
@@ -198,6 +204,7 @@ function formatSelectedSource(s: SourceSummary): string[] {
 export function formatStatsResult(result: StatsResult, json: boolean): string {
   if (json) return JSON.stringify({ schema: "agentprof.cli/v1", ok: true, command: "stats", result }) + "\n";
   if (result.mode === "selected_source_latency") return formatSourceLatency(result.summary);
+  if (result.mode === "selected_source_tool_busy") return formatSourceToolBusy(result.analysis);
   if (result.mode === "selected_source_time_breakdown") return formatSourceTimeBreakdown(result.summary);
   if (result.mode === "selected_source_tokens") return formatSourceTokens(result.summary);
   if (result.mode === "selected_source_active_time") return formatSourceActiveTime(result.analysis);
