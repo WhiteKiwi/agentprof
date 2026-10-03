@@ -1,4 +1,4 @@
-import { readFileSync, statSync, unlinkSync } from "node:fs";
+import { existsSync, readFileSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { summarizeSource } from "../src/analysis/source-summary.js";
@@ -72,12 +72,14 @@ it.each(["readRatio", "searchRatio", "overlapSummary"] as const)("positive nativ
   expect(text).toContain(prop === "overlapSummary" ? "union=15000 ms" : "ratio=0.3333333333333333");
   expect(text).toContain("Partition reasons: none=1");
 });
-it("all flags reject other commands and CLI conflicts before store creation", () => {
+it.each(cliFlags)("%s rejects other commands and CLI conflicts before store creation", flag => {
   const data = join(temporaryDirectory(), "absent");
-  for (const flag of cliFlags) {
-    for (const command of ["scan", "insights", "report", "open"]) { const r = invoke(binary, data, ["--json", command, flag]); expect(r.status).toBe(2); expect(JSON.parse(r.stderr).error.code).toBe("INVALID_ARGUMENT"); }
-    const r = invoke(binary, data, ["--json", "stats", flag]); expect(r.status).toBe(2); expect(JSON.parse(r.stderr).error.code).toBe("INVALID_ARGUMENT");
+  for (const command of ["scan", "insights", "report", "open"]) {
+    const r = invoke(binary, data, ["--json", command, flag]);
+    expect(r.status).toBe(2); expect(JSON.parse(r.stderr).error.code).toBe("INVALID_ARGUMENT"); expect(existsSync(data)).toBe(false);
   }
+  const r = invoke(binary, data, ["--json", "stats", flag]);
+  expect(r.status).toBe(2); expect(JSON.parse(r.stderr).error.code).toBe("INVALID_ARGUMENT"); expect(existsSync(data)).toBe(false);
 });
 
 const baseline = process.env["AGENTPROF_DISPLAY_BATCH_BASELINE_BINARY"], installed = process.env["AGENTPROF_DISPLAY_BATCH_INSTALLED_BINARY"];
