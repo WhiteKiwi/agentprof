@@ -314,3 +314,8 @@ Immediately continue separate post-SPEC research over all nineteen original path
 ### PR #44 responsive-resolution amendment (2026-10-03)
 
 Browser reproduction confirms that a positive interval with normalized SVG width2 can occupy only0.633972 CSSpx at a375px viewport while the original conditional scale guidance is absent. Available charts containing positive displayed intervals must provide static responsive-resolution guidance at any viewport. Explain that scaling can make small positive intervals hard to resolve and that the exact millisecond table remains authoritative. This is a general limitation, not runtime pixel detection. Preserve exact native S/U/excess, full axis, row coordinates/widths, zero/failure/unknown states, caps and script-free privacy/CSP contracts. Do not widen positive bars or add viewport-dependent JavaScript.
+
+
+## Source-prefix token-evidence panel (2026-10-02)
+
+The source-prefix report shows an always-visible Token evidence panel with exact stored/selected/duplicate/excluded evidence-row counts, pre-display-cap eligible observed responses, and source-wide exclusion reasons. Empty, unavailable, suppressed, all-excluded and eligible evidence remain distinct. The graphic describes row disposition, never token-population coverage. See [P6-TOKEN-EVIDENCE](P6-TOKEN-EVIDENCE.md).

@@ -612,3 +612,8 @@ Seven owned synthetic browser contexts cover375px light/dark,1440px light, overl
 ### PR #44 responsive correction and combined qualification (2026-10-03)
 
 The separately implemented static guidance correction resolves the browser-confirmed P2 without changing any numerical or prior assertion byte. Corrected375px light/dark still measures0.633972 CSSpx and SVG width2 with exact2ms table, now with truthful responsive-resolution guidance. Local full2081/38, genuine split32 and actual Linux7 complete2119 unique cases across executions. Artifact61/runtime59 byte-mode identity, seven bounded browser contexts and five raw-deleted/store-unchanged reports pass. Source/header/native-state/unsafe-axis/cap/privacy/accessibility contracts are preserved; no further actionable defect remains in the admitted19-path review. Exact methods/limits and original failures are retained in [the timeline contract](P6-INVOCATION-TIMELINE.md). Hosted final-head/main gates are separately pending at this source revision; broad P6 and real-user/physical-device/AT/print/native-GUI acceptance are not promoted.
+
+
+## Source-prefix token-evidence panel (2026-10-02)
+
+An identical provisional usage pair contributes zero selected, one duplicate and one excluded evidence row. A conflicting response group excludes all its rows and increments a separate group diagnostic. Thus duplicate rows are not necessarily eligible duplicates, and excluded rows are not counts of uniquely lost responses. The six-row hand oracle is 2 selected / 1 duplicate / 3 excluded, with 2 eligible observed responses; all 720 input permutations preserve these counts. See [P6-TOKEN-EVIDENCE](P6-TOKEN-EVIDENCE.md).

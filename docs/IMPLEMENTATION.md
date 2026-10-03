@@ -454,3 +454,10 @@ This contributor did not run typecheck, build, pack/install, full suite, browser
 ### PR #44 aggregate qualification outcome (2026-10-03)
 
 The corrected frozen source passed75-file full qualification (2081PASS/38 explicit skips),32 genuine split-baseline cases and all7 actual Linux process cases, with2119 unique cases qualified across executions. Enabled-prepack/script-disabled installation and61-file artifact controls pass;59 runtime byte/mode maps remain identical. Seven corrected synthetic browser contexts and five raw-deleted/store-preserving CLI controls pass. Only append-only evidence follows the source freeze. [P6-INVOCATION-TIMELINE](P6-INVOCATION-TIMELINE.md) records exact environments, filtered/optional/platform exclusions and physical-device/AT/print/native-GUI NOT RUN boundaries. Hosted final-head and merge/main CI remain pending at this revision.
+
+
+## Source-prefix token-evidence panel (2026-10-02)
+
+The token-evidence panel renders existing validated source-summary counters in a pure helper, adds static semantic-token CSS and corrects empty per-session usage copy. Analyzer, model, scanner, storage, CLI and schema are unchanged. Verification preserves exact table counts, SVG geometry, unknown states, nested-accessor rejection and the one-MiB output ceiling. See [P6-TOKEN-EVIDENCE](P6-TOKEN-EVIDENCE.md) for reproducible checks and remaining gates.
+
+Current-main integration (2026-10-03): compose onto main 8e3118155038a04adcf08f97113186af4243bc2d after PR #44 merged. Preserve schema6, durable checkpoints, recurrence, the standalone opener and the final responsive timeline warning. Verify all unowned bytes/modes, the exact token feature delta, complete current-main document prefixes, focused/full/installed controls, schema5 read-only rejection without mutation, and current-main CLI parity before publication. Earlier-base passes are historical evidence only.
