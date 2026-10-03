@@ -126,7 +126,7 @@ function formatSelectedSource(s: SourceSummary): string[] {
   lines.push("", `Duration eligibility: ${s.durationEligibility.included} included; ${s.durationEligibility.terminalCandidates} terminal candidates`, ...wrap(`Exclusions: ${exclusions(s.durationEligibility.exclusions)}`));
   const u = s.usageEligibility;
   if (u === null) lines.push("Usage eligibility: unknown", "Exclusions: unknown");
-  else lines.push(...wrap(`Usage eligibility: ${u.observedResponses} observed eligible final responses; ${u.selectedRows} selected rows; ${u.deduplicatedRows} deduplicated rows; ${u.excludedRows} excluded rows; ${u.excludedResponseGroups} excludedResponseGroups`), ...wrap(`Exclusions: ${exclusions(u.exclusions)}`));
+  else lines.push(...wrap(`Usage eligibility: ${u.observedResponses} observed eligible final responses; ${u.selectedRows} selected rows; ${u.deduplicatedRows} deduplicated rows; ${u.excludedRows} excluded rows; ${u.excludedResponseGroups} excluded response groups`), ...wrap(`Exclusions: ${exclusions(u.exclusions)}`));
   lines.push("", "Recorded durations: sums may overlap; they are not elapsed/busy time, time shares, waste or savings.", "All duration columns use milliseconds. * = p95 has fewer than 20 observations.");
   const partitions = new Map<string, DurationCohort[]>();
   for (const c of s.durations ?? []) {
