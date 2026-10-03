@@ -164,7 +164,7 @@ function validateSuffixCandidate(value: unknown, context: IdentityContext): Sour
   if (types.isProxy(value)) throw new SafeError("INVALID_ARGUMENT");
   const names = ["sourceId", "provider", "parserVersion", "observedSize", "completedOffset", "boundaryFingerprint", "contentFingerprint", "nextOrdinal", "maxFileBytes", "maxRecords", "maxLineBytes"];
   const v = ownInput(value, names);
-  if (Object.keys(v).length !== names.length || v["provider"] !== "claude") throw new SafeError("INVALID_ARGUMENT");
+  if (Object.keys(v).length !== names.length || (v["provider"] !== "claude" && v["provider"] !== "codex")) throw new SafeError("INVALID_ARGUMENT");
   const fingerprint = (input: unknown, domain: string) => typeof input === "string" && input.length === `h1:${context.keyId}:${domain}:`.length + 64
     && input.startsWith(`h1:${context.keyId}:${domain}:`) && /^[a-f0-9]{64}$/.test(input.slice(-64));
   if (!fingerprint(v["sourceId"], "source") || !fingerprint(v["contentFingerprint"], "content")

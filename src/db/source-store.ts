@@ -145,7 +145,7 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       }
       if (cacheEvidence !== null) database.prepare("INSERT INTO source_cache_evidence(source_id, contract_version, content_fingerprint) VALUES (?, 1, ?)").run(h.sourceId, cacheEvidence.contentFingerprint);
       if (checkpoint?.capture) {
-        const c = checkpoint.capture, limits = adapterLimitsFingerprint();
+        const c = checkpoint.capture, limits = adapterLimitsFingerprint(h.provider);
         const seal = generationSeal(checkpoint.context, h, next, cacheEvidence!, c, limits, checkpoint.projection);
         database.prepare("INSERT INTO source_parser_checkpoints(source_id,contract_version,next_ordinal,max_file_bytes,max_records,max_line_bytes,checkpoint_bytes,checkpoint_json,adapter_limits_fingerprint,generation_seal) VALUES(?,1,?,?,?,?,?,?,?,?)")
           .run(h.sourceId, c.nextOrdinal, c.maxFileBytes, c.maxRecords, c.maxLineBytes, Buffer.byteLength(c.checkpoint), c.checkpoint, limits, seal);
@@ -163,7 +163,6 @@ export function createSourceStore(database: DatabaseSync, key: string) {
     signalCheck(signal);
     if (signal?.aborted) return Object.freeze({ status: "aborted" });
     const encoded = encodeSourceSnapshot(input, keyId), checked = capture === null ? null : validateCapture(capture, encoded, context);
-    if (encoded.header.provider !== "claude") throw new SafeError("INVALID_RECORD");
     const guard = predecessor === undefined ? undefined : validatePredecessor(predecessor, keyId);
     return replaceEncoded(encoded, encoded.metrics, encoded.cacheEvidence, encoded.relationships, expectation, signal,
       { capture: checked, context, predecessor: guard, projection: encodedProjection(encoded) });

@@ -210,7 +210,7 @@ describe("relationship capture and unchanged source lifecycle", () => {
       const unavailable = { contractVersion: 1, capturePolicyVersion: 1, status: "unavailable", provider: "codex", reason: "relationship_budget_exceeded" };
       expect(store.replaceSourceSnapshot({ ...snapshotInput(captured), relationshipEvidence: unavailable } as SourceSnapshotInput, 2)).toEqual({ status: "committed", revision: 3 });
       expect(store.readSource(initial.sourceId)!.relationshipEvidence).toEqual(unavailable);
-      const ingest = vi.spyOn(CodexAdapter.prototype, "ingest"), replace = vi.fn(store.replaceSourceSnapshot), watched = { ...store, replaceSourceSnapshot: replace };
+      const ingest = vi.spyOn(CodexAdapter.prototype, "ingest"), replace = vi.fn(store.replaceSourceSnapshotWithCheckpoint), watched = { ...store, replaceSourceSnapshotWithCheckpoint: replace };
       expect((await scanSources(watched, context, [{ provider: "codex", path }])).sources[0]).toMatchObject({ status: "unchanged", reusedRevision: 3 });
       expect(ingest).not.toHaveBeenCalled(); expect(replace).not.toHaveBeenCalled();
     } finally { db.close(); }
@@ -231,12 +231,12 @@ describe("relationship capture and unchanged source lifecycle", () => {
       expect(db.prepare("SELECT count(*) AS count FROM source_relationship_contributions").get()).toEqual({ count: 0 });
       db.close(); db = await openDatabase(directory); const reopened = createSourceStore(db, keyId);
       expect(reopened.readSource(result.sourceId)).toEqual(saved);
-      const before = files(directory), ingest = vi.spyOn(CodexAdapter.prototype, "ingest"), replace = vi.fn(reopened.replaceSourceSnapshot), watched = { ...reopened, replaceSourceSnapshot: replace };
+      const before = files(directory), ingest = vi.spyOn(CodexAdapter.prototype, "ingest"), replace = vi.fn(reopened.replaceSourceSnapshotWithCheckpoint), watched = { ...reopened, replaceSourceSnapshotWithCheckpoint: replace };
       expect((await scanSources(watched, context, [{ provider: "codex", path }])).sources[0]).toMatchObject({ status: "unchanged", reusedRevision: 1 });
       expect(ingest).not.toHaveBeenCalled(); expect(replace).not.toHaveBeenCalled(); expect(files(directory)).toEqual(before);
     } finally { db.close(); }
   }, 30_000);
-  it.each(["captured", "unavailable"] as const)("recaptures policy-mismatched %s evidence exactly once under otherwise matching file proof", async status => {
+  it.each(["captured", "unavailable"] as const)("recaptures historical-compatible checkpoint-absent policy-mismatched %s evidence exactly once", async status => {
     const path = await source(codexLines.join("")), directory = join(temporaryDirectory(), "store"), db = await openDatabase(directory);
     try {
       const store = createSourceStore(db, keyId);
@@ -244,11 +244,13 @@ describe("relationship capture and unchanged source lifecycle", () => {
       const original = store.readSource(initial.sourceId)!;
       if (status === "unavailable") store.replaceSourceSnapshot({ ...snapshotInput(original),
         relationshipEvidence: { contractVersion: 1, capturePolicyVersion: 1, status, provider: "codex", reason: "relationship_budget_exceeded" } }, 1);
-      db.exec("UPDATE source_relationship_headers SET capture_policy_version=2");
+      if(status==="captured"){expect(store.readSourceForIngestion(initial.sourceId,context).checkpoint).not.toBeNull();expect(db.prepare("DELETE FROM source_parser_checkpoints WHERE source_id=?").run(initial.sourceId).changes).toBe(1);}
+      expect(store.readSourceForIngestion(initial.sourceId,context).checkpoint).toBeNull();
+      db.prepare("UPDATE source_relationship_headers SET capture_policy_version=2 WHERE source_id=?").run(initial.sourceId);
       const obsolete = store.readSource(initial.sourceId)!;
       expect(obsolete.relationshipEvidence).toMatchObject({ contractVersion: 1, capturePolicyVersion: 2, status });
       expect(obsolete.cacheEvidence).toEqual(original.cacheEvidence);
-      const ingest = vi.spyOn(CodexAdapter.prototype, "ingest"), replace = vi.fn(store.replaceSourceSnapshot), watched = { ...store, replaceSourceSnapshot: replace };
+      const ingest = vi.spyOn(CodexAdapter.prototype, "ingest"), replace = vi.fn(store.replaceSourceSnapshotWithCheckpoint), watched = { ...store, replaceSourceSnapshotWithCheckpoint: replace };
       expect((await scanSources(watched, context, [{ provider: "codex", path }])).sources[0]).toMatchObject({ status: "committed", committedRevision: obsolete.revision + 1 });
       expect(ingest).toHaveBeenCalledTimes(3); expect(replace).toHaveBeenCalledTimes(1);
       const refreshed = store.readSource(initial.sourceId)!;
@@ -343,4 +345,8 @@ describe.skipIf(!installedBinary)("script-disabled installed tarball relationshi
     expect(JSON.parse(second.stdout).result.diagnostics).toEqual(JSON.parse(first.stdout).result.diagnostics);
     expect(files(data)).toEqual(before);
   }, 30_000);
+});
+
+it("sealed captured relationship-policy mutation fails closed without replay or repair",async()=>{
+ const path=await source(codexLines.join("")),db=await openDatabase(join(temporaryDirectory(),"store"));try{const store=createSourceStore(db,keyId),initial=await ingestSourceFile(store,context,{path,provider:"codex",expectedRevision:null,maxFileBytes:SCAN_LIMITS.fileBytes});expect(store.readSourceForIngestion(initial.sourceId,context).checkpoint).not.toBeNull();db.prepare("UPDATE source_relationship_headers SET capture_policy_version=2 WHERE source_id=?").run(initial.sourceId);const rows=()=>Object.fromEntries(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'source_%' ORDER BY name").all().map(r=>{const name=String(r.name);return[name,db.prepare(`SELECT * FROM ${name} ORDER BY 1`).all()];})),before=rows(),ingest=vi.spyOn(CodexAdapter.prototype,"ingest"),replace=vi.fn(store.replaceSourceSnapshotWithCheckpoint);const result=await scanSources({...store,replaceSourceSnapshotWithCheckpoint:replace},context,[{provider:"codex",path}]);expect(result).toMatchObject({stopReason:"storage_failure",counts:{failed:1,committed:0,unchanged:0}});expect(result.sources[0]).toMatchObject({errorCode:"DATABASE_ACCESS_FAILED"});expect(ingest).not.toHaveBeenCalled();expect(replace).not.toHaveBeenCalled();expect(rows()).toEqual(before);}finally{db.close();}
 });

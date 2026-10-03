@@ -226,13 +226,13 @@ it.each(["early","middle"])("same-size %s rewrite with restored mtime and unchan
   try{expect(await (ingestion as any).ingestSourceFileFromCheckpoint(f.store,context,{path:f.path,provider:"claude",expectedRevision:1},f.candidate)).toMatchObject({status:"committed",revision:2});expect(spy).toHaveBeenCalledTimes(4);assertProjection(f.store.readSource(f.id),expected,changed.length);}finally{f.db.close();}
 });
 
-it("unchanged Claude preserves revision/output and Codex retains full replay with no checkpoint",async()=>{
+it("unchanged Claude preserves revision/output and explicit cold Codex replay captures checkpoints",async()=>{
   const f=await seededPrefix(encode(ordinary), {maxFileBytes:16*1024*1024});
   try{
     const before=savedGeneration(f),spy=vi.spyOn(ClaudeAdapter.prototype,"ingest"),warm=await scanSources(f.store,context,[{provider:"claude",path:f.root}]);expect(warm.counts).toMatchObject({unchanged:1,committed:0});expect(spy).not.toHaveBeenCalled();expect(savedGeneration(f)).toEqual(before);spy.mockRestore();
     const codex=join(f.root,"codex.jsonl");await writeFile(codex,'{"type":"session_meta","payload":{"id":"FICTITIOUS_CODEX"}}\n');const cid=context.fingerprint("source",["codex",codex]);
-    await ingestion.ingestSourceFile(f.store,context,{path:codex,provider:"codex",expectedRevision:null});expect(f.db.prepare("SELECT * FROM source_parser_checkpoints WHERE source_id=?").all(cid)).toEqual([]);
-    await appendFile(codex,'{}\n');const codexSpy=vi.spyOn(CodexAdapter.prototype,"ingest");await ingestion.ingestSourceFile(f.store,context,{path:codex,provider:"codex",expectedRevision:1});expect(codexSpy).toHaveBeenCalledTimes(2);expect(f.db.prepare("SELECT * FROM source_parser_checkpoints WHERE source_id=?").all(cid)).toEqual([]);
+    expect(await ingestion.ingestSourceFile(f.store,context,{path:codex,provider:"codex",expectedRevision:null})).toMatchObject({status:"committed",revision:1});expect(f.db.prepare("SELECT * FROM source_parser_checkpoints WHERE source_id=?").all(cid)).toHaveLength(1);expect(f.store.readSourceForIngestion(cid,context)).toMatchObject({source:{provider:"codex",revision:1},checkpoint:{contractVersion:1,nextOrdinal:1}});
+    await appendFile(codex,'{}\n');const codexSpy=vi.spyOn(CodexAdapter.prototype,"ingest");expect(await ingestion.ingestSourceFile(f.store,context,{path:codex,provider:"codex",expectedRevision:1})).toMatchObject({status:"committed",revision:2});expect(codexSpy).toHaveBeenCalledTimes(2);expect(f.db.prepare("SELECT * FROM source_parser_checkpoints WHERE source_id=?").all(cid)).toHaveLength(1);expect(f.store.readSourceForIngestion(cid,context)).toMatchObject({source:{provider:"codex",revision:2},checkpoint:{contractVersion:1,nextOrdinal:2}});
   }finally{f.db.close();}
 });
 

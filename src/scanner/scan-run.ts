@@ -110,14 +110,14 @@ export async function scanSources(store: ReturnType<typeof createSourceStore>, c
       let candidate: SourceCacheToken | null, ingestionCandidate: SourceIngestionCandidate | undefined;
       const currentParserVersion = (source.provider === "codex" ? createCodexAdapter(context) : createClaudeAdapter(context)).snapshot().capabilities.parserVersion;
       {
-        ingestionCandidate = source.provider === "claude" ? store.readSourceForIngestion(sourceId, context) : undefined;
+        ingestionCandidate = store.readSourceForIngestion(sourceId, context);
         const stored = ingestionCandidate ? ingestionCandidate.source : store.readSource(sourceId);
         expectedRevision = stored?.revision ?? null; revisionRead = true;
         candidate = cacheCandidate(stored, context, currentParserVersion);
         const checkpoint = ingestionCandidate?.checkpoint;
         // File proofs bind scanner options, but not the adapter's private limits.
         // Authenticate first in readSourceForIngestion; incompatibility then replays.
-        if (checkpoint && (checkpoint.adapterLimitsFingerprint !== adapterLimitsFingerprint()
+        if (checkpoint && (checkpoint.adapterLimitsFingerprint !== adapterLimitsFingerprint(source.provider)
           || checkpoint.maxFileBytes !== prefix.maxFileBytes || checkpoint.maxRecords !== prefix.maxRecords
           || checkpoint.maxLineBytes !== prefix.maxLineBytes)) candidate = null;
       }
