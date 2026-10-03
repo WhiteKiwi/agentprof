@@ -481,3 +481,7 @@ input validation, and the minutes-only representation (no new hours unit).
 Printing all synthetic insight cards must suppress the empty-filter notice and
 restore the prior screen filter/disclosure/notice state afterward. Repeated print
 notifications must not overwrite the original state snapshot.
+
+## Provider evidence current-main integration specification — 2026-10-04 KST
+
+The [initial narrow integration specification](P5-PROVIDER-EVIDENCE-INTEGRATION.md) records the authorized review/processing of completed PR147 on qualified main0ec3a57 after coordination148 closes. Preserve raw-free source-supported error/Read/patch evidence, unknown/full-scope limits, all legacy/timing bytes and strict exact parser/checkpoint/policy/authentication contracts. Separate post-SPEC research must resolve newly composed native-copy/Active Time version behavior using actual ordinary evidence; no alias or sentinel change is authorized by a version number alone. A reviewed plan and separately claimed developer precede code. One common full/genuine-baseline/scripts-disabled actual-install gate follows focused coverage, immutable source/security and oldest-first/final-main/clean-clone gates. Original146 histories and broader10/5/6/7/50 acceptance remain separate. This draft claims no new correction or PASS.
