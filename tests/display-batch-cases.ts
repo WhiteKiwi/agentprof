@@ -82,5 +82,11 @@ export const displayCases = [
     "prop": "durationScope",
     "flag": "duration-scope",
     "mode": "selected_source_duration_scope"
+  },
+  {
+    "pr": 94,
+    "prop": "usageFinality",
+    "flag": "usage-finality",
+    "mode": "selected_source_usage_finality"
   }
 ] as const;
