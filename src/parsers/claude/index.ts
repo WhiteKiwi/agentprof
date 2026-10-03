@@ -1,4 +1,6 @@
-import { validateCaptureOptions } from "../capture.js";
+import { evidenceOmitted, observedErrorFingerprint } from "../pattern-evidence.js";
+import { extractClaudeFileEvidence } from "./pattern-evidence.js";
+import { captureMode } from "../capture.js";
 import type { ParserCaptureOptions } from "../capture.js";
 import { types } from "node:util";
 import { checkpointBinding, checkpointBudget, decodeClaudeCheckpoint, encodeClaudeCheckpoint } from "./checkpoint.js";
@@ -32,6 +34,7 @@ export class ClaudeAdapter {
   readonly #context: IdentityContext;
   readonly #limits: ClaudeLimits;
   readonly #usageTiming: boolean;
+  readonly #patternEvidence: boolean;
   readonly #sources = new Map<string, SourceState>();
   readonly #streams = new Map<string, StreamState>();
   readonly #events = new Map<string, ExecutionState>();
@@ -59,13 +62,14 @@ export class ClaudeAdapter {
   #continuation: ClaudeCheckpointBinding | null = null;
 
   constructor(context: IdentityContext, limits: Partial<ClaudeLimits> = {}, capture: ParserCaptureOptions = {}) {
-    this.#usageTiming = validateCaptureOptions(capture);
+    const mode = captureMode(capture);
+    this.#usageTiming = mode.usageTiming; this.#patternEvidence = mode.patternEvidence;
     const selected = { ...DEFAULT_CLAUDE_LIMITS, ...limits };
     if (Object.keys(selected).some((key) => !Object.hasOwn(DEFAULT_CLAUDE_LIMITS, key)) || Object.values(selected).some((value) => !Number.isSafeInteger(value) || value < 1 || value > 1_000_000)) throw new SafeError("INVALID_ARGUMENT");
     this.#context = context; this.#limits = Object.freeze(selected);
   }
   #capabilities(): ClaudeCapabilities {
-    return Object.freeze({ provider: "claude", parserVersion: this.#usageTiming ? 3 : 2, support: "shape_verified_only", coverage: this.#partial ? "partial" : "recognized_shapes", observedShapes: Object.freeze([...this.#shapes].sort()), unsupportedRecords: this.#unsupported, ambiguousRecords: this.#ambiguous, stateLimited: this.#limited, diagnosticsDropped: this.#diagnosticsDropped });
+    return Object.freeze({ provider: "claude", parserVersion: this.#patternEvidence ? 4 : this.#usageTiming ? 3 : 2, support: "shape_verified_only", coverage: this.#partial ? "partial" : "recognized_shapes", observedShapes: Object.freeze([...this.#shapes].sort()), unsupportedRecords: this.#unsupported, ambiguousRecords: this.#ambiguous, stateLimited: this.#limited, diagnosticsDropped: this.#diagnosticsDropped });
   }
   #warn(code: DiagnosticCode, input: Input | null, batch: WorkBatch, position: Position | null = null): void {
     this.#partial = true;
@@ -401,7 +405,12 @@ export class ClaudeAdapter {
     const contentState = truncated ? "truncated" : complete && textOnly ? "complete" : "unknown";
     const contentFingerprint = contentState === "complete" ? this.#context.fingerprint("content", ["claude_result_content", encoded]) : null;
     const hasErrorText = typeof body === "string" ? body.trim().length > 0 : Array.isArray(body) && body.some((entry) => typeof field(entry, "text") === "string" && (field(entry, "text") as string).trim().length > 0);
-    const errorFingerprint = isError === true && contentFingerprint !== null && hasErrorText ? this.#context.fingerprint("error", ["claude", "tool_error", contentFingerprint]) : null;
+    const errorFingerprint = this.#patternEvidence && isError === true && !truncated && !evidenceOmitted(block, typeof rootResult === "string" ? null : rootResult)
+      && backgroundTaskId === null && !asyncLaunched && !unassignedAcknowledgement
+      ? observedErrorFingerprint(this.#context, "claude", "tool_error", body)
+      : isError === true && contentFingerprint !== null && hasErrorText ? this.#context.fingerprint("error", ["claude", "tool_error", contentFingerprint]) : null;
+    const fileEvidence = this.#patternEvidence && isError === false && singleResult && !truncated && !evidenceOmitted(block)
+      ? extractClaudeFileEvidence(rootResult, field(record, "version"), input.projectId, this.#context) : null;
     const timing = input.source.trustedFixtureContext?.toolTimings?.find((entry) => entry.ordinal === input.source.ordinal && entry.toolUseId === rawId);
     const scoped = timing?.source === "tool_use_result_duration_ms" && ["process_runtime", "invocation_latency", "item_lifecycle"].includes(timing.durationScope);
     const rawDuration = field(field(record, "toolUseResult"), "durationMs");
@@ -409,8 +418,11 @@ export class ClaudeAdapter {
     const directDurationScope: DurationScope = directDurationMs === null ? "unknown" : timing!.durationScope;
     if (scoped && directDurationMs === null) this.#warn("INVALID_TIMING", input, batch);
     else if (!scoped && rawDuration !== undefined) this.#warn("TIMING_SCOPE_UNKNOWN", input, batch);
-    const digest = this.#context.fingerprint("event", ["claude_result", encoded, isError, backgroundTaskId, asyncLaunched, unassignedAcknowledgement, directDurationMs, directDurationScope]);
-    return Object.freeze({ digest, at: input.at, position: this.#position(input), isError, backgroundTaskId, asyncLaunched, unassignedAcknowledgement, contentFingerprint, contentState, errorFingerprint, directDurationMs, directDurationScope, conflicted: false });
+    const legacyDigest = this.#context.fingerprint("event", ["claude_result", encoded, isError, backgroundTaskId, asyncLaunched, unassignedAcknowledgement, directDurationMs, directDurationScope]);
+    const digest = this.#patternEvidence ? this.#context.fingerprint("event", ["claude_pattern_result/v1", legacyDigest, errorFingerprint,
+      fileEvidence?.kind ?? null, fileEvidence?.fileFingerprint ?? null, fileEvidence?.contentFingerprint ?? null,
+      fileEvidence?.range?.startLine ?? null, fileEvidence?.range?.endLine ?? null, fileEvidence?.mutationFingerprint ?? null]) : legacyDigest;
+    return Object.freeze({ ...(this.#patternEvidence ? { fileEvidence } : {}), digest, at: input.at, position: this.#position(input), isError, backgroundTaskId, asyncLaunched, unassignedAcknowledgement, contentFingerprint, contentState, errorFingerprint, directDurationMs, directDurationScope, conflicted: false });
   }
   #result(block: unknown, record: unknown, input: Input, batch: WorkBatch, singleResult: boolean): void {
     const rawId = text(field(block, "tool_use_id"), 4096);
@@ -426,7 +438,7 @@ export class ClaudeAdapter {
     else {
       const prior = this.#deferredResults.get(id);
       if (!prior && !this.#room(this.#deferredResults.size, this.#limits.deferredResults, input, batch)) return;
-      if (prior && prior.digest !== result.digest) { this.#warn("INCONSISTENT_REPLAY", input, batch); this.#deferredResults.set(id, Object.freeze({ ...prior, conflicted: true })); }
+      if (prior && prior.digest !== result.digest) { this.#warn("INCONSISTENT_REPLAY", input, batch); this.#deferredResults.set(id, Object.freeze({ ...prior, ...(this.#patternEvidence ? { fileEvidence: null, errorFingerprint: null } : {}), conflicted: true })); }
       else if (!prior || prior.position.fileId === result.position.fileId && result.position.ordinal < prior.position.ordinal) this.#deferredResults.set(id, result);
       this.#warn("REORDERED_RECORD", input, batch);
     }
@@ -474,8 +486,17 @@ export class ClaudeAdapter {
     let intervalTimingEvidence: NormalizedEvent["intervalTimingEvidence"] = paired === null ? "unknown" : "paired_timestamps";
     if (durationMs !== null && paired !== null && durationScope === intervalScope && Math.abs(durationMs - paired) > 1) { this.#warn("TIMING_CONFLICT", input, batch, result.position); intervalScope = "unknown"; intervalTimingEvidence = "unknown"; }
     if (state.conflicted) { durationMs = null; timingEvidence = "unknown"; durationScope = "unknown"; intervalScope = "unknown"; intervalTimingEvidence = "unknown"; }
-    state.event = Object.freeze({ ...state.event, lookupKey: state.conflicted ? null : state.event.lookupKey, endAt, durationMs, timingEvidence, durationScope, intervalScope, intervalTimingEvidence, status, executionOutcome: status === "completed" ? "success" : status === "failed" ? "error" : "unknown", exitCode: null,
-      contentFingerprint: state.conflicted ? null : result.contentFingerprint, contentState: state.conflicted ? "unknown" : result.contentState, errorFingerprint: status === "failed" ? result.errorFingerprint : null, errorClass: status === "failed" ? "tool_error" : null,
+    const file = this.#patternEvidence && !state.conflicted && status === "completed" && result.fileEvidence?.fileFingerprint === state.event.fileFingerprint
+      ? result.fileEvidence : null;
+    const read = file?.kind === "read" && state.event.toolName === "Read" && state.event.kind === "file_read" ? file : null;
+    const changed = file?.kind === "mutation" && (state.event.toolName === "Edit" || state.event.toolName === "Write")
+      && (state.event.kind === "file_edit" || state.event.kind === "file_write");
+    state.event = Object.freeze({ ...state.event, lookupKey: state.conflicted ? null : read?.range
+      ? this.#context.fingerprint("lookup", ["file", file!.fileFingerprint, read.range.startLine, read.range.endLine])
+      : this.#patternEvidence && state.event.kind === "file_read" ? null : state.event.lookupKey,
+      ...(this.#patternEvidence ? { lookupRange: read?.range ?? null, changeState: changed ? "changed" as const : "unknown" as const } : {}),
+      endAt, durationMs, timingEvidence, durationScope, intervalScope, intervalTimingEvidence, status, executionOutcome: status === "completed" ? "success" : status === "failed" ? "error" : "unknown", exitCode: null,
+      contentFingerprint: state.conflicted ? null : read?.contentFingerprint ?? result.contentFingerprint, contentState: state.conflicted ? "unknown" : read ? "complete" : result.contentState, errorFingerprint: status === "failed" ? result.errorFingerprint : null, errorClass: status === "failed" ? "tool_error" : null,
       sourceRef: Object.freeze({ ...result.position.sourceRef, recordType: "user" }),
     });
     this.#emitEvent(state, input, batch);

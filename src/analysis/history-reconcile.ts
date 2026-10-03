@@ -31,10 +31,10 @@ function semantic(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(semantic).join(",")}]`;
   return `{${Object.entries(value).sort(([a], [b]) => lexical(a, b)).map(([k, v]) => `${JSON.stringify(k)}:${semantic(v)}`).join(",")}}`;
 }
-/** Only these timestamp-only capture contracts share native event semantics. */
+/** Only these known capture contracts share native version interpretation; every event field still participates. */
 function nativeEventParserVersion(source: StoredSource): number {
-  return source.provider === "codex" && source.parserVersion === 2 ? 1
-    : source.provider === "claude" && source.parserVersion === 3 ? 2 : source.parserVersion;
+  return source.provider === "codex" && (source.parserVersion === 2 || source.parserVersion === 3) ? 1
+    : source.provider === "claude" && (source.parserVersion === 3 || source.parserVersion === 4) ? 2 : source.parserVersion;
 }
 export function validateHistorySources(sources: readonly StoredSource[]): void {
   if (sources.length === 0 || sources.length > HISTORY_LIMITS.sources || new Set(sources.map(s => s.sourceId)).size !== sources.length) throw new HistoryQueryError();

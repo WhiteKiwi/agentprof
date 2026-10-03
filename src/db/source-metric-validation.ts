@@ -161,9 +161,9 @@ export function validateCapabilities(value: unknown, h: Header): ParserCapabilit
   const v = fields(value, ["provider", "parserVersion", "support", "coverage", "observedShapes", "unsupportedRecords", "ambiguousRecords", "stateLimited", "diagnosticsDropped"]);
   if (v["provider"] !== h.provider || v["parserVersion"] !== h.parserVersion
     || !nativeVersionSupported(h.provider, h.parserVersion)) invalid();
-  const base = { parserVersion: h.parserVersion as 1 | 2 | 3, support: choice(v["support"], ["shape_verified_only"]), coverage: choice(v["coverage"], ["recognized_shapes", "partial"]),
+  const base = { parserVersion: h.parserVersion as 1 | 2 | 3 | 4, support: choice(v["support"], ["shape_verified_only"]), coverage: choice(v["coverage"], ["recognized_shapes", "partial"]),
     unsupportedRecords: integer(v["unsupportedRecords"]), ambiguousRecords: integer(v["ambiguousRecords"]), stateLimited: bool(v["stateLimited"]), diagnosticsDropped: integer(v["diagnosticsDropped"]) };
-  return Object.freeze(h.provider === "codex" ? { ...base, parserVersion: h.parserVersion as 1 | 2, provider: "codex", observedShapes: words(v["observedShapes"], ["command_item", "mcp_item", "function_call", "custom_call", "tool_result", "poll", "code_wrapper", "turn", "response_usage", "token_snapshot"]) }
+  return Object.freeze(h.provider === "codex" ? { ...base, parserVersion: h.parserVersion as 1 | 2 | 3, provider: "codex", observedShapes: words(v["observedShapes"], ["command_item", "mcp_item", "function_call", "custom_call", "tool_result", "poll", "code_wrapper", "turn", "response_usage", "token_snapshot"]) }
     : { ...base, provider: "claude", observedShapes: words(v["observedShapes"], ["tool_use", "tool_result", "message_link", "message_usage", "background_acknowledgement", "turn_duration"]) });
 }
 export function validateDiagnostic(value: unknown, h: Header): SafeDiagnostic {

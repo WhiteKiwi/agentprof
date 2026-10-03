@@ -36,8 +36,10 @@ export async function run(argv: string[]): Promise<void> {
   program.on("option:data-dir", () => { reportDataFlags++; });
   program.on("option:json", () => { reportJsonFlags++; });
 
-  let usageTimingFlags = 0, reconcileFlags = 0;
+  let usageTimingFlags = 0, patternEvidenceFlags = 0, reconcileFlags = 0;
   const scan = program.command("scan").option("--usage-timing", "opt into versioned record timestamps for history --tokens")
+    .option("--pattern-evidence", "capture exact observed errors and supported structured file evidence; includes usage timing")
+    .on("option:pattern-evidence", () => { if (++patternEvidenceFlags > 1) throw new SafeError("INVALID_ARGUMENT"); })
     .on("option:usage-timing", () => { if (++usageTimingFlags > 1) throw new SafeError("INVALID_ARGUMENT"); })
     .option("--reconcile", "collect explicit .jsonl files and retain proven missing sources as unavailable")
     .on("option:reconcile", () => { if (++reconcileFlags > 1) throw new SafeError("INVALID_ARGUMENT"); })

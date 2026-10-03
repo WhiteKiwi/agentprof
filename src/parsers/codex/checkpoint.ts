@@ -75,7 +75,7 @@ function collectionCaps(limits: CodexLimits): Record<keyof CheckpointMaps | type
     unsupportedCalls: limits.events, resultReplays: limits.observations, shapes: 10,
   };
 }
-const PAYLOAD_KEYS = ["schemaVersion", "provider", "parserVersion", "normalizationVersion", "keyVersion", "keyId", "sourceId", "completedOffset", "nextOrdinal", "limits", "position", "state"] as const;
+const PAYLOAD_KEYS = ["schemaVersion", "provider", "parserVersion", "normalizationVersion", "keyVersion", "keyId", "sourceId", "completedOffset", "nextOrdinal", "limits", "position", "state", "patternEvidencePolicyVersion"] as const;
 /** Check the grammar and allocation budgets without constructing a payload graph.
  * Only bounded individual property names are decoded during this pass. Row spans
  * and collection counts use the authenticated caller limits before JSON.parse.
@@ -217,7 +217,9 @@ export function checkpointLimits(value: unknown, defaults: CodexLimits): CodexLi
 }
 
 function validate(value: unknown, context: IdentityContext, binding: CodexCheckpointBinding, limits: CodexLimits, parserVersion: number): DecodedCheckpoint {
-  const h = fields(value, ["schemaVersion", "provider", "parserVersion", "normalizationVersion", "keyVersion", "keyId", "sourceId", "completedOffset", "nextOrdinal", "limits", "position", "state"]);
+  const enriched = parserVersion === 3;
+  const h = fields(value, ["schemaVersion", "provider", "parserVersion", "normalizationVersion", "keyVersion", "keyId", "sourceId", "completedOffset", "nextOrdinal", "limits", "position", "state", ...(enriched ? ["patternEvidencePolicyVersion"] : [])]);
+  if (enriched && h.patternEvidencePolicyVersion !== 1) invalid();
   for (const [key, expected] of Object.entries({ schemaVersion: 1, provider: "codex", parserVersion, normalizationVersion: context.normalizationVersion, keyVersion: context.keyVersion, keyId: context.keyId, ...binding })) if (h[key] !== expected) invalid();
   const storedLimits = fields(h.limits, LIMIT_KEYS);
   for (const key of LIMIT_KEYS) if (storedLimits[key] !== limits[key]) invalid();
@@ -241,11 +243,13 @@ function validate(value: unknown, context: IdentityContext, binding: CodexCheckp
     const v = shape(value, {
       exitCode: mode === "exec" ? nullable(exit) : nil, processKey: mode === "exec" ? nid("event") : nil,
       running: mode === "exec" ? bool : fixed(false), cancelled: mode === "exec" ? bool : fixed(false),
-      isError: mode === "mcp" ? nullable(bool) : nil, contentFingerprint: nil, errorFingerprint: nil,
+      isError: mode === "mcp" ? nullable(bool) : nil, contentFingerprint: nil, errorFingerprint: enriched && mode !== "other" ? nid("error") : nil,
       contentState: choice("unknown", "truncated"), metadataVerified: bool, invalidMetadata: mode === "exec" ? bool : fixed(false),
     });
     if (v.metadataVerified !== (mode === "exec" ? v.exitCode !== null || v.processKey !== null || v.cancelled : mode === "mcp" && v.isError !== null)) invalid();
     if (mode === "exec" && v.running && v.exitCode !== null && !v.invalidMetadata) invalid();
+    if (v.errorFingerprint !== null && (v.contentState === "truncated" || v.running || v.cancelled || v.invalidMetadata
+      || (mode === "exec" ? v.exitCode === null || v.exitCode === 0 : mode !== "mcp" || v.isError !== true))) invalid();
   };
   const result: Validator = v => { shape(v, { exec: output("exec"), mcp: output("mcp"), other: output("other"), at: nullable(timestamp), sourceRef: ref, digest: id("event"), conflicted: bool }); };
   const evidence = choice("source_reported", "paired_timestamps", "unknown");
@@ -260,7 +264,7 @@ function validate(value: unknown, context: IdentityContext, binding: CodexCheckp
       intervalTimingEvidence: evidence, intervalScope: choice("unknown", "item_lifecycle", "invocation_latency"),
       durationMs: nullable(duration), timingEvidence: evidence, durationScope: choice("unknown", "process_runtime", "invocation_latency"),
       status: choice("completed", "failed", "cancelled", "pending", "unknown"), executionOutcome: choice("success", "no_match", "change_detected", "error", "unknown"),
-      exitCode: nullable(exit), errorFingerprint: nil, errorClass: nullable(choice("process_exit", "tool_error")),
+      exitCode: nullable(exit), errorFingerprint: enriched ? nid("error") : nil, errorClass: nullable(choice("process_exit", "tool_error")),
       sourceRef: v => { shape(v, { fileId: fixed(binding.sourceId), byteOffset: offset, recordType: choice("response_item", "event_msg") }); },
     });
     const elapsed = v.startAt === null || v.endAt === null ? null : Date.parse(v.endAt as string) - Date.parse(v.startAt as string);
@@ -272,6 +276,7 @@ function validate(value: unknown, context: IdentityContext, binding: CodexCheckp
     if (v.kind === "shell" ? v.toolName !== "exec_command" : v.kind === "mcp" ? v.toolName !== "mcp" : v.toolName !== "apply_patch") invalid();
     if (v.kind !== "shell" && v.exitCode !== null) invalid();
     if (v.errorClass !== (v.status === "failed" ? v.kind === "shell" ? "process_exit" : "tool_error" : null)) invalid();
+    if (v.errorFingerprint !== null && (v.status !== "failed" || v.executionOutcome !== "error" || v.contentState === "truncated")) invalid();
   };
   const execution: Validator = value => {
     const v = shape(value, { event, policy: choice("rg", "git_diff", "unknown"), mode: choice("exec", "mcp", "patch"), callSeen: bool,
@@ -282,6 +287,10 @@ function validate(value: unknown, context: IdentityContext, binding: CodexCheckp
     if (v.conflicted && (e.status !== "unknown" || e.durationMs !== null || e.intervalScope !== "unknown" || e.executionOutcome !== "unknown" || e.exitCode !== null)) invalid();
     if (!v.structured && v.callOperationKey !== e.operationKey) invalid();
     if (!v.structured && (e.timingEvidence === "source_reported" || e.intervalScope === "item_lifecycle" || e.durationScope === "process_runtime")) invalid();
+    if (enriched && !v.structured && e.errorFingerprint !== null) {
+      const output = v.result === null ? null : (v.result as Obj)[v.mode === "exec" ? "exec" : v.mode === "mcp" ? "mcp" : "other"] as Obj;
+      if (v.conflicted || output === null || output.errorFingerprint !== e.errorFingerprint) invalid();
+    }
   };
   const turn: Validator = value => {
     const v = shape(value, { id: id("turn"), sessionId: id("session"), provider: fixed("codex"), startAt: nullable(timestamp), endAt: nullable(timestamp),
@@ -347,10 +356,10 @@ function validate(value: unknown, context: IdentityContext, binding: CodexCheckp
     countConsistency(v.counts, v.mapping, v.countStatus);
     if (v.finality === "source_terminal" && v.mapping !== "openai_responses") invalid();
   };
-  const observation: Validator = value => { const v = shape(value, { ...(parserVersion === 2 ? { usageObservedAt: nullable(timestamp) } : {}), id: id("source"), eventId: nid("event"), turnId: nid("turn"), usageId: nid("event"),
+  const observation: Validator = value => { const v = shape(value, { ...((parserVersion === 2 || enriched) ? { usageObservedAt: nullable(timestamp) } : {}), id: id("source"), eventId: nid("event"), turnId: nid("turn"), usageId: nid("event"),
     representation: choice("call", "result", "structured", "poll", "wrapper", "turn", "usage", "metadata", "provenance", "unsupported"),
     origin: choice("ordinary", "ambiguous"), transportStatus: choice("completed", "failed", "cancelled", "pending", "unknown"), observedUsage: nullable(observedUsage), sourceRef: ref });
-    if (parserVersion === 2 && v.representation !== "usage" && v.usageObservedAt !== null) invalid();
+    if ((parserVersion === 2 || enriched) && v.representation !== "usage" && v.usageObservedAt !== null) invalid();
     if (v.origin === "ambiguous" && v.observedUsage !== null && (v.observedUsage as Obj).finality === "source_terminal") invalid();
   };
   const diag: Validator = value => {
@@ -420,7 +429,7 @@ function validate(value: unknown, context: IdentityContext, binding: CodexCheckp
 
 export function encodeCodexCheckpoint(context: IdentityContext, binding: CodexCheckpointBinding, limits: CodexLimits, parserVersion: number, position: CheckpointPosition, state: CheckpointState, maximum: number): CodexCheckpointExport {
   try {
-    const header={schemaVersion:1,provider:"codex",parserVersion,normalizationVersion:context.normalizationVersion,keyVersion:context.keyVersion,keyId:context.keyId,...binding,limits,position};
+    const header={schemaVersion:1,provider:"codex",parserVersion,normalizationVersion:context.normalizationVersion,keyVersion:context.keyVersion,keyId:context.keyId,...binding,limits,position,...(parserVersion === 3 ? {patternEvidencePolicyVersion:1} : {})};
     const pieces:string[]=[]; let escapedBytes=0;
     const overhead=Buffer.byteLength(JSON.stringify({schema:SCHEMA,payload:"",tag:`h1:${context.keyId}:source:${"0".repeat(64)}`}));
     const append=(part:string)=>{const size=Buffer.byteLength(JSON.stringify(part))-2;if(size>maximum-overhead-escapedBytes)budget();escapedBytes+=size;pieces.push(part);};

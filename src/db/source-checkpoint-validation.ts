@@ -1,4 +1,4 @@
-import { checkpointVersionSupported, hasUsageTiming } from "../parsers/capture.js";
+import { checkpointVersionSupported, captureForVersion } from "../parsers/capture.js";
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { Hash } from "node:crypto";
 import { types } from "node:util";
@@ -47,7 +47,7 @@ export function adapterLimitsFingerprint(provider: SourceProvider = "claude"): s
 function checkpointMaximum(provider: SourceProvider): number { return provider === "codex" ? MAX_CODEX_CHECKPOINT_BYTES : MAX_CLAUDE_CHECKPOINT_BYTES; }
 function compatibleParser(context: IdentityContext, provider: SourceProvider, version: number): boolean {
   if (!checkpointVersionSupported(provider, version)) return false;
-  const mode = { usageTiming: hasUsageTiming(provider, version) };
+  const mode = captureForVersion(provider, version);
   return (provider === "codex" ? createCodexAdapter(context, {}, mode) : createClaudeAdapter(context, {}, mode))
     .snapshot().capabilities.parserVersion === version;
 }
@@ -112,7 +112,7 @@ function requireGeneration(source: SourceHeaderInput, hasEvidence: boolean, cach
 export function restoreSourceCheckpoint(context: IdentityContext, source: SourceHeaderInput, capture: SourceCheckpointCapture, projection: string): ClaudeAdapter | CodexAdapter {
   const binding = { sourceId: source.sourceId, completedOffset: source.completedOffset, nextOrdinal: capture.nextOrdinal };
   if (!compatibleParser(context, source.provider, source.parserVersion)) invalid();
-  const currentVersion = source.parserVersion, mode = { usageTiming: hasUsageTiming(source.provider, source.parserVersion) };
+  const currentVersion = source.parserVersion, mode = captureForVersion(source.provider, source.parserVersion);
   const decoded = source.provider === "codex"
     ? decodeCodexCheckpoint(context, capture.checkpoint, binding, DEFAULT_CODEX_LIMITS, currentVersion)
     : decodeClaudeCheckpoint(context, capture.checkpoint, binding, DEFAULT_CLAUDE_LIMITS, currentVersion);

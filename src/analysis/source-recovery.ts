@@ -96,7 +96,7 @@ export function analyzeSourceRecovery(source: StoredSource): SourceRecoveryAnaly
   const evidence = source.evidence;
   if (source.events.length > 4096 || evidence !== null && (evidence.turns.length > 4096 || evidence.usage.length > 4096 || evidence.observations.length > 8192 || evidence.diagnostics.length > 8192)) throw new RangeError("source_recovery_limit_exceeded");
   const native = analyzeSourceFailures(source);
-  const suppressionReason = native.suppressionReason ?? (source.provider === "codex" && (source.parserVersion === 1 || source.parserVersion === 2) ? null : "unsupported_contract");
+  const suppressionReason = native.suppressionReason ?? (source.provider === "codex" && (source.parserVersion === 1 || source.parserVersion === 2 || source.parserVersion === 3) ? null : "unsupported_contract");
   const nativePartitions = new Map(native.partitions.map(p => [p.sessionId, p]));
   const admitted = new Set(native.partitions.flatMap(p => p.terminalEventIds));
   const knownFailed = new Set(source.events.filter(e => nativeCandidate(e) && admitted.has(e.id) && e.status === "failed" && e.executionOutcome === "error").map(e => e.id));

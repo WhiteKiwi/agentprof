@@ -100,7 +100,7 @@ it("Codex1/2 replay retains the exact native 10000ms union/span and full turn me
 });
 
 it.each(providers)("%s future native contract does not become a timestamp alias", async provider => {
-  const x = await pair(provider), future = contract(x.timed, provider === "codex" ? 3 : 4);
+  const x = await pair(provider), future = contract(x.timed, provider === "codex" ? 4 : 5);
   const r = analyzeSelectedHistory([x.legacyCopy, future], query);
   expect(r.reconciliation.executions[0]).toMatchObject({ state: "conflict", interval: null });
   expect(r.reconciliation.executions[0]!.reasons).toContain("semantic_or_contract_conflict");
@@ -154,7 +154,7 @@ it.each(["normalizationVersion", "keyVersion", "keyId"] as const)("native alias 
   const x = await pair("codex"), changed = { ...x.timed, [field]: field === "keyId" ? "8".repeat(32) : 2 };
   expect(() => reconcileHistorySources([x.legacyCopy, changed])).toThrow(HistoryQueryError);
 });
-it.each([[3, 3], [2, 1], [1, 2]] as const)("Active Time rejects Codex header%i/capability%i instead of inferring supported timing", async (header, capability) => {
+it.each([[4, 4], [2, 1], [1, 2]] as const)("Active Time rejects Codex header%i/capability%i instead of inferring supported timing", async (header, capability) => {
   const x = await pair("codex"), r = analyzeSourceActiveTime(contract(x.timed, header, capability));
   expect(r).toMatchObject({ assessment: "unavailable", activeTimeAssessmentReason: "unsupported_parser_contract", summary: { eligibleTurns: null, excludedTurns: null, partitions: null }, partitions: null });
 });

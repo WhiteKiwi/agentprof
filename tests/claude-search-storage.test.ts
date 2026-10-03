@@ -115,7 +115,7 @@ describe("ordinary Claude native search source storage and transition", () => {
       expect(() => store.replaceSourceSnapshot(rejectedInput as never, 1)).toThrow(); expect(rows(db)).toEqual(before);
     } finally { db.close(); }
   });
-  it.each([["claude", 4], ["codex", 3]] as const)("rejects future metric-bearing %s %i without altering the events-only API", async (provider, version) => {
+  it.each([["claude", 5], ["codex", 4]] as const)("rejects future metric-bearing %s %i without altering the events-only API", async (provider, version) => {
     const db = await openDatabase(temporaryDirectory()), store = createSourceStore(db, keyId);
     try {
       const adapter = provider === "claude" ? createClaudeAdapter(context) : createCodexAdapter(context), snap = adapter.snapshot();
@@ -141,7 +141,7 @@ describe("ordinary Claude native search source storage and transition", () => {
   it("suppresses unsupported matching future versions in both closed analyzer gates", async () => {
     const db = await openDatabase(temporaryDirectory()), store = createSourceStore(db, keyId), old = legacy();
     try { store.replaceSourceSnapshot(old, null); const saved = store.readSource(old.sourceId)!;
-      for (const [provider, parserVersion] of [["claude", 4], ["codex", 3]] as const) {
+      for (const [provider, parserVersion] of [["claude", 5], ["codex", 4]] as const) {
         const malformed = { ...saved, provider, parserVersion, evidence: { ...saved.evidence!, capabilities: { ...saved.evidence!.capabilities, provider, parserVersion } } } as never;
         expect(analyzeSourceFailures(malformed).suppressionReason).toBe("unsupported_contract"); expect(analyzeSourceSlowTool(malformed).suppressionReason).toBe("unsupported_contract");
       }
