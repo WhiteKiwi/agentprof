@@ -28,5 +28,11 @@ export const displayCases = [
     "prop": "durationCoverage",
     "flag": "duration-coverage",
     "mode": "selected_source_duration_coverage"
+  },
+  {
+    "pr": 75,
+    "prop": "usageCoverage",
+    "flag": "usage-coverage",
+    "mode": "selected_source_usage_coverage"
   }
 ] as const;
