@@ -76,5 +76,11 @@ export const displayCases = [
     "prop": "timingEvidence",
     "flag": "timing-evidence",
     "mode": "selected_source_timing_evidence"
+  },
+  {
+    "pr": 93,
+    "prop": "durationScope",
+    "flag": "duration-scope",
+    "mode": "selected_source_duration_scope"
   }
 ] as const;
