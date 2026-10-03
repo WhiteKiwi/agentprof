@@ -314,3 +314,7 @@ Immediately continue separate post-SPEC research over all nineteen original path
 ### PR #44 responsive-resolution amendment (2026-10-03)
 
 Browser reproduction confirms that a positive interval with normalized SVG width2 can occupy only0.633972 CSSpx at a375px viewport while the original conditional scale guidance is absent. Available charts containing positive displayed intervals must provide static responsive-resolution guidance at any viewport. Explain that scaling can make small positive intervals hard to resolve and that the exact millisecond table remains authoritative. This is a general limitation, not runtime pixel detection. Preserve exact native S/U/excess, full axis, row coordinates/widths, zero/failure/unknown states, caps and script-free privacy/CSP contracts. Do not widen positive bars or add viewport-dependent JavaScript.
+
+## Explicit stored-source report opening
+
+The opt-in [stored-source report opening contract](P6-REPORT-OPEN.md) adds `report --source FULL_ID --output NEW.html --open`. It requests the unchanged native opener only after completed, target-verified publication. All publication fields and warnings survive opener acceptance, failure or timeout; browser rendering remains unverified. Default report behavior is unchanged. Earlier no-`--open` statements describe their historical slice. No implicit scan, freshness claim or broad fresh-input-to-report acceptance is introduced.

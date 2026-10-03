@@ -454,3 +454,7 @@ This contributor did not run typecheck, build, pack/install, full suite, browser
 ### PR #44 aggregate qualification outcome (2026-10-03)
 
 The corrected frozen source passed75-file full qualification (2081PASS/38 explicit skips),32 genuine split-baseline cases and all7 actual Linux process cases, with2119 unique cases qualified across executions. Enabled-prepack/script-disabled installation and61-file artifact controls pass;59 runtime byte/mode maps remain identical. Seven corrected synthetic browser contexts and five raw-deleted/store-preserving CLI controls pass. Only append-only evidence follows the source freeze. [P6-INVOCATION-TIMELINE](P6-INVOCATION-TIMELINE.md) records exact environments, filtered/optional/platform exclusions and physical-device/AT/print/native-GUI NOT RUN boundaries. Hosted final-head and merge/main CI remain pending at this revision.
+
+## Stored-source report/open orchestration
+
+The [report/open workflow](P6-REPORT-OPEN.md) validates opt-in arguments before generation, awaits one existing report call and requests one existing opener only for a published, verified target. A separate workflow preserves publication receipts across opener outcomes and uses closed safe diagnostics; existing report and opener implementations remain unchanged. Focused immutable-receipt tests and controlled real-CLI/installed shims gate the narrow option/action/help wiring. Full aggregate, artifact, independent review and exact-head hosted CI are separate qualification stages.
