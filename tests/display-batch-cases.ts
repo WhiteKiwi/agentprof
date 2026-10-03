@@ -106,5 +106,11 @@ export const displayCases = [
     "prop": "usageSelection",
     "flag": "usage-selection",
     "mode": "selected_source_usage_selection"
+  },
+  {
+    "pr": 108,
+    "prop": "diagnostics",
+    "flag": "diagnostics",
+    "mode": "selected_source_diagnostics"
   }
 ] as const;
