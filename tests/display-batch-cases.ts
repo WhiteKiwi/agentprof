@@ -94,5 +94,11 @@ export const displayCases = [
     "prop": "capabilities",
     "flag": "capabilities",
     "mode": "selected_source_capabilities"
+  },
+  {
+    "pr": 106,
+    "prop": "statusMix",
+    "flag": "status-mix",
+    "mode": "selected_source_status_mix"
   }
 ] as const;
