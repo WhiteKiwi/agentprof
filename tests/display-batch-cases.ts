@@ -52,5 +52,11 @@ export const displayCases = [
     "prop": "overlapSummary",
     "flag": "overlap-summary",
     "mode": "selected_source_overlap_summary"
+  },
+  {
+    "pr": 84,
+    "prop": "cacheWriteShare",
+    "flag": "cache-write-share",
+    "mode": "selected_source_cache_write_share"
   }
 ] as const;
