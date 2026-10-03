@@ -1,7 +1,8 @@
 import type { SourceSummary } from "../analysis/source-summary.js";
 import { context, durationContext, finish, mix } from "./source-display.js";
 
-function evidenceCounts(s: SourceSummary): Record<string, number> {
+function evidenceCounts(s: SourceSummary): Record<string, number> | null {
+  if (s.suppressionReason !== null) return null;
   const x = { source_reported: 0, paired_timestamps: 0, estimated: 0, unknown: 0 };
   for (const c of s.durations ?? []) x[c.timingEvidence] += c.n;
   return x;

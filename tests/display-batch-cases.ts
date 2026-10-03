@@ -148,5 +148,11 @@ export const displayCases = [
     "prop": "inventory",
     "flag": "inventory",
     "mode": "selected_source_inventory"
+  },
+  {
+    "pr": 115,
+    "prop": "readiness",
+    "flag": "readiness",
+    "mode": "selected_source_readiness"
   }
 ] as const;
