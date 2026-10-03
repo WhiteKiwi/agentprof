@@ -14,8 +14,10 @@ import { formatSourceInvocationOverlap } from "./invocation-overlap.js";
 
 import type { SourceSearchRecurrenceAnalysis } from "../analysis/source-search-recurrence.js";
 import { formatSourceSearchRecurrence } from "./search-recurrence.js";
+import type { SourceActiveTimeAnalysis } from "../analysis/source-active-time.js";
+import { formatSourceActiveTime } from "./active-time.js";
 
-export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean; readRevisits?: boolean; invocationOverlap?: boolean; searchRecurrence?: boolean }>;
+export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean; readRevisits?: boolean; invocationOverlap?: boolean; searchRecurrence?: boolean; activeTime?: boolean }>;
 export type StatsResult = Readonly<
   { mode: "list_sources"; catalogue: SourceCatalogue }
   | { mode: "selected_source"; sourceFreshnessChecked: false; summary: SourceSummary }
@@ -23,12 +25,15 @@ export type StatsResult = Readonly<
   | { mode: "selected_source_read_revisits"; analysis: SourceReadRevisitAnalysis }
   | { mode: "selected_source_invocation_overlap"; analysis: SourceInvocationOverlapAnalysis }
   | { mode: "selected_source_search_recurrence"; analysis: SourceSearchRecurrenceAnalysis }
+  | { mode: "selected_source_active_time"; analysis: SourceActiveTimeAnalysis }
 >;
 export function validateSourceSelection(value: string): string {
   try { const key = keyId(value.split(":")[1]); return identity(value, "source", key); }
   catch { throw new SafeError("INVALID_ARGUMENT"); }
 }
 export function validateStatsArguments(options: StatsArguments): string {
+  if (options.activeTime !== undefined && typeof options.activeTime !== "boolean") throw new SafeError("INVALID_ARGUMENT");
+  if (options.activeTime === true && (options.searchRecurrence || options.invocationOverlap || options.readRevisits || options.failures || options.listSources || options.source === undefined)) throw new SafeError("INVALID_ARGUMENT");
   if ((options.codexRoot?.length ?? 0) || (options.claudeRoot?.length ?? 0)) throw new SafeError("INVALID_ARGUMENT");
   if (options.searchRecurrence && (options.failures || options.readRevisits || options.invocationOverlap || options.listSources || options.source === undefined)) throw new SafeError("INVALID_ARGUMENT");
   if (options.invocationOverlap && (options.failures || options.readRevisits || options.listSources || options.source === undefined)) throw new SafeError("INVALID_ARGUMENT");
@@ -49,12 +54,14 @@ export async function runStats(options: StatsArguments): Promise<StatsResult> {
   const analyzeReadRevisits = options.readRevisits ? (await import("../analysis/source-read-revisits.js")).analyzeSourceReadRevisits : null;
   const analyzeInvocationOverlap = options.invocationOverlap ? (await import("../analysis/source-invocation-overlap.js")).analyzeSourceInvocationOverlap : null;
   const analyzeSearchRecurrence = options.searchRecurrence ? (await import("../analysis/source-search-recurrence.js")).analyzeSourceSearchRecurrence : null;
+  const analyzeActiveTime = options.activeTime === true ? (await import("../analysis/source-active-time.js")).analyzeSourceActiveTime : null;
   return withReadOnlyStore(directory, (db, key) => {
     const store = createSourceStore(db, key);
     if (options.listSources) return Object.freeze({ mode: "list_sources", catalogue: store.listSources() });
     try { identity(options.source, "source", key); } catch { throw new SafeError("INVALID_IDENTITY_KEY"); }
     const source = store.readSource(options.source!);
     if (source === null) throw new SafeError("SOURCE_NOT_FOUND");
+    if (analyzeActiveTime !== null) return Object.freeze({ mode: "selected_source_active_time", analysis: analyzeActiveTime(source) });
     if (analyzeSearchRecurrence !== null) return Object.freeze({ mode: "selected_source_search_recurrence", analysis: analyzeSearchRecurrence(source) });
     if (analyzeInvocationOverlap !== null) return Object.freeze({ mode: "selected_source_invocation_overlap", analysis: analyzeInvocationOverlap(source) });
     if (analyzeReadRevisits !== null) return Object.freeze({ mode: "selected_source_read_revisits", analysis: analyzeReadRevisits(source) });
@@ -157,6 +164,7 @@ function formatSelectedSource(s: SourceSummary): string[] {
 
 export function formatStatsResult(result: StatsResult, json: boolean): string {
   if (json) return JSON.stringify({ schema: "agentprof.cli/v1", ok: true, command: "stats", result }) + "\n";
+  if (result.mode === "selected_source_active_time") return formatSourceActiveTime(result.analysis);
   if (result.mode === "selected_source_search_recurrence") return formatSourceSearchRecurrence(result.analysis);
   if (result.mode === "selected_source_read_revisits") return formatSourceReadRevisits(result.analysis);
   if (result.mode === "selected_source_invocation_overlap") return formatSourceInvocationOverlap(result.analysis);
