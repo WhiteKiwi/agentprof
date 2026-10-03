@@ -73,6 +73,7 @@ export async function run(argv: string[]): Promise<void> {
     .option("--cache-components", "show source-local cache-components evidence")
     .option("--output-composition", "show source-local output-composition evidence")
     .option("--inventory", "show source-local inventory evidence")
+    .option("--readiness", "show source-local readiness evidence")
     .option("--time-breakdown", "show recorded tool/command/category durations")
     .option("--invocation-overlap", "show observed Claude invocation interval union")
     .option("--read-revisits", "show completed Claude Read file revisits for one --source")
@@ -151,6 +152,8 @@ export async function run(argv: string[]): Promise<void> {
   stats.on("option:output-composition", () => { if (++outputCompositionFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   let inventoryFlags = 0;
   stats.on("option:inventory", () => { if (++inventoryFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
+  let readinessFlags = 0;
+  stats.on("option:readiness", () => { if (++readinessFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   stats.action(async () => {
     const options = { ...program.opts(), ...stats.opts() } as StatsArguments & { json?: boolean };
     const result = await runStats(options);
