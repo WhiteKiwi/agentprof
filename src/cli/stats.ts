@@ -1,3 +1,4 @@
+import { formatSourceLatency } from "./latency.js";
 import { SafeError } from "../privacy/diagnostics.js";
 import { resolveDataDirectory } from "../privacy/paths.js";
 import { identity, keyId } from "../db/source-validation.js";
@@ -24,8 +25,10 @@ import { formatSourceActiveTime } from "./active-time.js";
 import { formatSourceTokens } from "./tokens.js";
 import { formatSourceTimeBreakdown } from "./time-breakdown.js";
 
-export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean; readRevisits?: boolean; invocationOverlap?: boolean; searchRecurrence?: boolean; recovery?: boolean; retryOverhead?: boolean; activeTime?: boolean; tokens?: boolean; timeBreakdown?: boolean }>;
+export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean; readRevisits?: boolean; invocationOverlap?: boolean; searchRecurrence?: boolean; recovery?: boolean; retryOverhead?: boolean; activeTime?: boolean; tokens?: boolean; timeBreakdown?: boolean; latency?: boolean }>;
 export type StatsResult = Readonly<
+  { mode: "selected_source_latency"; summary: SourceSummary }
+  |
   { mode: "list_sources"; catalogue: SourceCatalogue }
   | { mode: "selected_source"; sourceFreshnessChecked: false; summary: SourceSummary }
   | { mode: "selected_source_failures"; analysis: SourceFailureAnalysis }
@@ -42,7 +45,11 @@ export function validateSourceSelection(value: string): string {
   try { const key = keyId(value.split(":")[1]); return identity(value, "source", key); }
   catch { throw new SafeError("INVALID_ARGUMENT"); }
 }
+const displayFlags = ["latency"] as const;
 export function validateStatsArguments(options: StatsArguments): string {
+  for (const flag of displayFlags) if (options[flag] !== undefined && typeof options[flag] !== "boolean") throw new SafeError("INVALID_ARGUMENT");
+  const selected = displayFlags.filter(flag => options[flag] === true);
+  if (selected.length > 1 || selected.length === 1 && (options.source === undefined || options.listSources || options.failures || options.readRevisits || options.invocationOverlap || options.searchRecurrence || options.recovery || options.retryOverhead || options.activeTime || options.tokens || options.timeBreakdown)) throw new SafeError("INVALID_ARGUMENT");
   if (options.timeBreakdown !== undefined && typeof options.timeBreakdown !== "boolean") throw new SafeError("INVALID_ARGUMENT");
   if (options.timeBreakdown === true && (options.tokens || options.activeTime || options.retryOverhead || options.recovery || options.searchRecurrence || options.invocationOverlap || options.readRevisits || options.failures || options.listSources || options.source === undefined)) throw new SafeError("INVALID_ARGUMENT");
   if (options.tokens !== undefined && typeof options.tokens !== "boolean") throw new SafeError("INVALID_ARGUMENT");
@@ -82,6 +89,7 @@ export async function runStats(options: StatsArguments): Promise<StatsResult> {
     try { identity(options.source, "source", key); } catch { throw new SafeError("INVALID_IDENTITY_KEY"); }
     const source = store.readSource(options.source!);
     if (source === null) throw new SafeError("SOURCE_NOT_FOUND");
+    if (options.latency === true) return Object.freeze({ mode: "selected_source_latency", summary: summarizeSource(source) });
     if (options.timeBreakdown === true) return Object.freeze({ mode: "selected_source_time_breakdown", summary: summarizeSource(source) });
     if (options.tokens === true) return Object.freeze({ mode: "selected_source_tokens", summary: summarizeSource(source) });
     if (analyzeActiveTime !== null) return Object.freeze({ mode: "selected_source_active_time", analysis: analyzeActiveTime(source) });
@@ -189,6 +197,7 @@ function formatSelectedSource(s: SourceSummary): string[] {
 
 export function formatStatsResult(result: StatsResult, json: boolean): string {
   if (json) return JSON.stringify({ schema: "agentprof.cli/v1", ok: true, command: "stats", result }) + "\n";
+  if (result.mode === "selected_source_latency") return formatSourceLatency(result.summary);
   if (result.mode === "selected_source_time_breakdown") return formatSourceTimeBreakdown(result.summary);
   if (result.mode === "selected_source_tokens") return formatSourceTokens(result.summary);
   if (result.mode === "selected_source_active_time") return formatSourceActiveTime(result.analysis);
