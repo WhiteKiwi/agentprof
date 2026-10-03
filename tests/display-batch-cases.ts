@@ -34,5 +34,11 @@ export const displayCases = [
     "prop": "usageCoverage",
     "flag": "usage-coverage",
     "mode": "selected_source_usage_coverage"
+  },
+  {
+    "pr": 81,
+    "prop": "readRatio",
+    "flag": "read-ratio",
+    "mode": "selected_source_read_ratio"
   }
 ] as const;

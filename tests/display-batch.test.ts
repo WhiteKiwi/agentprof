@@ -84,3 +84,8 @@ it("PR75 independently frozen fields and denominators", async () => {
   const x = await persisted(snapshot()), r = await runStats({ dataDir: x.data, source: x.sourceId, usageCoverage: true }), text = formatStatsResult(r, false);
   for (const expected of ["observed responses=1; selected rows=1; deduplicated rows=0; excluded rows=1", "provisional=1"]) expect(text).toContain(expected);
 });
+
+it("PR81 canonical JSON is complete unchanged native authority", async () => {
+  const x = await persisted(snapshot()), authority = (await import("../src/analysis/source-read-revisits.js")).analyzeSourceReadRevisits(x.source), r = await runStats({ dataDir: x.data, source: x.sourceId, readRatio: true });
+  expect(JSON.parse(formatStatsResult(r, true)).result).toEqual({ mode: "selected_source_read_ratio", analysis: authority });
+});
