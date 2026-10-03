@@ -21,7 +21,7 @@ async function selectedCopies() {
   const x = await stored(), input = join(x.root, "copies");
   await mkdir(input);
   for (const name of ["live.jsonl", "archive.jsonl"]) await writeFile(join(input, name), x.raw);
-  const scan = await runScan({ dataDir: x.data, codexRoot: [input] });
+  const scan = await runScan({ dataDir: x.data, codexRoot: [input], claudeRoot: [] });
   expect(scan.counts.committed).toBe(2);
   const ids = await withReadOnlyStore(x.data, (db, key) => stores.createSourceStore(db, key).listSources().items.map(s => s.sourceId));
   await rm(input, { recursive: true });
