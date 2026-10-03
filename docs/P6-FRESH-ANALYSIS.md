@@ -34,6 +34,36 @@ Pinned parent PR134 `1508ec210110aeb6d1c4042b5396862019d2f752` contains the hist
 
 Current ChatGPT continuation owns this one scoped ticket and branch. No actual runtime session UUID or separate development/review subagent is exposed; none is invented. Independent maintainer review is required. Reserve only this plan, new fresh-analysis modules/tests and the additive option/action dispatch hunks in history.ts and patterns.ts. Preserve #5/#7 broad ownership, #50 exploration, old stats-PR reviews and parent feature branches. No parser/store/schema/normalizer/report-fresh/writer/style/main/CI/dependency changes. The existing authoring environment can publish through the GitHub plugin and validate through GitHub Actions; local Node22 checks are supplementary, not supported-runtime qualification. Use synthetic records only.
 
-## Execution record
+## Execution record — implementation qualified
 
-Plan recorded before implementation. No implementation or test PASS is claimed yet. Full provider evidence capture, daily tokens, deletion/move lifecycle, unified all-metric report, independent review, browser/macOS/empirical and release acceptance remain separate work.
+[Issue #135](https://github.com/WhiteKiwi/agentprof/issues/135) and [Draft PR #137](https://github.com/WhiteKiwi/agentprof/pull/137) track this slice. The plan was recorded before code, and the issue claim was read back before implementation. Scope is one shared production workflow, registration-only additions in history.ts/patterns.ts, four new test/helper files and this document. The eight-file PR inventory and both inherited-file patches were inspected: no existing run/validate/format function was changed. Parent #134 and other feature branches remain untouched.
+
+**Qualified source/test head: `3eafe8d77ca43499f0ae72b8007f8c202fc8fbec`.** [CI run37127571993](https://github.com/WhiteKiwi/agentprof/actions/runs/37127571993) completed successfully in all four jobs. GitHub tested synthetic merge `e7dec31e961fbb20091becce5cd9bb6e0c51c7d6` against fixed parent `1508ec210110aeb6d1c4042b5396862019d2f752`; this is not a merge-to-main claim.
+
+| Verification | Observed result |
+| --- | --- |
+| Node24.15.0 / Node24.21.0 / Node26.7.0 | All `pnpm check` jobs completed/success |
+| Unsupported runtime early guard | completed/success |
+| Full suite, directly inspected Node26.7 job111215912712 | **2,835 PASS / 68 inherited optional SKIP / 0 FAIL**, 113 files:111 PASS / 2 SKIP |
+| New fresh-analysis suites | **64 PASS / no new skips**: workflow52 + CLI9 + real-write-races3 |
+| Production typecheck/build | PASS; strict compiler options unchanged |
+| Actual ordinary Codex and Claude | Both commands: commit1, unchanged-byte reuse1, append revision2 and exact stored/fresh HTML parity PASS |
+| Selection/read guards | One source read, one selected analyzer and native admission; source revision/provider mismatch and failed/stale/truncated scan guards PASS |
+| Actual intervening writes | A second real collection commits revision2 before receipt1 is returned; both commands refuse export rather than switch generation. This is a deterministic sequential real-write test, not an independent-process concurrency test |
+| Publication/abort | Existing output after preflight remains unchanged; internal AbortSignal boundary tests retain committed scan and any completed publication; own listener cleanup PASS |
+| Dedicated installed package test | Actual `npm pack`/global install with scripts disabled, outside-repository execution of both commands on ordinary partial Codex input; installed/built JSON receipts, HTML, exit status and private bytes match |
+| Existing artifact verifier | **85 artifact files**, scripts-disabled npm-exec/global-install and existing read-only stats/insights/failures checks PASS; `published:false` |
+
+The dedicated fresh installed case covers Codex partial input and both commands. Both provider workflows are separately exercised by real built CLI and source/store integration. These tests do not establish native browser/macOS rendering, hostile-path concurrency, private-user-log usefulness or all-PR/latest-main composition. No local production qualification was run; Node22/container capabilities are not presented as supported-runtime qualification. The 68 skipped tests are inherited optional historical/installed-environment cases, not newly skipped fresh tests.
+
+### Observed failures and corrections
+
+- Initial source `47e8412b0b5a773b4b6a37d03fac9c7fc83639cb`, run37127227695: production typecheck failed at two existing-validator calls because explicit undefined optional properties violate `exactOptionalPropertyTypes`. No tests ran. `70fe899b161182eefcb2fdb02479283c931ec6fe` conditionally omits absent properties rather than relaxing compiler or validator contracts.
+- Source `70fe899`, run37127340956: typecheck/build and 63 of the 64 fresh tests passed. One assertion incorrectly expected INTERNAL_ERROR instead of the existing pinned read wrapper's DATABASE_ACCESS_FAILED for an unexpected callback exception. The read-only implementation was inspected; it passes SafeError but safely maps other exceptions. `3eafe8d` corrects that new assertion, retains private-text redaction and committed-receipt checks, and adds no-output verification. Shared DB/error behavior and production code were not changed to satisfy the test.
+- The qualified source above reruns every fresh test and the full suite successfully. Failure history is also retained in the PR conversation. This documentation-only receipt commit follows source qualification; its exact CI status belongs in PR/issue handoff after observing it, not an assumed PASS here.
+
+## Handoff and remaining development
+
+Implementation reservation is released at handoff; issue #135 remains open for independent review and parent-first latest-main integration/authorized merge. Preserve the separate source-display coordination issue #136 and original #5/#7/#50 owners. Do not close #6/#7 or automatically merge/release this branch.
+
+Full ordinary provider error/content/change/validation-scope/usage-timestamp capture and parser/checkpoint compatibility, daily tokens, deletion/move/latest source lifecycle and unified all-metric reporting remain separate development. Existing HTML `sourceFreshnessChecked:false` and unknown evidence are preserved. This explicit fresh workflow guarantees only the scan-receipt generation at read time, not continuing input freshness or complete history. Independent review, native browser/macOS/empirical and release acceptance remain unexecuted. No real user logs or secrets were uploaded.
