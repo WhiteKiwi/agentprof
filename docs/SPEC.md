@@ -434,3 +434,12 @@ The owner's grouped-validation instruction is recorded in [P5-SOURCE-DISPLAY-BAT
 
 
 The display batch original-wiring check corrects an initial draft assumption before implementation:22 summary flags preserve `{mode,summary}` exactly; original PR71/81/82/83 had text-only results and omitted machine-readable evidence. Those4 new native views use canonical `{mode,analysis}` full evidence/context/reasons/IDs. Existing older flags remain unchanged. Compilation defects in new native callbacks and later107–115 new-flag declarations are necessary scope corrections, not additional metric features.
+
+
+## Evidence, history and report integration batch — 2026-10-04
+
+The owner requests shared verification for related PRs and oldest-first processing including arrivals. [P5-P6-INTEGRATION-BATCH](P5-P6-INTEGRATION-BATCH.md) defines the bounded review of PR126/128/130/132/134/137/139 on qualified main d9d635e. Preserve all prior commands and analyzer/evidence meanings, ten distinct evidence projections, copy reconciliation and dated native history, bounded offline exports, exact fresh-generation selection and opt-in unified reporting. Unknown/partial/provisional/cumulative evidence and distinct timing meanings remain explicit. Separate post-SPEC research precedes the reviewed implementation plan and separate developer. One composed full/package/installed gate is shared; per-prefix focused review, source CI/security and oldest-first main integration remain required. Later design/usage-timestamp work and broad parent acceptance remain independent.
+
+### Evidence-stat human context review amendment
+
+An actual ordinary scan/store/raw-delete/reopen partial-coverage source exposes an applicable token-component fraction6/6 while the new PR126 human view omits native support/coverage, unsupported-record counts and partial-shape limitations. Add existing pinned native/summary context before bounded detail rows in the ten new views. Complete structured JSON, native analyses and projected values/ratios remain unchanged; an eligible component fraction does not establish complete provider or history coverage. Existing36 boolean selections and prior command outputs stay compatible. The linked batch document records this pre-code correction and separate research evidence.
