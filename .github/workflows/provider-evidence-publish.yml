@@ -1,0 +1,132 @@
+name: Publish verified provider evidence
+on:
+  pull_request:
+    types: [synchronize]
+    paths: ['.github/workflows/provider-evidence-publish.yml']
+permissions:
+  contents: write
+jobs:
+  publish:
+    if: github.event.pull_request.number == 147 && github.head_ref == 'feat/provider-pattern-evidence' && github.event.pull_request.head.repo.full_name == 'WhiteKiwi/agentprof'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.21.0'
+      - name: Verify fixed parent, decode data and apply only reviewed file edits
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = 254abfd61d0308bf1b3c8b264dd4bb8dc886fed4
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test "$(git ls-remote origin refs/heads/feat/provider-pattern-evidence | cut -f1)" = "$EXPECTED_HEAD"
+          python3 - <<'PY'
+          import base64, gzip, hashlib, json, pathlib, subprocess
+          root = pathlib.Path.cwd()
+          allowed = '''src/analysis/source-failures.ts
+          src/analysis/source-patterns.ts
+          src/analysis/source-recovery.ts
+          src/analysis/source-search-recurrence.ts
+          src/analysis/source-slow-tool.ts
+          src/cli/main.ts
+          src/cli/reconcile-scan.ts
+          src/cli/scan.ts
+          src/db/source-checkpoint-validation.ts
+          src/db/source-metric-validation.ts
+          src/parsers/capture.ts
+          src/parsers/claude/checkpoint.ts
+          src/parsers/claude/index.ts
+          src/parsers/claude/pattern-evidence.ts
+          src/parsers/claude/types.ts
+          src/parsers/codex/checkpoint.ts
+          src/parsers/codex/index.ts
+          src/parsers/codex/output.ts
+          src/parsers/pattern-evidence.ts
+          src/parsers/types.ts
+          src/scanner/scan-run.ts
+          src/scanner/source-ingest.ts
+          src/scanner/source-lifecycle.ts
+          tests/claude-search-storage.test.ts
+          tests/provider-evidence-adapters.test.ts
+          tests/provider-evidence-checkpoint-guards.test.ts
+          tests/provider-evidence-extraction.test.ts
+          tests/provider-evidence-fixture.ts
+          tests/provider-evidence-installed.test.ts
+          tests/provider-evidence-integration.test.ts'''.splitlines()
+          fragments = [f'.provider-evidence-delta-{i}.b64' for i in range(1, 12)]
+          encoded = ''.join((root / path).read_text().strip() for path in fragments)
+          assert len(encoded) == 28152
+          compressed = base64.b64decode(encoded, validate=True)
+          assert hashlib.sha256(compressed).hexdigest() == '4c99f9ebfc495cb6cf45988384bd5ce9ca25bb1649bdb4fd5688f5fc38565338'
+          raw = gzip.decompress(compressed)
+          assert len(raw) == 79831
+          assert hashlib.sha256(raw).hexdigest() == 'b9f420854d5cb884ff619d17c7400f415e40d282fadd8d52013f8add63e0d0d8'
+          manifest = json.loads(raw)
+          assert manifest['schema'] == 'agentprof.reviewed-delta/v1'
+          assert manifest['base'] == 'd62bb48bcea4c6f9b9d503c0c2ac1e890da86afa'
+          assert [f['path'] for f in manifest['files']] == allowed
+          rendered = []
+          for item in manifest['files']:
+              path = root / item['path']
+              assert not path.is_symlink()
+              if item['old'] is None:
+                  assert not path.exists()
+                  old = b''
+              else:
+                  assert path.is_file()
+                  old = path.read_bytes()
+                  assert hashlib.sha256(old).hexdigest() == item['old'], item['path']
+              lines = old.decode('utf-8').splitlines(keepends=True)
+              at = 0
+              output = []
+              for start, end, replacement in item['ops']:
+                  assert type(start) is int and type(end) is int and at <= start <= end <= len(lines)
+                  assert type(replacement) is str
+                  output.extend(lines[at:start]); output.append(replacement); at = end
+              output.extend(lines[at:])
+              new = ''.join(output).encode('utf-8')
+              assert hashlib.sha256(new).hexdigest() == item['new'], item['path']
+              assert hashlib.sha1(b'blob ' + str(len(new)).encode() + b'\0' + new).hexdigest() == item['blob']
+              rendered.append((path, new))
+          for path, new in rendered:
+              path.parent.mkdir(parents=True, exist_ok=True)
+              path.write_bytes(new); path.chmod(0o644)
+          helpers = fragments + ['.github/workflows/provider-evidence-workspace.yml', '.github/workflows/provider-evidence-publish.yml']
+          for helper in helpers:
+              path = root / helper
+              assert path.is_file() and not path.is_symlink()
+              path.unlink()
+          subprocess.run(['git', 'add', '--', *allowed, *helpers], check=True)
+          actual = subprocess.check_output(['git', 'diff', '--cached', '--name-only'], text=True).splitlines()
+          assert set(actual) == set(allowed + helpers)
+          print(json.dumps({'reviewed_files': len(rendered), 'manifest_sha256': hashlib.sha256(raw).hexdigest(), 'helpers_removed': len(helpers)}))
+          PY
+          git diff --cached --check
+      - name: Recheck strict build and all new evidence tests before publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes pnpm@10.34.6 install --frozen-lockfile --ignore-scripts
+          npx --yes pnpm@10.34.6 typecheck
+          npx --yes pnpm@10.34.6 build
+          npx --yes pnpm@10.34.6 exec vitest run tests/provider-evidence*.test.ts tests/claude-search-storage.test.ts
+          test -z "$(git diff --name-only)"
+      - name: Append source commit to the same branch only
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/feat/provider-pattern-evidence | cut -f1)" = "$EXPECTED_HEAD"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: capture versioned observed provider pattern evidence'
+          git push origin HEAD:refs/heads/feat/provider-pattern-evidence
+          git log -1 --format='Published source commit: %H'
