@@ -60,6 +60,7 @@ export async function run(argv: string[]): Promise<void> {
     .option("--cache-write-share", "show source-local cache-write-share evidence")
     .option("--reasoning-share", "show source-local reasoning-share evidence")
     .option("--outcome-mix", "show source-local outcome-mix evidence")
+    .option("--timing-evidence", "show source-local timing-evidence evidence")
     .option("--time-breakdown", "show recorded tool/command/category durations")
     .option("--invocation-overlap", "show observed Claude invocation interval union")
     .option("--read-revisits", "show completed Claude Read file revisits for one --source")
@@ -112,6 +113,8 @@ export async function run(argv: string[]): Promise<void> {
   stats.on("option:reasoning-share", () => { if (++reasoningShareFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   let outcomeMixFlags = 0;
   stats.on("option:outcome-mix", () => { if (++outcomeMixFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
+  let timingEvidenceFlags = 0;
+  stats.on("option:timing-evidence", () => { if (++timingEvidenceFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   stats.action(async () => {
     const options = { ...program.opts(), ...stats.opts() } as StatsArguments & { json?: boolean };
     const result = await runStats(options);
