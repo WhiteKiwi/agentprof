@@ -23,6 +23,18 @@ Ratios must preserve a known zero numerator but remain null for a missing/zero/u
 
 Owner: this ChatGPT continuation, human-readable attribution only. A runtime session UUID is not exposed and is not invented. No separate development/review subagent is available in this continuation; independent maintainer review remains required. The scope is the new evidence-view modules, their tests, stats-only changes in `src/cli/stats.ts` and `src/cli/main.ts`, and this plan. Other sessions' #5/#7/#50 ownership, parser/store/schema/CI/package versions, and prior source documents are preserved. Cloud GitHub Actions is the supported-runtime qualification path; the local container has Node 22 and no outbound repository access. No user logs are collected or uploaded.
 
-## Execution record
+## Initial execution record
 
-Implementation and tests: pending. Publication and exact-head CI: pending. This document is a plan, not a PASS receipt.
+At plan publication, implementation, tests and exact-head CI were pending. The executed receipt below supersedes that initial status without turning broader product work into completed work.
+
+## Executed verification receipt — 2026-10-03
+
+Published [Draft PR #126](https://github.com/WhiteKiwi/agentprof/pull/126) with source head `51c0ac1b09d782d0b19c6580b17172ec9c220614`. All five production/test file blobs matched the inspected local copies. The six-path diff is this document, `src/analysis/source-evidence-views.ts`, `src/cli/evidence-stats.ts`, stats-only changes in `src/cli/stats.ts` and `src/cli/main.ts`, and `tests/evidence-stats.test.ts`. The prior stats formatter text and unrelated commands were preserved.
+
+Local Node22.16.0 pure harness: **226 passed, zero failures, zero skips**. It used synthetic native-analysis-shaped inputs and a SafeError dependency substitute; this is not a supported-runtime/full-product qualification. TypeScript syntax transpilation of five changed TS files had no syntax diagnostics; this alone is not typechecking.
+
+Actual [Foundation run 37113193177](https://github.com/WhiteKiwi/agentprof/actions/runs/37113193177) completed successfully for source head `51c0ac1b09d782d0b19c6580b17172ec9c220614`: Node24.15.0, Node24.21.0, Node26.7.0 and the unsupported Node22 guard all passed. The Node26.7.0 job log confirms checkout of test-merge `63e100cdcbc7eb3d613d0b8537ed56b75dfba49e` combining the source with the stated main baseline, successful typecheck/build, **2,603 passed / 65 skipped tests across 92 files (90 passed, two skipped)**, and all **161 new evidence-stats tests executed and passed**. The unchanged artifact verifier reports **68 files**, scripts-disabled tarball npm-exec/global-install and synthetic read-only stats/insights/failure checks PASS, unpublished. These inherited artifact checks are not represented as dedicated installed tests of all ten new flags.
+
+The new repository tests exercise real synthetic ordinary Codex ingestion, SQLite close/read and raw-input deletion for all ten API selections, an ordinary Claude Read/Grep boundary/identity positive case, exactly one pinned source read and selected analyzer, old-mode false/omitted output equality, actual built CLI selection and duplicate-option failures, structured JSON proof retention, provider-specific component presence, fraction/null/overflow and bounded human output. The 65 skips are inherited optional historical-baseline/installed environments; none of the 161 new tests is skipped.
+
+This receipt commit changes documentation only. Its final-head CI is recorded separately in the PR. Independent maintainer review, merge, actual-user-log usefulness, complete maximum-size end-to-end JSON qualification, native browser QA, npm publication and broad #5/#6/#7/#8/#10/#50 acceptance remain separate and are not claimed completed here. Previously opened feature PRs are not automatically qualified or merged by this completion PR.
