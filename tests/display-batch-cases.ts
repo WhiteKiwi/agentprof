@@ -100,5 +100,11 @@ export const displayCases = [
     "prop": "statusMix",
     "flag": "status-mix",
     "mode": "selected_source_status_mix"
+  },
+  {
+    "pr": 107,
+    "prop": "usageSelection",
+    "flag": "usage-selection",
+    "mode": "selected_source_usage_selection"
   }
 ] as const;
