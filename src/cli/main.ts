@@ -90,7 +90,7 @@ export async function run(argv: string[]): Promise<void> {
     process.exitCode = 0;
   });
   const insights = program.command("insights").description("Read Slow Tool evidence from one stored source prefix (read-only)")
-    .option("--source <id>", "select one full source ID", validateSourceSelection)
+    .option("--source <id>", "select one full source ID from stats --list-sources or scan JSON", validateSourceSelection)
     .addHelpText("after", "\nExactly one --source is required. Existing private DELETE-mode store only; no scan or migration.\nNo --last, source listing, global totals, freshness check or cross-source reconciliation.\nSuppressed/partial evidence and necessary-work/quality safeguards remain visible; no savings claim.");
   let insightSelections = 0;
   insights.on("option:source", () => { if (++insightSelections > 1) throw new SafeError("INVALID_ARGUMENT"); });
