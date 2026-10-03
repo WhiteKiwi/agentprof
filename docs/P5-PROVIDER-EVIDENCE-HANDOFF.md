@@ -32,7 +32,17 @@ Codecs require exact version/policy markers, safe field vocabularies and event/r
 
 Reviewed manifest SHA256: `b9f420854d5cb884ff619d17c7400f415e40d282fadd8d52013f8add63e0d0d8`. Temporary staging-fragment mistakes were corrected before the publication job; its exact aggregate hash verification passed before any source application. No partial or placeholder fragment was applied to source.
 
-This connector documentation commit triggers unchanged hosted Foundation on the complete published source. Its final results are pending at this receipt and will be recorded on PR147/issue146 after observation. Do not infer hosted success from local success or call the GitHub synthetic test merge an actual main merge.
+The first handoff documentation commit triggered unchanged hosted Foundation on the complete published source. At initial publication those results were pending; the actual completed qualification follows below. A GitHub synthetic test merge is not an actual main merge.
+
+## Completed hosted qualification — 2026-10-04 KST
+
+Head `ad5fd5ed0cd9ab97a27f7c9426b24b80b45dcf57` / [Foundation run37143250177](https://github.com/WhiteKiwi/agentprof/actions/runs/37143250177): **all four jobs completed/success**. Node24.15.0,24.21.0,26.7.0 each pass the unchanged `pnpm check`; unsupported Node22 guard also passes.
+
+Directly inspected Node26.7 job111261866523. Its actual checkout is GitHub test-merge `ef247af6b324aad68f7f3b42bb3418d60facc1de`, combining headad5fd5 with fixed parentd62bb48. Results: **3,113 PASS /0 FAIL /68 inherited optional SKIP**,124 files(122 PASS/2 SKIP). All126 new tests execute without skips. The genuine `codex-pre-resume.test.ts` runs and passes using exact old source5614a3107b53022f29ea32d44ba83f533fd58b92; it is the additional test not available in the local run. Hosted installation uses the ordinary package registry, not the local loopback mirror. Actual new scripts-disabled installed package exercises both providers with raw-deleted pattern HTML. Existing artifact verifier passes with94 files and published:false. No new production failure occurred in this first full hosted run of the published source.
+
+Independent post-publication Git tree readback confirms the entire published `src` subtree (`73c0e549d9d61b53137b125cbcc5924e6a90b961`) and `tests` subtree (`5aa334ecfb90eeeaf4efb7221a02332ca10f8825`) equal trees computed from the frozen locally qualified files, including all30 changed code/test blobs and modes. The `.github` tree (`272b2a4bcc40edc5f1f4dd9309a0ef468a92a977`) equals the parent: neither temporary workflow remains. Complete PR filename enumeration contains exactly30 source/test paths and4 scoped documentation files, no staging fragments, dependency changes or other-owner branches.
+
+This update adds only the executed qualification above. Its own final documentation-head CI is checked separately and recorded in PR147/issue146 before handoff. No source changes follow the qualified source2906716.
 
 ## Ownership / remaining work
 
