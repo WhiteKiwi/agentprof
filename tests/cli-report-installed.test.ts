@@ -18,7 +18,7 @@ it.skipIf(!installed)("packed script-disabled installed CLI preserves measured H
 });
 it("built report rejects duplicate/conflicting/unsupported flags before storage access",()=>{
  const root=mkdtempSync(join(realpathSync(tmpdir()),"agentprof-report-args-")),data=join(root,"absent"),id=`h1:${"a".repeat(32)}:source:${"b".repeat(64)}`,out=join(root,"out.html");try{
- for(const extra of [["--source",id],["--output",out],["--last","7d"],["--open"],["--codex-root",root],["--claude-root",root],["extra"],["--unknown"]]){
+ for(const extra of [["--source",id],["--output",out],["--last","7d"],["--open","--open"],["--codex-root",root],["--claude-root",root],["extra"],["--unknown"]]){
  const result=invoke(current,["report","--source",id,"--output",out,"--data-dir",data,"--json",...extra]);expect(result.status).toBe(2);expect(result.stdout).toBe("");expect(JSON.parse(result.stderr).error.code).toBe("INVALID_ARGUMENT");expect(readdirSync(root)).toEqual([]);
  }
  const help=invoke(current,["report","--help","--data-dir",data]);expect(help.status).toBe(0);expect(help.stderr).toBe("");expect(help.stdout).toContain("--source");expect(help.stdout).toContain("--output");expect(help.stdout).not.toContain("not implemented");expect(readdirSync(root)).toEqual([]);

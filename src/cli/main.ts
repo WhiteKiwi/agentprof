@@ -8,6 +8,7 @@ import { formatInsightsResult, runInsights } from "./insights.js";
 import type { InsightsArguments } from "./insights.js";
 import { runReport, formatReportResult } from "./report.js";
 import type { ReportArguments } from "./report.js";
+import { runReportAndOpen, formatReportAndOpenResult, reportAndOpenExitCode } from "./report-open.js";
 import { formatOpenResult, runOpen } from "./open.js";
 import { VERSION } from "./version.js";
 
@@ -75,13 +76,20 @@ export async function run(argv: string[]): Promise<void> {
   const report = program.command("report").description("Write a new offline HTML report from one stored source prefix")
     .option("--source <id>", "select one full source ID", validateSourceSelection)
     .option("--output <file>", "new output HTML file; existing files are never overwritten")
-    .addHelpText("after", "\nBoth --source and --output are required. Read-only existing store; no scan, roots, --last or --open.\nBounded source-prefix observations only; no global totals, freshness check or savings claim.");
-  for (const name of ["source", "output"]) {
+    .option("--open", "request the system opener after verified HTML publication")
+    .addHelpText("after", "\nBoth --source and --output are required. Read-only existing store; no scan, roots or --last.\nBounded source-prefix observations only; no global totals, freshness check or savings claim.\n--open requires local .html/.htm output and completed publication with a verified target.\nNative opening may create OS/browser history; helper acceptance does not verify browser rendering.\nTimeout may mean the file is already open; no automatic retry.");
+  for (const name of ["source", "output", "open"]) {
     let count = 0;
     report.on(`option:${name}`, () => { if (++count > 1) throw new SafeError("INVALID_ARGUMENT"); });
   }
   report.action(async () => {
-    const options = { ...program.opts(), ...report.opts() } as ReportArguments & { json?: boolean };
+    const options = { ...program.opts(), ...report.opts() } as ReportArguments & { json?: boolean; open?: boolean };
+    if (options.open === true) {
+      const result = await runReportAndOpen(options);
+      process.stdout.write(formatReportAndOpenResult(result, options.json === true));
+      process.exitCode = reportAndOpenExitCode(result);
+      return;
+    }
     const result = await runReport(options);
     process.stdout.write(formatReportResult(result, options.json === true));
     process.exitCode = result.status === "published" ? 0 : 1;
@@ -89,7 +97,7 @@ export async function run(argv: string[]): Promise<void> {
   program.command("open").description("Request the system opener for one explicitly trusted local HTML file")
     .argument("<file>", "existing local .html/.htm file")
     .allowExcessArguments(false)
-    .addHelpText("after", "\nmacOS/Linux only. Open explicitly trusted local files: selected HTML may run scripts or contact remote resources.\nCanonical symlink targets are used; native opening may create OS/browser history.\nNo scan, report generation, latest-file search, URLs or report --open. Global data/root options are validated but inert.\nA helper acknowledgement does not verify browser rendering. Timeout may mean the file is already open; no automatic retry.")
+    .addHelpText("after", "\nmacOS/Linux only. Open explicitly trusted local files: selected HTML may run scripts or contact remote resources.\nCanonical symlink targets are used; native opening may create OS/browser history.\nNo scan, report generation, latest-file search or URLs. Global data/root options are validated but inert.\nA helper acknowledgement does not verify browser rendering. Timeout may mean the file is already open; no automatic retry.")
     .action(async (file: string) => {
       const options = program.opts<{ json?: boolean }>();
       const result = await runOpen({ file });
