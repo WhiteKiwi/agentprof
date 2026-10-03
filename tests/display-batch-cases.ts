@@ -88,5 +88,11 @@ export const displayCases = [
     "prop": "usageFinality",
     "flag": "usage-finality",
     "mode": "selected_source_usage_finality"
+  },
+  {
+    "pr": 95,
+    "prop": "capabilities",
+    "flag": "capabilities",
+    "mode": "selected_source_capabilities"
   }
 ] as const;
