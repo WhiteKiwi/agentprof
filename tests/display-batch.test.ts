@@ -89,3 +89,8 @@ it("PR81 canonical JSON is complete unchanged native authority", async () => {
   const x = await persisted(snapshot()), authority = (await import("../src/analysis/source-read-revisits.js")).analyzeSourceReadRevisits(x.source), r = await runStats({ dataDir: x.data, source: x.sourceId, readRatio: true });
   expect(JSON.parse(formatStatsResult(r, true)).result).toEqual({ mode: "selected_source_read_ratio", analysis: authority });
 });
+
+it("PR82 canonical JSON is complete unchanged native authority", async () => {
+  const x = await persisted(snapshot()), authority = (await import("../src/analysis/source-search-recurrence.js")).analyzeSourceSearchRecurrence(x.source), r = await runStats({ dataDir: x.data, source: x.sourceId, searchRatio: true });
+  expect(JSON.parse(formatStatsResult(r, true)).result).toEqual({ mode: "selected_source_search_ratio", analysis: authority });
+});
