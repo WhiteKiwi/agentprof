@@ -85,7 +85,11 @@ A helper acknowledgement does not verify browser rendering. Timeout may mean the
   const trustedOpenRow="  open <file>                Request the system opener for one explicitly\n                             trusted local HTML file\n";
   expect(oldTop.stdout.split(pendingOpenRow)).toHaveLength(2);expect(currentTop.stdout.split(trustedOpenRow)).toHaveLength(2);
   expect(oldTop.stdout.split(trustedOpenRow)).toHaveLength(1);expect(currentTop.stdout.split(pendingOpenRow)).toHaveLength(1);
-  expect(currentTop.stdout.replace(trustedOpenRow,pendingOpenRow)).toBe(oldTop.stdout);
+  const oldReportRow="  report [options]           Write a new offline HTML report from one stored\n                             source prefix\n";
+  const newReportRow="  report [options]           Write a new offline HTML report from one stored\n                             source or explicit input file\n";
+  expect(oldTop.stdout.split(oldReportRow)).toHaveLength(2);expect(oldTop.stdout.split(newReportRow)).toHaveLength(1);
+  expect(currentTop.stdout.split(newReportRow)).toHaveLength(2);expect(currentTop.stdout.split(oldReportRow)).toHaveLength(1);
+  expect(currentTop.stdout.replace(trustedOpenRow,pendingOpenRow).replace(newReportRow,oldReportRow)).toBe(oldTop.stdout);
   const old=invoke(baseline!,data,["stats","--help"]),current=invoke(binary,data,["stats","--help"]);expect(current.status).toBe(old.status);expect(current.stderr).toBe(old.stderr);
   const option="  --search-recurrence   show completed Claude native search recurrence\n";
   const note="--search-recurrence requires --source and excludes --failures/--read-revisits/--invocation-overlap; Claude parser2 Grep/Glob only; exact request recurrence, not equal results or waste.\n";

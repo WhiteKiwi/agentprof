@@ -55,6 +55,7 @@ export const MESSAGES = {
   INSIGHTS_SELECTION_REQUIRED: "Select --source <full-source-id>. Use agentprof stats --list-sources, then agentprof insights --help.",
   STATS_SELECTION_REQUIRED: "Select --list-sources or --source <full-source-id>. Run agentprof stats --help.",
   STORE_NOT_FOUND: "An existing local store and identity key are required. Run an explicit-root scan first.",
+  SOURCE_REVISION_CHANGED: "The selected source generation changed. Run a new explicit input report.",
   SOURCE_NOT_FOUND: "The selected source is not present in this stored snapshot.",
   DATABASE_SCHEMA_INCOMPATIBLE: "Read-only source commands require a compatible existing database. No migration was attempted.",
   DATABASE_MODE_UNSUPPORTED: "Read-only source commands require a DELETE-mode store without journal, WAL or SHM sidecars.",

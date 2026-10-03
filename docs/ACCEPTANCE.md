@@ -273,3 +273,50 @@ The [explicit stored-source workflow](P6-REPORT-OPEN.md) requires unchanged defa
 ## Stored-source report/open: current-main requalification
 
 The [2026-10-03 main integration qualification](P6-REPORT-OPEN.md#2026-10-03-current-main-integration-qualification) passed independent composition review, baseline/candidate builds, typecheck, focused 99 tests, full 2090 tests (58 skipped), the 62-file artifact gate, 55 controlled built/actual-installed CLI cases and 36 authentic schema-5 read-only rejection comparisons. Main schema 6, recurrence and diagnostics remained intact; source/store/installed byte-and-mode checks passed. Hosted supported-runtime CI, GUI/macOS/browser execution and broad P6 fresh-input acceptance remain separate gates.
+
+## Fresh single-file report local successor proposal (2026-10-02)
+
+The separately owned fresh-report proposal is [P6-FRESH-INPUT-REPORT](P6-FRESH-INPUT-REPORT.md). It preserves stored-only behavior and requires an exact scan generation, partial-evidence warning receipts and cooperative cancellation. This appended local section does not replace shared PR40 documentation. Implementation verification is pending; publication, supported-runtime and real-browser acceptance remain unclaimed.
+
+### Fresh-report local focused evidence
+
+The explicit-input successor passes typecheck/build and 146 focused tests across eight files; three installed-binary cases await pack qualification. Tests execute exact generation selection, partial warning retention, real separate-connection writer interleavings, cancellation and listener cleanup, privacy/no-bootstrap failures, and controlled-opener CLI behavior. Earlier fixture calibration failures are preserved, not counted as production failures or hidden. See [fresh report evidence](P6-FRESH-INPUT-REPORT.md#local-implementation-freeze-evidence). Aggregate, installation/artifact, runtime matrix and browser acceptance remain unclaimed at this source freeze.
+
+## Post-freeze local qualification (2026-10-02)
+
+The immutable fresh-input source tree `681eda2be6652a971734d3ec8958154b265e3f3d` received independent source review CLEAR: all 251 paths verified, exactly 16 owned changes, 235 other inherited paths unchanged. Source remained byte/mode identical throughout qualification.
+
+- Node 24.19.0, Linux x64; one worker, 512 MiB heap, 600-second stage ceiling; explicit writable package cache
+- Typecheck/build PASS; focused 146 PASS, 3 installed-only skips at source freeze
+- Aggregate: 2006 PASS, 48 skip; 72 files PASS, 1 skip; 190.41 seconds
+- Script-disabled packed installation: 6 built/installed fresh CLI tests PASS, including selection/no-bootstrap/privacy, completed Codex, partial Claude and controlled opener outcomes
+- 58 installed dist files match build bytes/modes; installed executable directly reports version 0.1.0-dev.0
+- Inherited stored-only dependency/candidate/installed CLI oracle: 55 cases PASS, unchanged private-store bytes/modes
+- Actual CLI SIGINT oracle: 6 built/installed cases PASS; exit 130 preserves published HTML and actual accepted/failed/timeout results after the owned opener begins; no retries
+- Artifact: 60 files PASS; publication false
+
+The initial empty-cache offline install failed with ENOTCACHED for commander metadata. The failure receipt was preserved; normal official-registry installation with the explicit writable cache then passed. Historical synthetic test calibration failures were retained as described above. Copied precode-oracle header comments describe their original preimplementation provenance; they are not statements that the APIs remain absent.
+
+No supported-runtime matrix, exact-head hosted CI, real GUI/browser/macOS opener or live-user-input full P6 acceptance is claimed. Stable caller-controlled input paths remain a precondition; preflight/reopen path substitution is not solved. Source publication, PR creation/merge and deployment were not performed. This appendix is a separate local proposed evidence amendment; the reviewed source freeze is unchanged.
+
+### Fresh-report current-main composition qualification pending (2026-10-03)
+
+Earlier fresh-report counts belong to its prior source freeze. The main8e/schema6 successor preserves upstream state and adds the authentic schema5 copied-write migration, unchanged/suffix and corrupt-checkpoint controls described in [P6-FRESH-INPUT-REPORT](P6-FRESH-INPUT-REPORT.md#current-main-composition-and-schema-6-requalification-plan-2026-10-03). No refreshed runtime pass is claimed at composition freeze.
+
+## Current-main local qualification completed (2026-10-03)
+
+The successor composition tree `c9377f739a4f4ba57b91d9c0b65d3b7fa3419671` is based on main `8e3118155038a04adcf08f97113186af4243bc2d` plus the independently reviewed stored-report/open dependency `2d646088600377951a21855031b65656f22a65f6`. Independent composition review verified all 272 file bytes/modes, the exact 16 owned changes, 256 unchanged dependency paths and preservation of upstream shared-document prefixes. The source/archive remained unchanged throughout these runtime checks.
+
+On Linux x64 / Node 24.19.0, one worker, 512 MiB heap and 600-second stage bounds with explicit writable package cache:
+
+- Typecheck and build PASS
+- Focused: 149 PASS across nine files; three installed-only cases initially skipped and then explicitly passed in installed qualification
+- Aggregate: 2,201 PASS, 60 explicit optional skips; 82 files PASS and one optional file skipped; 167.89 seconds
+- Packed/script-disabled installation: six built/installed fresh CLI tests PASS; all 61 installed dist files match built bytes/modes; installed executable directly ran
+- Stored-only refreshed dependency/candidate/installed parity: 55 cases PASS, preserving private-store bytes/modes
+- Actual built/installed CLI SIGINT: six cases PASS, preserving publication and already-started opener accepted/failed/timeout outcomes with exit 130 and no retries
+- Artifact: 63 files PASS; no publication performed by the qualification commands
+
+The genuine schema5/Claude1 oracle was explicitly enabled in focused and aggregate runs. Its retained historical executable is from PR38 head `5614a3107b53022f29ea32d44ba83f533fd58b92`, with all 51 retained dist hashes verified. It is not attributed to the older 063 revision. The control proves schema5 read-only rejection without mutation; fresh write migration of a private copy to schema6/parser2 and revision2; unchanged revision reuse without parser calls or DB changes; two one-record suffix generations with exact offsets/ordinals; and an unchanged historical original. The corruption control proves failed scan before parsing, HTML creation or opening while retaining the post-corruption bytes.
+
+No current-run fixture calibration, source change or failed stage was needed. Prior-freeze calibration failures remain historical evidence and are not erased by this result. Supported-runtime matrix, exact-head hosted CI, macOS native opener, actual GUI/browser rendering and live-user-input full P6 acceptance remain NOT RUN. The documented stable-input-path precondition and preflight/reopen limitation remain unchanged. Local qualification does not establish remote publication, merge or release.
