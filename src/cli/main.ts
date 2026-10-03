@@ -44,6 +44,7 @@ export async function run(argv: string[]): Promise<void> {
   const stats = program.command("stats").description("Read one stored source prefix or list up to 64 sources (read-only)")
     .option("--list-sources", "list bounded stored source inventory")
     .option("--search-recurrence", "show completed Claude native search recurrence")
+    .option("--failure-admission", "show source-local failure-admission metric")
     .option("--recovery", "show observed same-turn Codex failure-to-success time")
     .option("--invocation-overlap", "show observed Claude invocation interval union")
     .option("--read-revisits", "show completed Claude Read file revisits for one --source")
@@ -54,6 +55,8 @@ export async function run(argv: string[]): Promise<void> {
   for (const flag of ["list-sources", "source"]) stats.on(`option:${flag}`, () => {
     if (++selections > 1) throw new SafeError("INVALID_ARGUMENT");
   });
+  let extraFlags = 0;
+  stats.on("option:failure-admission", () => { if (++extraFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   let failureFlags = 0;
   stats.on("option:failures", () => { if (++failureFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   let readRevisitFlags = 0;
