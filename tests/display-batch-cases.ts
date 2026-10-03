@@ -22,5 +22,11 @@ export const displayCases = [
     "prop": "executionStatus",
     "flag": "execution-status",
     "mode": "selected_source_execution_status"
+  },
+  {
+    "pr": 74,
+    "prop": "durationCoverage",
+    "flag": "duration-coverage",
+    "mode": "selected_source_duration_coverage"
   }
 ] as const;
