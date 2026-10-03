@@ -53,8 +53,8 @@ export function abortedSourceLifecycle(selectedInputs: number): SourceLifecycleR
 
 /** Internal coordinator: caller has preflighted all bounded explicit files before bootstrap. */
 export async function reconcileSourceFiles(store: ReturnType<typeof createSourceStore>, context: IdentityContext,
-  selected: readonly PreparedLifecycleFile[], signal: AbortSignal, usageTiming: boolean): Promise<SourceLifecycleResult> {
-  if (selected.length < 1 || selected.length > SCAN_LIMITS.roots || !(signal instanceof AbortSignal) || typeof usageTiming !== "boolean") throw new SafeError("INVALID_ARGUMENT");
+  selected: readonly PreparedLifecycleFile[], signal: AbortSignal, usageTiming: boolean, patternEvidence = false): Promise<SourceLifecycleResult> {
+  if (selected.length < 1 || selected.length > SCAN_LIMITS.roots || !(signal instanceof AbortSignal) || typeof usageTiming !== "boolean" || typeof patternEvidence !== "boolean") throw new SafeError("INVALID_ARGUMENT");
   if (signal.aborted) return abortedSourceLifecycle(selected.length);
   // Authenticate missing generations before any live-file writes. Retain no payload arrays.
   const files = selected.map((file, index) => {
@@ -65,7 +65,7 @@ export async function reconcileSourceFiles(store: ReturnType<typeof createSource
       availability: candidate?.source?.availability ?? null, predecessor: candidate?.predecessor ?? null };
   });
   const live = files.filter(f => f.file.observation.presence === "present").map(f => ({ provider: f.file.provider, path: f.file.path }));
-  const scan = live.length && !signal.aborted ? await scanSources(store, context, live, { signal, ...(usageTiming ? { usageTiming } : {}) }) : null;
+  const scan = live.length && !signal.aborted ? await scanSources(store, context, live, { signal, ...(usageTiming ? { usageTiming } : {}), ...(patternEvidence ? { patternEvidence } : {}) }) : null;
   const collected = new Map((scan?.sources ?? []).map(s => [s.sourceId, s]));
   const outcomes: LifecycleOutcome[] = [];
   let storageStopped = scan?.stopReason === "storage_failure";

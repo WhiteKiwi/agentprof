@@ -1,3 +1,4 @@
+import { evidenceOmitted, observedErrorFingerprint } from "../pattern-evidence.js";
 import type { IdentityContext } from "../../normalize/identity.js";
 import { exitCode, field, integer, jsonObject, object, text } from "./fields.js";
 
@@ -61,7 +62,7 @@ function directHeader(value: string): Record<string, unknown> | null {
   return result;
 }
 
-export function readOutput(input: unknown, streamId: string, context: IdentityContext, mode: "exec" | "mcp" | "other", verifiedComplete = false): SafeOutput {
+export function readOutput(input: unknown, streamId: string, context: IdentityContext, mode: "exec" | "mcp" | "other", verifiedComplete = false, patternEvidence = false): SafeOutput {
   // Only an exec result's root object/whole text block can carry exec metadata.
   let envelope: Record<string, unknown> | null = object(input) ? input : null;
   let rawContent = input;
@@ -81,10 +82,14 @@ export function readOutput(input: unknown, streamId: string, context: IdentityCo
   const truncated = field(envelope, "truncated") === true || field(envelope, "content_state") === "truncated"
     || (typeof rawContent === "string" && /^Warning: truncated output/.test(rawContent));
   const observed = truncated ? { contentFingerprint: null, contentState: "truncated" as const } : content(rawContent, context, verifiedComplete);
+  const invalidMetadata = rawExit !== undefined && code === null || (field(envelope, "session_id") !== undefined && process === null && mode === "exec") || (running && code !== null);
   return Object.freeze({ exitCode: code, processKey: process, running,
     cancelled: mode === "exec" && field(envelope, "status") === "cancelled",
     isError, ...observed,
-    errorFingerprint: isError === true && observed.contentFingerprint !== null ? context.fingerprint("error", ["tool_error", observed.contentFingerprint]) : null,
+    errorFingerprint: patternEvidence && !invalidMetadata && !running && field(envelope, "status") !== "cancelled" && !truncated && !evidenceOmitted(envelope)
+      && (mode === "mcp" && isError === true || mode === "exec" && code !== null && code !== 0)
+      ? observedErrorFingerprint(context, "codex", mode === "exec" ? "process_exit" : "tool_error", rawContent, mode === "exec" ? code : null)
+      : isError === true && observed.contentFingerprint !== null ? context.fingerprint("error", ["tool_error", observed.contentFingerprint]) : null,
     metadataVerified: mode === "exec" ? envelope !== null && (code !== null || process !== null || field(envelope, "status") === "cancelled") : isError !== null,
-    invalidMetadata: rawExit !== undefined && code === null || (field(envelope, "session_id") !== undefined && process === null && mode === "exec") || (running && code !== null) });
+    invalidMetadata });
 }

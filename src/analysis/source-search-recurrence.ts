@@ -44,7 +44,7 @@ export function analyzeSourceSearchRecurrence(source: StoredSource): SourceSearc
   const evidence = source.evidence;
   if (source.events.length > 4096 || evidence !== null && (evidence.turns.length > 4096 || evidence.usage.length > 4096 || evidence.observations.length > 8192 || evidence.diagnostics.length > 8192)) throw new RangeError("source_search_recurrence_limit_exceeded");
   const inherited = analyzeSourceFailures(source);
-  const metricSupported = (source.parserVersion === 2 || source.parserVersion === 3) && evidence?.capabilities.provider === "claude" && evidence.capabilities.parserVersion === source.parserVersion;
+  const metricSupported = (source.parserVersion === 2 || source.parserVersion === 3 || source.parserVersion === 4) && evidence?.capabilities.provider === "claude" && evidence.capabilities.parserVersion === source.parserVersion;
   const suppressionReason = inherited.suppressionReason ?? (source.provider !== "claude" ? "unsupported_provider" : !metricSupported ? "unsupported_metric_contract" : null);
   const capabilities: MetricEvidence["capabilities"] | null = inherited.capabilities === null ? null
     : inherited.capabilities.provider === "claude"

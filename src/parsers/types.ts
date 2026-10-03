@@ -79,7 +79,7 @@ export type MetadataSegment = Readonly<{
 export type CodexShape = "command_item" | "mcp_item" | "function_call" | "custom_call" | "tool_result" | "poll" | "code_wrapper" | "turn" | "response_usage" | "token_snapshot";
 export type ParserCapabilities = Readonly<{
   provider: "codex";
-  parserVersion: 1 | 2;
+  parserVersion: 1 | 2 | 3;
   support: "shape_verified_only";
   coverage: "recognized_shapes" | "partial";
   observedShapes: readonly CodexShape[];

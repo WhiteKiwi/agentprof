@@ -1,3 +1,4 @@
+import type { ClaudeFileEvidence } from "./pattern-evidence.js";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { types } from "node:util";
 import type { IdentityContext } from "../../normalize/identity.js";
@@ -14,6 +15,7 @@ export type Position = Readonly<{ fileId: string; ordinal: number; sourceRef: Pa
 export type SourceState = { ownerRootSessionId: string | null; ambiguous: boolean };
 export type StreamState = Readonly<{ rootSessionId: string; agentId: string | null; isSidechain: boolean; projectId: string | null }>;
 export type SafeResult = Readonly<{
+  fileEvidence?: ClaudeFileEvidence | null;
   digest: string; at: string | null; position: Position; isError: boolean | null;
   backgroundTaskId: string | null; asyncLaunched: boolean; unassignedAcknowledgement: boolean; contentFingerprint: string | null;
   contentState: "complete" | "truncated" | "unknown"; errorFingerprint: string | null;
@@ -166,7 +168,9 @@ function command(value: unknown): void {
   for (; i < tokens.length; i++) if (!FLAGS.has(tokens[i]!) && !(i === tokens.length - 1 && ["<target>", "<args>"].includes(tokens[i]!))) invalid();
 }
 function validate(value: unknown, context: IdentityContext, binding: ClaudeCheckpointBinding, limits: ClaudeLimits, parserVersion: number): DecodedCheckpoint {
-  const h = fields(value, ["schemaVersion", "provider", "parserVersion", "normalizationVersion", "keyVersion", "keyId", "sourceId", "completedOffset", "nextOrdinal", "limits", "position", "state"]);
+  const enriched = parserVersion === 4;
+  const h = fields(value, ["schemaVersion", "provider", "parserVersion", "normalizationVersion", "keyVersion", "keyId", "sourceId", "completedOffset", "nextOrdinal", "limits", "position", "state", ...(enriched ? ["patternEvidencePolicyVersion"] : [])]);
+  if (enriched && h.patternEvidencePolicyVersion !== 1) invalid();
   for (const [key, expected] of Object.entries({ schemaVersion: 1, provider: "claude", parserVersion, normalizationVersion: context.normalizationVersion, keyVersion: context.keyVersion, keyId: context.keyId, ...binding })) if (h[key] !== expected) invalid();
   const storedLimits = fields(h.limits, LIMIT_KEYS); for (const key of LIMIT_KEYS) if (storedLimits[key] !== limits[key]) invalid();
   const p = shape(h.position, { firstOrdinal: nullable(integer), lastOrdinal: nullable(integer), lastByteOffset: nullable(integer), recordCount: integer }) as unknown as CheckpointPosition;
@@ -184,11 +188,24 @@ function validate(value: unknown, context: IdentityContext, binding: ClaudeCheck
   const position: Validator = value => { shape(value, { fileId: fixed(binding.sourceId), ordinal, sourceRef: ref, sourceAlias: alias }); };
   const source: Validator = value => { shape(value, { ownerRootSessionId: nid("session"), ambiguous: bool }); };
   const stream: Validator = value => { const v = shape(value, { rootSessionId: id("session"), agentId: nid("session"), isSidechain: bool, projectId: nid("file") }); if (v.isSidechain === (v.agentId === null)) invalid(); };
-  const result: Validator = value => { shape(value, {
+  const range: Validator = value => {
+    const v = shape(value, { startLine: integer, endLine: integer });
+    if ((v.startLine as number) < 1 || (v.endLine as number) < (v.startLine as number)) invalid();
+  };
+  const fileEvidence: Validator = value => {
+    const v = shape(value, { kind: choice("read", "mutation"), fileFingerprint: id("file"), contentFingerprint: nid("content"), mutationFingerprint: nid("content"), range: nullable(range) });
+    if (v.kind === "read" ? v.range === null || v.contentFingerprint === null || v.mutationFingerprint !== null : v.range !== null || v.contentFingerprint !== null || v.mutationFingerprint === null) invalid();
+  };
+  const result: Validator = value => { const v = shape(value, {
+    ...(enriched ? { fileEvidence: nullable(fileEvidence) } : {}),
     digest: id("event"), at: nullable(timestamp), position, isError: nullable(bool), backgroundTaskId: nid("event"),
     asyncLaunched: bool, unassignedAcknowledgement: bool, contentFingerprint: nil, contentState: choice("truncated", "unknown"),
-    errorFingerprint: nil, directDurationMs: nil, directDurationScope: fixed("unknown"), conflicted: bool,
-  }); };
+    errorFingerprint: enriched ? nid("error") : nil, directDurationMs: nil, directDurationScope: fixed("unknown"), conflicted: bool,
+  });
+    if (enriched && (v.errorFingerprint !== null || v.fileEvidence !== null)
+      && (v.backgroundTaskId !== null || v.asyncLaunched || v.unassignedAcknowledgement || v.conflicted || v.contentState === "truncated")) invalid();
+    if (enriched && (v.errorFingerprint !== null && v.isError !== true || v.fileEvidence !== null && v.isError !== false)) invalid();
+  };
   const event: Validator = value => {
     const v = shape(value, {
       normalizationVersion: fixed(context.normalizationVersion), keyVersion: fixed(context.keyVersion), keyId: fixed(context.keyId),
@@ -196,12 +213,12 @@ function validate(value: unknown, context: IdentityContext, binding: ClaudeCheck
       kind: choice("model","shell","file_read","file_write","file_edit","search","mcp","browser","skill","subagent","other"),
       category: choice("model","test","build","search","read","write","edit","mcp","browser","skill","subagent","other"),
       toolName: nullable(choice("Bash","Read","Write","Edit","Grep","Glob","exec_command","write_stdin","apply_patch","mcp","browser","other")),
-      commandPattern: command, operationKey: nid("operation"), fileFingerprint: nid("file"), lookupKey: nid("lookup"), lookupRange: nil,
-      contentFingerprint: nil, contentState: choice("truncated","unknown"), changeState: fixed("unknown"), validationScope: fixed("unknown"),
+      commandPattern: command, operationKey: nid("operation"), fileFingerprint: nid("file"), lookupKey: nid("lookup"), lookupRange: enriched ? nullable(range) : nil,
+      contentFingerprint: enriched ? nid("content") : nil, contentState: enriched ? choice("complete","truncated","unknown") : choice("truncated","unknown"), changeState: enriched ? choice("changed","unknown") : fixed("unknown"), validationScope: fixed("unknown"),
       startAt: nullable(timestamp), endAt: nullable(timestamp), intervalTimingEvidence: choice("unknown","paired_timestamps"),
       intervalScope: choice("unknown","invocation_latency"), durationMs: nullable(duration), timingEvidence: choice("unknown","paired_timestamps"),
       durationScope: choice("unknown","invocation_latency"), status: choice("completed","failed","pending","unknown"),
-      executionOutcome: choice("success","error","unknown"), exitCode: nil, errorFingerprint: nil, errorClass: nullable(fixed("tool_error")),
+      executionOutcome: choice("success","error","unknown"), exitCode: nil, errorFingerprint: enriched ? nid("error") : nil, errorClass: nullable(fixed("tool_error")),
       sourceRef: value => { shape(value, { fileId: fixed(binding.sourceId), byteOffset: offset, recordType: choice("assistant","user") }); },
     });
     const elapsed = v.startAt === null || v.endAt === null ? null : Date.parse(v.endAt as string) - Date.parse(v.startAt as string);
@@ -210,14 +227,32 @@ function validate(value: unknown, context: IdentityContext, binding: ClaudeCheck
     if (v.status === "pending" && (v.endAt !== null || v.durationMs !== null || v.intervalScope !== "unknown")) invalid();
     if (v.executionOutcome !== (v.status === "completed" ? "success" : v.status === "failed" ? "error" : "unknown")) invalid();
     if (v.errorClass !== (v.status === "failed" ? "tool_error" : null)) invalid();
+    if (v.errorFingerprint !== null && (v.status !== "failed" || v.contentState === "truncated")) invalid();
+    if (enriched && (v.contentFingerprint !== null || v.lookupRange !== null || v.contentState === "complete")
+      && (v.status !== "completed" || v.kind !== "file_read" || v.toolName !== "Read" || v.contentFingerprint === null || v.lookupRange === null || v.contentState !== "complete")) invalid();
+    if (v.changeState === "changed" && (v.status !== "completed" || !["file_edit", "file_write"].includes(v.kind as string) || !["Edit", "Write"].includes(v.toolName as string))) invalid();
   };
   const execution: Validator = value => {
     const v = shape(value, { event, callDigest: id("event"), inputDigest: id("event"), callProjectId: nid("file"), position, callMessageId: nid("event"), callKind: choice("bash","agent","tool"), backgroundRequested: bool, result: nullable(result), conflicted: bool });
     const e = v.event as Obj;
-    if (e.lookupKey !== null && (e.kind !== "search" || e.category !== "search" || !["Grep", "Glob"].includes(e.toolName as string)
+    if (e.lookupKey !== null && !(enriched && e.kind === "file_read") && (e.kind !== "search" || e.category !== "search" || !["Grep", "Glob"].includes(e.toolName as string)
       || v.callKind !== "tool" || v.callProjectId === null || v.conflicted || v.backgroundRequested
       || e.commandPattern !== null || e.fileFingerprint !== null || e.lookupRange !== null
       || v.result !== null && (v.result as Obj).conflicted)) invalid();
+    if (enriched) {
+      const result = v.result as Obj | null, file = result?.fileEvidence as Obj | null | undefined;
+      const matched = !v.conflicted && e.status === "completed" && file != null && file.fileFingerprint === e.fileFingerprint;
+      const read = matched && file.kind === "read" && e.kind === "file_read" && e.toolName === "Read";
+      const changed = matched && file.kind === "mutation" && ["file_edit", "file_write"].includes(e.kind as string) && ["Edit", "Write"].includes(e.toolName as string);
+      if (e.changeState !== (changed ? "changed" : "unknown")) invalid();
+      if (e.errorFingerprint !== (e.status === "failed" && !v.conflicted ? result?.errorFingerprint ?? null : null)) invalid();
+      if (read) {
+        const r = file.range as { startLine: number; endLine: number };
+        if (e.contentFingerprint !== file.contentFingerprint || e.contentState !== "complete"
+          || JSON.stringify(e.lookupRange) !== JSON.stringify(r)
+          || e.lookupKey !== context.fingerprint("lookup", ["file", file.fileFingerprint as string, r.startLine, r.endLine])) invalid();
+      } else if (e.lookupRange !== null || e.contentFingerprint !== null || e.kind === "file_read" && e.lookupKey !== null) invalid();
+    }
   };
   const turn: Validator = value => {
     const v = shape(value, { id: id("turn"), sessionId: id("session"), provider: fixed("claude"), observedAt: nullable(timestamp), startAt: nil, endAt: nil,
@@ -246,7 +281,7 @@ function validate(value: unknown, context: IdentityContext, binding: ClaudeCheck
   const metadata: Validator = value => { shape(value,{ id:id("source"), ownerRootSessionId:nid("session"), declaredRootSessionId:nid("session"), sessionId:nid("session"), agentId:nid("session"), isSidechain:nullable(bool), versionFingerprint:nid("source"), declarationFingerprint:nid("session"), origin:choice("ordinary","ambiguous"), sourceRef:ref }); };
   const observedUsage: Validator = value => { const v=shape(value,{counts:count,countStatus,finality:fixed("unknown"),stopReason:stop,mapping:fixed("anthropic_messages")}); countConsistency(v); };
   const observedResult: Validator = value => { shape(value,{isError:nullable(bool),completionKind:choice("invocation_result","background_acknowledgement","unknown"),unassignedAcknowledgement:bool,observedAt:nullable(timestamp),acknowledgementLatencyMs:nullable(duration),durationMs:nil,durationScope:fixed("unknown")}); };
-  const observation: Validator = value => { const v = shape(value,{...(parserVersion === 3 ? {usageObservedAt:nullable(timestamp)} : {}),id:id("source"),sessionId:nid("session"),eventId:nid("event"),messageId:nid("event"),usageId:nid("event"),turnId:nid("turn"),representation:choice("call","result","message","usage","turn","metadata","provenance","unsupported"),origin:choice("ordinary","ambiguous"),observedUsage:nullable(observedUsage),observedResult:nullable(observedResult),sourceRef:ref}); if (parserVersion === 3 && v.representation !== "usage" && v.usageObservedAt !== null) invalid(); };
+  const observation: Validator = value => { const v = shape(value,{...((parserVersion === 3 || enriched) ? {usageObservedAt:nullable(timestamp)} : {}),id:id("source"),sessionId:nid("session"),eventId:nid("event"),messageId:nid("event"),usageId:nid("event"),turnId:nid("turn"),representation:choice("call","result","message","usage","turn","metadata","provenance","unsupported"),origin:choice("ordinary","ambiguous"),observedUsage:nullable(observedUsage),observedResult:nullable(observedResult),sourceRef:ref}); if ((parserVersion === 3 || enriched) && v.representation !== "usage" && v.usageObservedAt !== null) invalid(); };
   const diag: Validator = value => {
     const v=shape(value,{code:choice(...Object.keys(MESSAGES)),severity:choice("info","warning","error"),sourceAlias:alias,byteOffset:nullable(offset)});
     if (v.severity !== diagnostic(v.code as SafeDiagnostic["code"]).severity) invalid();
@@ -308,7 +343,7 @@ function validate(value: unknown, context: IdentityContext, binding: ClaudeCheck
 
 export function encodeClaudeCheckpoint(context: IdentityContext, binding: ClaudeCheckpointBinding, limits: ClaudeLimits, parserVersion: number, position: CheckpointPosition, state: CheckpointState, maximum: number): ClaudeCheckpointExport {
   try {
-    const header={schemaVersion:1,provider:"claude",parserVersion,normalizationVersion:context.normalizationVersion,keyVersion:context.keyVersion,keyId:context.keyId,...binding,limits,position};
+    const header={schemaVersion:1,provider:"claude",parserVersion,normalizationVersion:context.normalizationVersion,keyVersion:context.keyVersion,keyId:context.keyId,...binding,limits,position,...(parserVersion === 4 ? {patternEvidencePolicyVersion:1} : {})};
     const pieces:string[]=[]; let escapedBytes=0;
     const overhead=Buffer.byteLength(JSON.stringify({schema:SCHEMA,payload:"",tag:`h1:${context.keyId}:source:${"0".repeat(64)}`}));
     const append=(part:string)=>{const size=Buffer.byteLength(JSON.stringify(part))-2;if(size>maximum-overhead-escapedBytes)budget();escapedBytes+=size;pieces.push(part);};

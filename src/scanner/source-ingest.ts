@@ -1,4 +1,4 @@
-import { validateCaptureOptions } from "../parsers/capture.js";
+import { captureMode } from "../parsers/capture.js";
 import { adapterLimitsFingerprint, validateIngestionCandidate, validatePredecessor } from "../db/source-checkpoint-validation.js";
 import { resolve } from "node:path";
 import type { createSourceStore, SourceIngestionCandidate, SourceSnapshotInput } from "../db/source-store.js";
@@ -12,7 +12,7 @@ import type { SafeDiagnostic } from "../privacy/diagnostics.js";
 import { ownInput, readSourcePrefixWithProof, readSourceSuffixWithProof, sourcePrefixOptions, validSourcePath } from "./source-prefix.js";
 import type { ProvenSourcePrefixResult, SourcePrefixOptions } from "./source-prefix.js";
 
-export type SourceIngestInput = SourcePrefixOptions & Readonly<{ path: string; provider: "codex" | "claude"; expectedRevision: number | null; usageTiming?: boolean }>;
+export type SourceIngestInput = SourcePrefixOptions & Readonly<{ path: string; provider: "codex" | "claude"; expectedRevision: number | null; usageTiming?: boolean; patternEvidence?: boolean }>;
 type IngestEvidence = Readonly<{
   sourceId: string; persistedScope: "events_and_metric_evidence"; aggregationReady: false; parserResumeReady: false;
   capabilities: ParserCapabilities | ClaudeCapabilities; diagnostics: readonly SafeDiagnostic[]; readerDiagnostics: readonly SafeDiagnostic[];
@@ -31,8 +31,8 @@ export async function ingestSourceFileFromCheckpoint(store: ReturnType<typeof cr
   return ingest(store, context, input, validateIngestionCandidate(candidate, context.keyId));
 }
 async function ingest(store: ReturnType<typeof createSourceStore>, context: IdentityContext, input: SourceIngestInput, candidate?: SourceIngestionCandidate): Promise<SourceIngestResult> {
-  const value = ownInput(input, ["path", "provider", "expectedRevision", "maxFileBytes", "maxRecords", "maxLineBytes", "chunkBytes", "signal", "usageTiming"]);
-  const mode = { usageTiming: validateCaptureOptions(value["usageTiming"] === undefined ? {} : { usageTiming: value["usageTiming"] as boolean }) };
+  const value = ownInput(input, ["path", "provider", "expectedRevision", "maxFileBytes", "maxRecords", "maxLineBytes", "chunkBytes", "signal", "usageTiming", "patternEvidence"]);
+  const mode = captureMode({ ...(value["usageTiming"] === undefined ? {} : { usageTiming: value["usageTiming"] as boolean }), ...(value["patternEvidence"] === undefined ? {} : { patternEvidence: value["patternEvidence"] as boolean }) });
   const path = value["path"], provider = value["provider"], expectedRevision = value["expectedRevision"];
   validSourcePath(path);
   if (provider !== "codex" && provider !== "claude") throw new SafeError("INVALID_ARGUMENT");

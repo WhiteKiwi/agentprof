@@ -47,6 +47,9 @@ export function analyzeSourcePatterns(source: StoredSource, period: PatternPerio
     patternTimeMeaning: incomplete ? "observed_qualified_subset_not_full_total" : "observed_qualified_patterns_not_proven_avoidable",
     omittedDiagnoses: ["slow-tool: use existing insights", "exploration-thrashing: tracked separately in #50"],
     limitations: [
+      ...((source.provider === "codex" && source.parserVersion === 3 || source.provider === "claude" && source.parserVersion === 4)
+        ? ["Captured error identities compare exact observed text, not complete process output or a proven common root cause.",
+          "Structured Read completeness refers only to its returned range; unchanged content and full validation are not inferred."] : []),
       "Four evidence-gated rule kernels, not completion of all six P5 diagnoses or empirical provider qualification.",
       "Ordinary adapters may lack error identity, complete content/change proof or validation scope; missing evidence is not efficient work.",
       "Edit-to-validation links are ordered observations in a stream context, not causal proof or changed-file/test coverage.",

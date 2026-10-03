@@ -86,7 +86,7 @@ export function analyzeSourceActiveTime(source: StoredSource): SourceActiveTimeA
     limitations: ["source_local_observed_subset_only", "native_endpoints_not_duration_inference", "ordinary_observations_have_no_timestamps", "observed_turn_elapsed_not_cpu_time", "gaps_excluded_from_union_but_included_in_span", "sessions_and_interval_contracts_not_combined", "no_task_elapsed_waste_or_savings_inference", ...(inherited.capabilities?.coverage === "partial" ? ["partial_shape_coverage"] : [])]
   };
   const unsupported = source.provider !== "codex" ? "unsupported_provider" as const
-    : source.parserVersion !== 1 && source.parserVersion !== 2 || source.normalizationVersion !== 1 || source.keyVersion !== 1 || inherited.capabilities?.provider !== "codex" || inherited.capabilities.parserVersion !== source.parserVersion || inherited.capabilities.support !== "shape_verified_only" ? "unsupported_parser_contract" as const : null;
+    : source.parserVersion !== 1 && source.parserVersion !== 2 && source.parserVersion !== 3 || source.normalizationVersion !== 1 || source.keyVersion !== 1 || inherited.capabilities?.provider !== "codex" || inherited.capabilities.parserVersion !== source.parserVersion || inherited.capabilities.support !== "shape_verified_only" ? "unsupported_parser_contract" as const : null;
   const unavailable = inherited.suppressionReason ?? unsupported;
   if (unavailable !== null) return freeze({ ...base, assessment: "unavailable", activeTimeAssessmentReason: unavailable,
     summary: { eligibleTurns: null, excludedTurns: null, partitions: null }, exclusions: null, excludedTurnEvidence: null, partitions: null });

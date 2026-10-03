@@ -58,7 +58,7 @@ export async function runReconcileScan(options: ReconcileScanArguments, internal
     try {
       const { createSourceStore } = await import("../db/source-store.js");
       if (controller.signal.aborted) return abortedSourceLifecycle(roots.length);
-      return await reconcileSourceFiles(createSourceStore(database, context.keyId), context, files, controller.signal, options.usageTiming === true);
+      return await reconcileSourceFiles(createSourceStore(database, context.keyId), context, files, controller.signal, options.usageTiming === true, options.patternEvidence === true);
     } finally { database.close(); }
   } finally {
     process.removeListener("SIGINT", interrupt);
