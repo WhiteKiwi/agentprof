@@ -43,4 +43,47 @@ Owner/coordinator: this ChatGPT continuation; a runtime UUID or independent deve
 
 ## Execution record
 
-Plan recorded before implementation. Implementation, supported-runtime qualification and publication are pending; no PASS claim yet.
+### Published stack and qualified revisions
+
+Implementation and synthetic qualification are complete in [Draft PR #130](https://github.com/WhiteKiwi/agentprof/pull/130), tracked by [#129](https://github.com/WhiteKiwi/agentprof/issues/129). This does not merge the change or complete parent #6.
+
+- Source/test head: `8092fd394975d2091e6bae5d06fc6b6a9bad26bf`.
+- Fixed parent: PR #128 head `9b162601535fb68f5ce546c486151abbf50511b9`.
+- Tested pull-request merge: `a7fbbdca5392abab8c36bce3f24ef3bf5386e6ef`.
+- [Run 37123626499](https://github.com/WhiteKiwi/agentprof/actions/runs/37123626499): all four jobs observed completed/success. Node 24.15.0, 24.21.0 and 26.7.0 execute `pnpm check`; the unsupported-runtime job verifies the Node22 early guard.
+- The Node26.7 job [111204506840](https://github.com/WhiteKiwi/agentprof/actions/runs/37123626499/job/111204506840) log was read directly. On Linux x64 / Ubuntu 24.04 it reports **2,708 passed / 68 inherited optional skipped / zero failures**, across 104 files (102 passed / two skipped). Typecheck, build and artifact verification pass.
+- This receipt is a documentation-only follow-up to that qualified code. Its resulting exact commit and final CI status are recorded in PR #130 and issue #129 after readback, rather than predicting a self-referential commit SHA here.
+
+### New history qualification: 75 tests, no skips
+
+| Suite | Executed result |
+| --- | --- |
+| `history-query.test.ts` | 27 PASS: canonical UTC, calendar/leap/range bounds and fixed offsets |
+| `source-history.test.ts` | 20 PASS: copy/conflict/admission gates, deterministic privacy-safe reconciliation, daily clipping and compatible time arithmetic |
+| `history-cli.test.ts` | 23 PASS: actual Codex/Claude scan/store/raw-deleted inputs, three-file duplicate copies, exact session selection, one pinned read/native pass per source and actual built CLI guards |
+| `history-installed.test.ts` | 1 PASS: isolated scripts-disabled tarball installation, real identical/conflicting copy logs, raw deletion, installed/built human and JSON parity, unchanged private bytes |
+| `history-defensive.test.ts` | 4 PASS: sparse-array rejection, -03:30 midnight and oversized complete JSON refusal |
+
+The source-history suite contains one test comparing **200 deterministic interval populations** to an independent millisecond-grid oracle. These are 200 populations inside one test, not 200 additional Vitest tests. Literal overlapping 10-second calls produce sum20/union15; midnight splitting retains one completion while allocating interval portions to each day. Unknown boundaries have no invented day.
+
+The defensive output case builds 1,000 admitted synthetic executions across 20 days, retains **20,000 actual daily partitions**, and verifies that the complete JSON exceeds 8 MiB and is refused with `INVALID_ARGUMENT`, rather than clipped. Bounded human output still reports the exact omission count. This is an output/resource guard, not a representative performance benchmark or exhaustive cross-product limit qualification.
+
+### Installation and integrity
+
+The dedicated history test uses `npm pack --ignore-scripts` and isolated `npm install --global --ignore-scripts` with a private cache/prefix, then invokes the installed CLI outside the repository. It checks that compiled history code is in the artifact and source/tests/JSONL/SQLite inputs are absent. Actual synthetic live/archive copies count once; a status-conflicting copy excludes only the conflicting canonical execution. Both JSON and human output match the built executable after source files are removed, and private store/key bytes are unchanged. No registry publication occurs.
+
+The unchanged general artifact verifier also passes with **79 artifact files**, tarball npm-exec/global-install help/version, and existing read-only stats/insights/failures probes. Its result explicitly says `published:false`; the new history-specific installation claim comes from the dedicated test above, not from those older probes.
+
+All ten new production/test file blob IDs matched local reviewed copies through readback or write acknowledgement. The actual `main.ts` pull-request patch contains only the additive history import and registration. Local Node22/TypeScript5.8 syntax transpilation is supplemental; it is not the supported-runtime typecheck, build, SQLite or installation qualification. No user logs, source commands, outputs or secrets were collected or published.
+
+### Failures preserved and corrected
+
+1. `54ce4f3` / run37122807764 passed production typecheck/build and query/calculation tests, but two CLI tests failed in their shared fixture setup because `runScan` requires an explicit `claudeRoot: []`. Commit `063c9fb` fixes that test setup. No production scan API change, assertion removal or skip was used.
+2. `416abc7` / run37123146927 passed all 70 query/calculation/CLI tests. The newly added installed test wrongly expected scan exit0. Ordinary failed calls without error identity correctly produce `INSUFFICIENT_ERROR_EVIDENCE` and partial/exit1 while committing both sources. Commit `0336865` asserts that exact partial state, committed2/failed0/rejected0, and diagnostic counts two for identical failed copies and one for the conflicting variant. It does not suppress warnings or force a healthy scan result.
+3. Review found that sparse programmatic source arrays could bypass `Array.some`. Commit `2d456d2` materializes their slots for validation before storage access; regression tests cover that boundary. `8092fd3` finalizes the independently exercised large-output case. The final run above passes all 75 new tests without skips.
+
+### Handoff and remaining development
+
+PR #130 remains Draft/open/unmerged. Release the active implementation reservation at handoff; independent maintainer review, parent #128 qualification/merge and composition with current main are still required. Re-run the full suite after retargeting/integration. This fixed-stack PASS is not a receipt for every other open feature PR or for the latest evolving main.
+
+General ordinary-provider error/content/change/validation-scope capture and verified usage timestamps, associated parser/checkpoint compatibility, daily token attribution, source deletion/move/latest-history reconciliation and broader report/diagnostic/history integration remain development work. Existing owners of #5/#7/#50 and the oldest-first stats review are not superseded. macOS/native browser checks, real-user usefulness, representative resource/false-positive evaluation and release approval are not performed here. Do not classify all remaining work as QA-only or close broad product tickets on this narrow qualification.
