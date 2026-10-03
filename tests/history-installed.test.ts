@@ -28,7 +28,12 @@ it("installed script-disabled tarball preserves history JSON/human and real copy
     const changed = conflict ? raw.replace('"exit_code":2', '"exit_code":0') : raw;
     await writeFile(join(input, "live.jsonl"), raw); await writeFile(join(input, "archive.jsonl"), changed);
     const scan = invoke(installed, ["scan", "--codex-root", input, "--data-dir", data, "--json"]);
-    expect(scan.status, scan.stdout + scan.stderr).toBe(0); expect(JSON.parse(scan.stdout).result.counts.committed).toBe(2);
+    // The unchanged parser deliberately reports missing error identity as partial, not a failed commit.
+    expect(scan.status, scan.stdout + scan.stderr).toBe(1);
+    const scanResult = JSON.parse(scan.stdout).result;
+    expect(scanResult.status).toBe("partial");
+    expect(scanResult.counts).toMatchObject({ committed: 2, failed: 0, rejected: 0 });
+    expect(scanResult.diagnostics.samples.filter((d: { code: string }) => d.code === "INSUFFICIENT_ERROR_EVIDENCE")).toHaveLength(conflict ? 1 : 2);
     const catalogue = invoke(installed, ["stats", "--list-sources", "--data-dir", data, "--json"]);
     expect(catalogue.status).toBe(0);
     const ids: string[] = JSON.parse(catalogue.stdout).result.catalogue.items.map((s: { sourceId: string }) => s.sourceId);
@@ -40,6 +45,7 @@ it("installed script-disabled tarball preserves history JSON/human and real copy
       expect(a.stdout).not.toMatch(/FICTITIOUS_|operationKey|errorFingerprint|sourceRef/);
       if (json) {
         const result = JSON.parse(a.stdout).result;
+        expect(result.assessment).toBe("partial");
         expect(result.reconciliation.counts).toMatchObject({ eventCopies: 4, canonicalExecutions: 2,
           conflictingExecutions: conflict ? 1 : 0, admittedExecutions: conflict ? 1 : 2 });
         expect(result.days[0].terminalCompletions).toBe(conflict ? 1 : 2);
