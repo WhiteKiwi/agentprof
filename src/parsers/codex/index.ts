@@ -1,3 +1,5 @@
+import { validateCaptureOptions } from "../capture.js";
+import type { ParserCaptureOptions } from "../capture.js";
 import { types } from "node:util";
 import { checkpointBinding, checkpointBudget, checkpointLimits, decodeCodexCheckpoint, encodeCodexCheckpoint } from "./checkpoint.js";
 import type { CheckpointPosition, ExecutionState, SafeResult, SourceState, StreamState, UsageOrder, CodexCheckpointBinding, CodexCheckpointExport, CodexCheckpointOptions, CodexCheckpointRestore, CodexCheckpointUnavailableReason } from "./checkpoint-types.js";
@@ -52,6 +54,7 @@ function transportStatus(value: unknown): SourceObservation["transportStatus"] {
 export class CodexAdapter {
   readonly #context: IdentityContext;
   readonly #limits: CodexLimits;
+  readonly #usageTiming: boolean;
   readonly #sources = new Map<string, SourceState>();
   readonly #streams = new Map<string, StreamState>();
   readonly #events = new Map<string, ExecutionState>();
@@ -81,7 +84,8 @@ export class CodexAdapter {
   #checkpointUnavailable: CodexCheckpointUnavailableReason | null = null;
   #continuation: CodexCheckpointBinding | null = null;
 
-  constructor(context: IdentityContext, limits: Partial<CodexLimits> = {}) {
+  constructor(context: IdentityContext, limits: Partial<CodexLimits> = {}, capture: ParserCaptureOptions = {}) {
+    this.#usageTiming = validateCaptureOptions(capture);
     this.#context = context;
     const selected = { ...DEFAULT_CODEX_LIMITS, ...limits };
     if (Object.keys(selected).some((key) => !Object.hasOwn(DEFAULT_CODEX_LIMITS, key)) || Object.values(selected).some((value) => !Number.isSafeInteger(value) || value < 1 || value > 1_000_000)) throw new SafeError("INVALID_ARGUMENT");
@@ -89,7 +93,7 @@ export class CodexAdapter {
   }
 
   #capabilities(): ParserCapabilities {
-    return Object.freeze({ provider: "codex", parserVersion: 1, support: "shape_verified_only", coverage: this.#partial ? "partial" : "recognized_shapes", observedShapes: Object.freeze([...this.#shapes].sort()), unsupportedRecords: this.#unsupported, ambiguousRecords: this.#ambiguous, stateLimited: this.#limited, diagnosticsDropped: this.#diagnosticsDropped });
+    return Object.freeze({ provider: "codex", parserVersion: this.#usageTiming ? 2 : 1, support: "shape_verified_only", coverage: this.#partial ? "partial" : "recognized_shapes", observedShapes: Object.freeze([...this.#shapes].sort()), unsupportedRecords: this.#unsupported, ambiguousRecords: this.#ambiguous, stateLimited: this.#limited, diagnosticsDropped: this.#diagnosticsDropped });
   }
   #warn(code: DiagnosticCode, input: Input | null, batch: WorkBatch): void {
     this.#partial = true;
@@ -118,7 +122,7 @@ export class CodexAdapter {
     const id = this.#context.fingerprint("source", ["codex_observation", input.fileId, input.sourceRef.byteOffset, representation, eventId, turnId, usageId]);
     if (this.#observations.has(id)) return false;
     if (!this.#room(this.#observations.size, this.#limits.observations, input, batch)) return false;
-    const observation: SourceObservation = Object.freeze({ id, eventId, turnId, usageId, representation, origin: input.origin, transportStatus: transportStatus(status), observedUsage, sourceRef: input.sourceRef });
+    const observation: SourceObservation = Object.freeze({ ...(this.#usageTiming ? { usageObservedAt: representation === "usage" ? input.at : null } : {}), id, eventId, turnId, usageId, representation, origin: input.origin, transportStatus: transportStatus(status), observedUsage, sourceRef: input.sourceRef });
     this.#observations.set(id, observation); batch.observations.set(id, observation);
     return true;
   }
@@ -170,11 +174,11 @@ export class CodexAdapter {
     } catch { return Object.freeze({ status: "unavailable", reason: "incompatible_binding" }); }
   }
   /** Validate first, then expose one fresh owned instance. No existing adapter is mutated. */
-  static restoreCheckpoint(context: IdentityContext, encoded: unknown, expectedBinding: CodexCheckpointBinding, limits: Partial<CodexLimits> = {}):
+  static restoreCheckpoint(context: IdentityContext, encoded: unknown, expectedBinding: CodexCheckpointBinding, limits: Partial<CodexLimits> = {}, capture: ParserCaptureOptions = {}):
     CodexCheckpointRestore {
     try {
       const safeLimits = checkpointLimits(limits, DEFAULT_CODEX_LIMITS), binding = checkpointBinding(expectedBinding, context);
-      const adapter = new CodexAdapter(context, safeLimits);
+      const adapter = new CodexAdapter(context, safeLimits, capture);
       const decoded = decodeCodexCheckpoint(context, encoded, binding, adapter.#limits, adapter.#capabilities().parserVersion), s = decoded.state;
       for (const [key, value] of s.sources) adapter.#sources.set(key, value);
       for (const [key, value] of s.streams) adapter.#streams.set(key, value);
@@ -759,4 +763,4 @@ export class CodexAdapter {
   }
 }
 
-export function createCodexAdapter(context: IdentityContext, limits: Partial<CodexLimits> = {}): CodexAdapter { return new CodexAdapter(context, limits); }
+export function createCodexAdapter(context: IdentityContext, limits: Partial<CodexLimits> = {}, capture: ParserCaptureOptions = {}): CodexAdapter { return new CodexAdapter(context, limits, capture); }

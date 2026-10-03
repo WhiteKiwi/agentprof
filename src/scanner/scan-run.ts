@@ -1,3 +1,4 @@
+import { validateCaptureOptions } from "../parsers/capture.js";
 import { adapterLimitsFingerprint } from "../db/source-checkpoint-validation.js";
 import { relationshipCurrent, relationshipFingerprint } from "../db/source-relationship-validation.js";
 import { resolve } from "node:path";
@@ -16,7 +17,7 @@ import { ownInput, probeSourceFile, sourcePrefixOptions, validSourcePath } from 
 export const SCAN_LIMITS = Object.freeze({ roots: 16, sources: 64, directories: 256, entries: 4096, fileBytes: 16 * 1024 * 1024, records: 32768, diagnostics: 256 });
 export type ScanOptions = Readonly<{
   maxSources?: number; maxDirectories?: number; maxEntries?: number; maxFileBytes?: number;
-  maxRecords?: number; maxDiagnostics?: number; maxLineBytes?: number; chunkBytes?: number; signal?: AbortSignal;
+  maxRecords?: number; maxDiagnostics?: number; maxLineBytes?: number; chunkBytes?: number; signal?: AbortSignal; usageTiming?: boolean;
 }>;
 export type ScanSourceOutcome = Readonly<{
   sourceId: string; sourceAlias: string; provider: InputRoot["provider"];
@@ -71,7 +72,8 @@ function cacheCandidate(source: StoredSource | null, context: IdentityContext, p
 /** Bounded serial coordination only. Source commits are independent, never a whole-run transaction. */
 export async function scanSources(store: ReturnType<typeof createSourceStore>, context: IdentityContext, roots: readonly InputRoot[], options: ScanOptions = {}): Promise<ScanResult> {
   const selectedRoots = explicitRoots(roots);
-  const v = ownInput(options, ["maxSources", "maxDirectories", "maxEntries", "maxFileBytes", "maxRecords", "maxDiagnostics", "maxLineBytes", "chunkBytes", "signal"]);
+  const v = ownInput(options, ["maxSources", "maxDirectories", "maxEntries", "maxFileBytes", "maxRecords", "maxDiagnostics", "maxLineBytes", "chunkBytes", "signal", "usageTiming"]);
+  const mode = { usageTiming: validateCaptureOptions(v["usageTiming"] === undefined ? {} : { usageTiming: v["usageTiming"] as boolean }) };
   const maxSources = ceiling(v["maxSources"], SCAN_LIMITS.sources), maxDirectories = ceiling(v["maxDirectories"], SCAN_LIMITS.directories), maxEntries = ceiling(v["maxEntries"], SCAN_LIMITS.entries);
   const maxDiagnostics = ceiling(v["maxDiagnostics"], SCAN_LIMITS.diagnostics, true);
   const prefix = sourcePrefixOptions({ maxFileBytes: ceiling(v["maxFileBytes"], SCAN_LIMITS.fileBytes), maxRecords: ceiling(v["maxRecords"], SCAN_LIMITS.records),
@@ -108,7 +110,7 @@ export async function scanSources(store: ReturnType<typeof createSourceStore>, c
     const common = { sourceId, sourceAlias: source.sourceAlias, provider: source.provider };
     try {
       let candidate: SourceCacheToken | null, ingestionCandidate: SourceIngestionCandidate | undefined;
-      const currentParserVersion = (source.provider === "codex" ? createCodexAdapter(context) : createClaudeAdapter(context)).snapshot().capabilities.parserVersion;
+      const currentParserVersion = (source.provider === "codex" ? createCodexAdapter(context, {}, mode) : createClaudeAdapter(context, {}, mode)).snapshot().capabilities.parserVersion;
       {
         ingestionCandidate = store.readSourceForIngestion(sourceId, context);
         const stored = ingestionCandidate ? ingestionCandidate.source : store.readSource(sourceId);
@@ -144,7 +146,7 @@ export async function scanSources(store: ReturnType<typeof createSourceStore>, c
           continue;
         }
       }
-      const input = { path, provider: source.provider, expectedRevision,
+      const input = { path, provider: source.provider, expectedRevision, ...(mode.usageTiming ? mode : {}),
         maxFileBytes: prefix.maxFileBytes, maxRecords: prefix.maxRecords, maxLineBytes: prefix.maxLineBytes, chunkBytes: prefix.chunkBytes,
         ...(signal === undefined ? {} : { signal }) };
       const result = ingestionCandidate ? await ingestSourceFileFromCheckpoint(store, context, input, ingestionCandidate) : await ingestSourceFile(store, context, input);

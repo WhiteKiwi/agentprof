@@ -31,6 +31,11 @@ function semantic(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(semantic).join(",")}]`;
   return `{${Object.entries(value).sort(([a], [b]) => lexical(a, b)).map(([k, v]) => `${JSON.stringify(k)}:${semantic(v)}`).join(",")}}`;
 }
+/** Only these timestamp-only capture contracts share native event semantics. */
+function nativeEventParserVersion(source: StoredSource): number {
+  return source.provider === "codex" && source.parserVersion === 2 ? 1
+    : source.provider === "claude" && source.parserVersion === 3 ? 2 : source.parserVersion;
+}
 export function validateHistorySources(sources: readonly StoredSource[]): void {
   if (sources.length === 0 || sources.length > HISTORY_LIMITS.sources || new Set(sources.map(s => s.sourceId)).size !== sources.length) throw new HistoryQueryError();
   const first = sources[0]!;
@@ -63,7 +68,7 @@ export function reconcileHistorySources(sources: readonly StoredSource[]): Histo
       const reason = native.suppressionReason ?? (!isAdmitted
         ? partitions.get(e.sessionId) === "provenance_unresolved" ? "provenance_unresolved" : "native_excluded"
         : exclusions.get(e.id) ?? null);
-      const signature = semantic([s.provider, s.parserVersion, s.normalizationVersion, s.keyVersion,
+      const signature = semantic([s.provider, nativeEventParserVersion(s), s.normalizationVersion, s.keyVersion,
         Object.fromEntries(Object.entries(e).filter(([key]) => key !== "sourceRef"))]);
       const entry: Entry = { event: e, signature, interval: p === undefined ? null : { ...p.interval },
         copy: { sourceId: s.sourceId, revision: s.revision, admitted: isAdmitted, positioned: p !== undefined,

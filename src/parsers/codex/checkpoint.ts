@@ -347,9 +347,10 @@ function validate(value: unknown, context: IdentityContext, binding: CodexCheckp
     countConsistency(v.counts, v.mapping, v.countStatus);
     if (v.finality === "source_terminal" && v.mapping !== "openai_responses") invalid();
   };
-  const observation: Validator = value => { const v = shape(value, { id: id("source"), eventId: nid("event"), turnId: nid("turn"), usageId: nid("event"),
+  const observation: Validator = value => { const v = shape(value, { ...(parserVersion === 2 ? { usageObservedAt: nullable(timestamp) } : {}), id: id("source"), eventId: nid("event"), turnId: nid("turn"), usageId: nid("event"),
     representation: choice("call", "result", "structured", "poll", "wrapper", "turn", "usage", "metadata", "provenance", "unsupported"),
     origin: choice("ordinary", "ambiguous"), transportStatus: choice("completed", "failed", "cancelled", "pending", "unknown"), observedUsage: nullable(observedUsage), sourceRef: ref });
+    if (parserVersion === 2 && v.representation !== "usage" && v.usageObservedAt !== null) invalid();
     if (v.origin === "ambiguous" && v.observedUsage !== null && (v.observedUsage as Obj).finality === "source_terminal") invalid();
   };
   const diag: Validator = value => {

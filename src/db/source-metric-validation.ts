@@ -1,3 +1,4 @@
+import { hasUsageTiming, nativeVersionSupported } from "../parsers/capture.js";
 import { encodeRelationships } from "./source-relationship-validation.js";
 import type { EncodedRelationships, RelationshipEvidence } from "./source-relationship-validation.js";
 import type { NormalizedTurn, ParserCapabilities, ParserSourceRef, SourceObservation, TokenCounts, UsageObservation } from "../parsers/types.js";
@@ -122,8 +123,11 @@ export function validateUsage(value: unknown, h: Header): UsageObservation | Cla
   return result;
 }
 export function validateObservation(value: unknown, h: Header): SourceObservation | ClaudeSourceObservation {
-  const v = fields(value, ["id", "eventId", "turnId", "usageId", "representation", "origin", "observedUsage", "sourceRef", ...(h.provider === "codex" ? ["transportStatus"] : ["sessionId", "messageId", "observedResult"])]);
-  const base = { id: identity(v["id"], "source", h.keyId), eventId: nullableIdentity(v["eventId"], "event", h.keyId), turnId: nullableIdentity(v["turnId"], "turn", h.keyId),
+  const timed = hasUsageTiming(h.provider, h.parserVersion);
+  const v = fields(value, ["id", "eventId", "turnId", "usageId", "representation", "origin", "observedUsage", "sourceRef", ...(timed ? ["usageObservedAt"] : []), ...(h.provider === "codex" ? ["transportStatus"] : ["sessionId", "messageId", "observedResult"])]);
+  const usageObservedAt = timed ? timestamp(v["usageObservedAt"]) : null;
+  if (timed && v["representation"] !== "usage" && usageObservedAt !== null) invalid();
+  const base = { ...(timed ? { usageObservedAt } : {}), id: identity(v["id"], "source", h.keyId), eventId: nullableIdentity(v["eventId"], "event", h.keyId), turnId: nullableIdentity(v["turnId"], "turn", h.keyId),
     usageId: nullableIdentity(v["usageId"], "event", h.keyId), origin: choice(v["origin"], ["ordinary", "ambiguous", "trusted_copied"]), sourceRef: ref(v["sourceRef"], h) };
   if (h.provider === "codex") {
     let observedUsage: SourceObservation["observedUsage"] = null;
@@ -156,10 +160,10 @@ export function validateObservation(value: unknown, h: Header): SourceObservatio
 export function validateCapabilities(value: unknown, h: Header): ParserCapabilities | ClaudeCapabilities {
   const v = fields(value, ["provider", "parserVersion", "support", "coverage", "observedShapes", "unsupportedRecords", "ambiguousRecords", "stateLimited", "diagnosticsDropped"]);
   if (v["provider"] !== h.provider || v["parserVersion"] !== h.parserVersion
-    || (h.provider === "codex" ? h.parserVersion !== 1 : h.parserVersion !== 1 && h.parserVersion !== 2)) invalid();
-  const base = { parserVersion: h.parserVersion as 1 | 2, support: choice(v["support"], ["shape_verified_only"]), coverage: choice(v["coverage"], ["recognized_shapes", "partial"]),
+    || !nativeVersionSupported(h.provider, h.parserVersion)) invalid();
+  const base = { parserVersion: h.parserVersion as 1 | 2 | 3, support: choice(v["support"], ["shape_verified_only"]), coverage: choice(v["coverage"], ["recognized_shapes", "partial"]),
     unsupportedRecords: integer(v["unsupportedRecords"]), ambiguousRecords: integer(v["ambiguousRecords"]), stateLimited: bool(v["stateLimited"]), diagnosticsDropped: integer(v["diagnosticsDropped"]) };
-  return Object.freeze(h.provider === "codex" ? { ...base, parserVersion: 1 as const, provider: "codex", observedShapes: words(v["observedShapes"], ["command_item", "mcp_item", "function_call", "custom_call", "tool_result", "poll", "code_wrapper", "turn", "response_usage", "token_snapshot"]) }
+  return Object.freeze(h.provider === "codex" ? { ...base, parserVersion: h.parserVersion as 1 | 2, provider: "codex", observedShapes: words(v["observedShapes"], ["command_item", "mcp_item", "function_call", "custom_call", "tool_result", "poll", "code_wrapper", "turn", "response_usage", "token_snapshot"]) }
     : { ...base, provider: "claude", observedShapes: words(v["observedShapes"], ["tool_use", "tool_result", "message_link", "message_usage", "background_acknowledgement", "turn_duration"]) });
 }
 export function validateDiagnostic(value: unknown, h: Header): SafeDiagnostic {

@@ -1,3 +1,5 @@
+import { validateCaptureOptions } from "../parsers/capture.js";
+import type { ParserCaptureOptions } from "../parsers/capture.js";
 import { resolve } from "node:path";
 import { SafeError } from "../privacy/diagnostics.js";
 import { resolvePaths } from "../privacy/paths.js";
@@ -6,7 +8,7 @@ import { SCAN_LIMITS, scanSources } from "../scanner/scan-run.js";
 import type { ScanResult } from "../scanner/scan-run.js";
 import { validSourcePath } from "../scanner/source-prefix.js";
 
-export type ScanArguments = Readonly<{ dataDir?: string; codexRoot: readonly string[]; claudeRoot: readonly string[] }>;
+export type ScanArguments = Readonly<{ dataDir?: string; codexRoot: readonly string[]; claudeRoot: readonly string[]; usageTiming?: boolean }>;
 
 export function validateCliPath(path: string): string {
   validSourcePath(path);
@@ -15,6 +17,7 @@ export function validateCliPath(path: string): string {
 }
 
 export function validateScanArguments(options: ScanArguments): { dataDir: string; roots: InputRoot[] } {
+  validateCaptureOptions(options.usageTiming === undefined ? {} : { usageTiming: options.usageTiming });
   const roots: InputRoot[] = [
     ...options.codexRoot.map((path) => ({ provider: "codex" as const, path })),
     ...options.claudeRoot.map((path) => ({ provider: "claude" as const, path })),
@@ -47,7 +50,8 @@ export function abortedBeforeScan(): ScanResult {
 }
 
 /** The caller validates before this asynchronous, storage-owning boundary. */
-export async function collectScan(dataDir: string, roots: readonly InputRoot[], signal: AbortSignal): Promise<ScanResult> {
+export async function collectScan(dataDir: string, roots: readonly InputRoot[], signal: AbortSignal, capture: ParserCaptureOptions = {}): Promise<ScanResult> {
+  const usageTiming = validateCaptureOptions(capture);
   if (signal.aborted) return abortedBeforeScan();
   const { loadOrCreateIdentityContext } = await import("../normalize/identity.js");
   if (signal.aborted) return abortedBeforeScan();
@@ -62,7 +66,7 @@ export async function collectScan(dataDir: string, roots: readonly InputRoot[], 
     if (signal.aborted) return abortedBeforeScan();
     const store = createSourceStore(database, context.keyId);
     if (signal.aborted) return abortedBeforeScan();
-    return await scanSources(store, context, roots, { signal });
+    return await scanSources(store, context, roots, { signal, ...(usageTiming ? { usageTiming } : {}) });
   } finally {
     database.close();
   }
@@ -74,7 +78,9 @@ export async function runScan(options: ScanArguments): Promise<ScanResult> {
   const interrupt = () => controller.abort();
   process.on("SIGINT", interrupt);
   try {
-    return await collectScan(dataDir, roots, controller.signal);
+    return options.usageTiming === true
+      ? await collectScan(dataDir, roots, controller.signal, { usageTiming: true })
+      : await collectScan(dataDir, roots, controller.signal);
   } finally {
     process.removeListener("SIGINT", interrupt);
   }
