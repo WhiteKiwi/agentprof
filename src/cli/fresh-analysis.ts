@@ -62,10 +62,16 @@ export function validateFreshAnalysisArguments(command: FreshAnalysisCommand, op
   if (/\.jsonl\.(?:gz|zst|zip|bz2|xz)$/i.test(input)) throw new SafeError("UNSUPPORTED_COMPRESSION");
   if (!input.endsWith(".jsonl") || !/\.(html|htm)$/i.test(output)
     || /[\uD800-\uDFFF]/u.test(input + output)) throw new SafeError("INVALID_ARGUMENT");
-  const selection = { dataDir: options.dataDir, from: options.from, to: options.to };
+  const selection = {
+    ...(options.dataDir === undefined ? {} : { dataDir: options.dataDir }),
+    ...(options.from === undefined ? {} : { from: options.from }),
+    ...(options.to === undefined ? {} : { to: options.to }),
+  };
   let directory: string, query: HistoryQuery | null = null, period: PatternPeriod | null = null;
   if (command === "history") {
-    const checked = validateHistoryArguments({ ...selection, source: [VALIDATION_SOURCE], offset: options.offset, session: options.session });
+    const checked = validateHistoryArguments({ ...selection, source: [VALIDATION_SOURCE],
+      ...(options.offset === undefined ? {} : { offset: options.offset }),
+      ...(options.session === undefined ? {} : { session: options.session }) });
     directory = resolve(validateReportPath(checked.directory)); query = checked.query;
   } else {
     const checked = validatePatternArguments({ ...selection, source: VALIDATION_SOURCE });
