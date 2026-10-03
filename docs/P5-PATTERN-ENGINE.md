@@ -12,7 +12,7 @@ The opt-in `patterns --source FULL_ID [--from UTC --to UTC] [--json]` command re
 
 - Native source suppression, missing/contradictory provenance, unknown status, unsupported parser versions and unresolved execution relations remain visible. Temporal associations additionally require recognized complete context; omitted/opaque actions never prove that nothing changed.
 - Source-reported item boundaries and paired invocation boundaries are distinct from reported process durations. Only validated positioned native intervals enter unions. Missing/estimated/unsupported intervals remain exclusions, not zero durations. Different sessions, interval scopes and evidence classes are never silently combined.
-- An edit-validation cycle is an ordered observation within one stream/turn context: completed native edit/write calls followed by a native test/build invocation. It is not proof that the validation tested every edited file. Unknown, overlapping, contradictory or opaque intervening actions break/suppress association. No changed-file/line counts are invented. First-pass rate includes only cycles with a confirmed first terminal result; scope ratios use known declared scope only.
+- An edit-validation cycle is an ordered observation within one stream/turn context: completed native edit/write calls followed by a native test/build invocation. It is not proof that the validation tested every edited file. Unknown, overlapping, contradictory or opaque intervening actions break/suppress association. No changed-file/line counts are invented. First-pass rate includes only cycles with a confirmed first terminal result; scope ratios use the known declared scope of each cycle's first validation only. These cycle counts describe the stored prefix, not the optional contribution period.
 - Retry Loop needs the same non-null operation, turn and error identities, at least three confirmed failures in a closed trailing ten-minute window, and no ambiguous parallel/unknown attempts. Success and changes of error identity break failure runs. Qualifying failures include the first failure; successful calls and intervening gaps do not contribute to pattern time.
 - Repeated Error needs at least three confirmed failures with one exact keyed error identity across at least two session identities in this source. Missing identities remain coverage gaps. No cross-source/project count or error-message reconstruction is attempted.
 - Context Churn needs at least four completed exact lookup/range/content observations in ten minutes, complete content and explicit unchanged state, with resolved mutation/opaque boundaries. The first lookup does not contribute. Missing, changed, truncated or externally-unknown content is not redundant work.
@@ -35,4 +35,31 @@ Current ordinary Codex/Claude adapters intentionally do not capture error finger
 
 Owner: this ChatGPT continuation; no runtime UUID or independent subagent identity is exposed or invented. Independent maintainer review is still required. Reserve only new pattern/interval/cycle modules, their new tests, this scoped plan and the two-line command registration in `src/cli/main.ts`. Do not change existing parser/store/schema/normalizer/insights/stats/report code, dependencies, CI or other feature branches.
 
-Implementation, test execution and publication are pending. Planned cases are not PASS receipts. Use synthetic data only; never upload user logs, prompts, source contents or secrets.
+Use synthetic data only; never upload user logs, prompts, source contents or secrets. [Issue #127](https://github.com/WhiteKiwi/agentprof/issues/127) tracks this slice. [Draft PR #128](https://github.com/WhiteKiwi/agentprof/pull/128) contains the implementation; no merge or release was performed.
+
+### Executed qualification — 2026-10-03
+
+The implementation commit is `18032b7ccee02fbe756ab27b05514569f59755ad`; its initial [PR CI 37119783340](https://github.com/WhiteKiwi/agentprof/actions/runs/37119783340) passed. Follow-up review added strict structured-turn proof agreement, proved positioning for explicit query population selection, legal Date bounds, two regression guards and a reproducible independent interval oracle.
+
+The hardened source/test commit is **`c6b81bd12292cbd7233aa248975c3047aebc63a3`**. Its [PR CI 37120362969](https://github.com/WhiteKiwi/agentprof/actions/runs/37120362969) completed successfully in all four jobs. GitHub checked the synthetic merge `a9f90965b8ca707d6473ac38b61ce98f8395b21a` with main `443396ebec5b8a18d1dfd41e804d8894ffed882f`; this is not a claim that the PR has merged.
+
+| Check | Observed result |
+| --- | --- |
+| Node 24.15.0 / 24.21.0 / 26.7.0 | All `pnpm check` jobs PASS: production typecheck, build, tests, artifact verifier |
+| Unsupported-runtime guard | PASS |
+| Full suite, directly inspected Node26.7 job 111195122635 | **2,752 PASS / 71 inherited conditional SKIP**, 102 files: 100 PASS / 2 SKIP |
+| New pattern suites | **82 tests PASS, no new skips**: intervals21 + source patterns40 + CLI18 + proof guards2 + interval oracle1 |
+| Independent interval oracle inside repository suite | 500 deterministic randomized populations, with and without half-open query clipping, all matched integer-grid expectations |
+| Real stored input | Ordinary Codex/Claude synthetic records scanned, stored, original input deleted, then queried without changed key/DB bytes |
+| Real Claude edit-validation path | Edit/Bash/Bash observed cycle, first-pass success, unknown validation scope preserved |
+| Read and analyzer count | One pinned source read, one selected pattern analyzer and one native failure-admission calculation |
+| Output bounds | Positive 4096-event normalized-evidence analysis retains complete IDs; JSON below8MiB, human below32KiB/160 lines |
+| Existing artifact verifier | 76 package files; script-disabled tarball npm-exec/global install and existing read-only stats/insights/failures PASS; no publishing |
+
+The local supplemental Node22.16/TypeScript5.8 harness passed **4,711 assertions**, including a separate 500-case integer-grid oracle. Its native-admission inputs were synthetic controls; this is not native parser/store qualification. The three hardened production file blobs match the locally inspected copies exactly. The PR patch confirms that the only inherited production-file edits are the import and command-registration lines in `src/cli/main.ts`. Global help necessarily gains the new command row; no exact unchanged global-help claim is made.
+
+### Remaining acceptance and development
+
+Independent maintainer review/merge, a patterns-specific installed-tarball scenario, real-user usefulness/false-positive calibration and native browser/release qualification remain unexecuted. The unchanged artifact verifier's success is not presented as the new command's dedicated installed-tarball coverage.
+
+The four positive rule kernels still require real provider error/content/change/scope capture where ordinary adapters do not supply it. Parser version/checkpoint compatibility work, cross-source/session reconciliation and full query/history/trend support are not implemented by this slice. The existing #5/#7/#50 and old stats-PR review reservations remain separate; this PR does not close parent #6 or claim that the repository has no development remaining.
