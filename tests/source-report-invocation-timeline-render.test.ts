@@ -154,3 +154,33 @@ it("rejects combined escaped timeline output beyond the unchanged one MiB hard c
  for(const r of m.summary.usage)r.limitations=Array(64).fill("&".repeat(128));
  expect(()=>renderSourceReport(m)).toThrowError(expect.objectContaining({code:"REPORT_LIMIT"}));
 });
+
+it("retains literal two-unit geometry and gives static responsive pixel-resolution guidance", async () => {
+  const { renderSourceInvocationTimeline } = await rendering();
+  const source = fixture([[0, 1000], [998, 1000, true]]);
+  const native = analyzeSourceInvocationOverlap(source);
+  const partition = buildSourceInvocationTimeline(source, native).partitions[0]!;
+  const html = renderSourceInvocationTimeline(partition, 1);
+
+  expect(native.partitions[0]).toMatchObject({
+    intervalLengthSumMs: 1002, intervalUnionMs: 1000, excessMs: 2,
+    coverage: { positionedN: 2, admittedTerminalN: 2, excludedN: 0, unsafeDifferenceN: 0, complete: true },
+  });
+  expect(partition.display.axisSpanMs).toBe(1000);
+  expect(partition.display.rows!.map(row => [row.startOffsetMs, row.endOffsetMs, row.intervalLengthMs])).toEqual([
+    [0, 1000, 1000], [998, 1000, 2],
+  ]);
+  expect(html).toContain('Interval length sum S</dt><dd class="metric">1002 ms');
+  expect(html).toContain('Interval union U</dt><dd class="metric">1000 ms');
+  expect(html).toContain('Multiplicity-weighted excess S − U</dt><dd class="metric">2 ms');
+  expect(html).toContain('Positioned 2 / admitted 2');
+  expect(html).toContain('Relative axis: 0 to 1000 ms');
+  expect([...html.matchAll(/class="invocation-interval" x="([^"]+)" y="[^"]+" width="([^"]+)"/g)].map(bar => [bar[1], bar[2]])).toEqual([
+    ["0", "1000"], ["998", "2"],
+  ]);
+  expect([...html.matchAll(/<td>(completed|failed · × dashed outline)<\/td><td>(\d+)<\/td><td>(\d+)<\/td><td>(\d+)<\/td>/g)].map(row => row.slice(1))).toEqual([
+    ["completed", "0", "1000", "1000"], ["failed · × dashed outline", "998", "1000", "2"],
+  ]);
+  expect(html).toContain('<rect class="invocation-interval" x="998" y="52" width="2" height="16" stroke-dasharray="4 2"></rect>');
+  expect(html).toContain('Scale warning: scaling the chart to fit the viewport can make small positive intervals fall below pixel resolution. Bars are not widened; the table remains authoritative for exact milliseconds.');
+});
