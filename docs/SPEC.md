@@ -318,3 +318,7 @@ Browser reproduction confirms that a positive interval with normalized SVG width
 ## Explicit stored-source report opening
 
 The opt-in [stored-source report opening contract](P6-REPORT-OPEN.md) adds `report --source FULL_ID --output NEW.html --open`. It requests the unchanged native opener only after completed, target-verified publication. All publication fields and warnings survive opener acceptance, failure or timeout; browser rendering remains unverified. Default report behavior is unchanged. Earlier no-`--open` statements describe their historical slice. No implicit scan, freshness claim or broad fresh-input-to-report acceptance is introduced.
+
+## Fresh single-file report local successor proposal (2026-10-02)
+
+The separately owned fresh-report proposal is [P6-FRESH-INPUT-REPORT](P6-FRESH-INPUT-REPORT.md). It preserves stored-only behavior and requires an exact scan generation, partial-evidence warning receipts and cooperative cancellation. This appended local section does not replace shared PR40 documentation. Implementation verification is pending; publication, supported-runtime and real-browser acceptance remain unclaimed.

@@ -616,3 +616,11 @@ The separately implemented static guidance correction resolves the browser-confi
 ## 2026-10-02: verified publication and explicit opening
 
 The existing writer distinguishes present-target verification from crash durability and temporary cleanup. Therefore a verified linked output remains eligible for explicit opening despite cleanup or directory-sync warnings; an unconfirmed target must skip opening. The existing standalone opener accepts one canonical local HTML path and reports helper acknowledgement only. Its timeout may follow a successful launch, so retrying or rolling back publication would be misleading. The [bounded orchestration contract](P6-REPORT-OPEN.md) retains these distinctions and uses synthetic, self-terminating helper fixtures for verification.
+
+## Fresh single-file report local successor proposal (2026-10-02)
+
+The separately owned fresh-report proposal is [P6-FRESH-INPUT-REPORT](P6-FRESH-INPUT-REPORT.md). It preserves stored-only behavior and requires an exact scan generation, partial-evidence warning receipts and cooperative cancellation. This appended local section does not replace shared PR40 documentation. Implementation verification is pending; publication, supported-runtime and real-browser acceptance remain unclaimed.
+
+### Fresh-report source generation and preflight evidence
+
+The real report guard rejects a writer's revision-2 replacement after scan committed revision 1. A writer allowed to commit after the actual DELETE-mode read transaction releases does not replace the captured revision-1 report model. Neither case retries or selects a newer source. Preflight is deliberately not an atomic scanner path binding. Blank JSONL lines are rejected by existing ingestion, so a valid appended synthetic record is required for the generation-increment test.

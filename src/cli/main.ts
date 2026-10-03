@@ -7,9 +7,10 @@ import type { StatsArguments } from "./stats.js";
 import { formatInsightsResult, runInsights } from "./insights.js";
 import type { InsightsArguments } from "./insights.js";
 import { runReport, formatReportResult } from "./report.js";
-import type { ReportArguments } from "./report.js";
 import { runReportAndOpen, formatReportAndOpenResult, reportAndOpenExitCode } from "./report-open.js";
 import { formatOpenResult, runOpen } from "./open.js";
+import { runFreshReport, formatFreshReportResult, freshReportExitCode } from "./report-fresh.js";
+import type { FreshReportArguments } from "./report-fresh.js";
 import { VERSION } from "./version.js";
 
 function collect(value: string, previous: string[]): string[] {
@@ -27,6 +28,10 @@ export async function run(argv: string[]): Promise<void> {
     .option("--claude-root <directory>", "replace Claude input roots (repeatable)", collect, [])
     .exitOverride()
     .configureOutput({ writeErr: () => undefined });
+
+  let reportDataFlags = 0, reportJsonFlags = 0;
+  program.on("option:data-dir", () => { reportDataFlags++; });
+  program.on("option:json", () => { reportJsonFlags++; });
 
   program.command("scan").description("Collect explicit --codex-root/--claude-root inputs only (at least one required)")
     .addHelpText("after", "\nBounded scan: at most 16 roots, 64 sources, 256 directories, 4096 nodes and yielded entries,\n16 MiB/32768 records per source, 256 diagnostic samples. No aggregation or parser resume.")
@@ -73,17 +78,27 @@ export async function run(argv: string[]): Promise<void> {
     process.stdout.write(formatInsightsResult(result, options.json === true));
     process.exitCode = 0;
   });
-  const report = program.command("report").description("Write a new offline HTML report from one stored source prefix")
+  const report = program.command("report").description("Write a new offline HTML report from one stored source or explicit input file")
+    .option("--provider <provider>", "explicit input provider: claude or codex")
+    .option("--input <file>", "one explicit regular uncompressed .jsonl file")
+    .allowExcessArguments(false)
     .option("--source <id>", "select one full source ID", validateSourceSelection)
     .option("--output <file>", "new output HTML file; existing files are never overwritten")
     .option("--open", "request the system opener after verified HTML publication")
-    .addHelpText("after", "\nBoth --source and --output are required. Read-only existing store; no scan, roots or --last.\nBounded source-prefix observations only; no global totals, freshness check or savings claim.\n--open requires local .html/.htm output and completed publication with a verified target.\nNative opening may create OS/browser history; helper acceptance does not verify browser rendering.\nTimeout may mean the file is already open; no automatic retry.");
-  for (const name of ["source", "output", "open"]) {
+    .addHelpText("after", "\nChoose --source or exactly --provider claude|codex --input FILE.jsonl; --output is required.\nStored --source reads the existing store; explicit input scans once then reports its exact generation.\nNo roots or --last. Partial evidence may report with exit 1; failed selection never opens old data.\nBounded source-prefix observations only; no global totals, freshness check or savings claim.\n--open requires local .html/.htm output and completed publication with a verified target.\nNative opening may create OS/browser history; helper acceptance does not verify browser rendering.\nTimeout may mean the file is already open; no automatic retry.");
+  for (const name of ["source", "output", "open", "provider", "input"]) {
     let count = 0;
     report.on(`option:${name}`, () => { if (++count > 1) throw new SafeError("INVALID_ARGUMENT"); });
   }
   report.action(async () => {
-    const options = { ...program.opts(), ...report.opts() } as ReportArguments & { json?: boolean; open?: boolean };
+    const options = { ...program.opts(), ...report.opts() } as FreshReportArguments & { json?: boolean };
+    if (options.provider !== undefined || options.input !== undefined) {
+      if (reportDataFlags > 1 || reportJsonFlags > 1) throw new SafeError("INVALID_ARGUMENT");
+      const result = await runFreshReport(options);
+      process.stdout.write(formatFreshReportResult(result, options.json === true));
+      process.exitCode = freshReportExitCode(result);
+      return;
+    }
     if (options.open === true) {
       const result = await runReportAndOpen(options);
       process.stdout.write(formatReportAndOpenResult(result, options.json === true));

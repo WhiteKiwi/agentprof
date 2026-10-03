@@ -458,3 +458,11 @@ The corrected frozen source passed75-file full qualification (2081PASS/38 explic
 ## Stored-source report/open orchestration
 
 The [report/open workflow](P6-REPORT-OPEN.md) validates opt-in arguments before generation, awaits one existing report call and requests one existing opener only for a published, verified target. A separate workflow preserves publication receipts across opener outcomes and uses closed safe diagnostics; existing report and opener implementations remain unchanged. Focused immutable-receipt tests and controlled real-CLI/installed shims gate the narrow option/action/help wiring. Full aggregate, artifact, independent review and exact-head hosted CI are separate qualification stages.
+
+## Fresh single-file report local successor proposal (2026-10-02)
+
+The separately owned fresh-report proposal is [P6-FRESH-INPUT-REPORT](P6-FRESH-INPUT-REPORT.md). It preserves stored-only behavior and requires an exact scan generation, partial-evidence warning receipts and cooperative cancellation. This appended local section does not replace shared PR40 documentation. Implementation verification is pending; publication, supported-runtime and real-browser acceptance remain unclaimed.
+
+### Fresh-report local implementation seams
+
+`report-fresh.ts` owns validation/preflight, one SIGINT listener, direct `collectScan`, pure exact-generation selection and one combined receipt. `report.ts` validates and checks only an optional internal expected revision in its pinned read. `report-open.ts` forwards that guard and checks workflow cancellation before its existing opening policy; its default behavior remains unchanged. `main.ts` routes explicit provider/input selection and rejects duplicate fresh flags; existing stored-only report options still route through their original functions. The only new diagnostic is fixed `SOURCE_REVISION_CHANGED`. Independent review precedes aggregate qualification.
