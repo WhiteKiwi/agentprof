@@ -108,3 +108,19 @@ Local verification used Node 24.19.0 on Linux x64 and the environment's pnpm
 11.19.0 fallback. The repository-pinned Node/pnpm CI matrix is separate remote
 verification, not inferred from these local runs. Native browser/print/visual
 and full README rendering remain NOT RUN, and issue #10 stays open.
+
+## Parent bounded browser and visual qualification — 2026-10-04 KST
+
+The parent exercised the actual original141 suite, retained its failure at the immediate asynchronous system-theme assertion, and observed 20 alternating media transitions: immediate state was stale, while each bounded eventual DOM state was correct. A separately reviewed developer change adds only an explicit 2,000ms `page.waitForFunction` condition before the unchanged dark-theme assertion. Product theme behavior, all other assertions and contrast/style thresholds remain unchanged.
+
+Actual qualified design prefix is `c74b94588683a42e83ebb271747a9f37c947e3cf`; all 12 design/README inputs remain exact in composed code `e7be6ab22ffaa497352e3506f79441aec1976471`. On macOS arm64, direct Node24.21.0 and installed Chrome154.0.8037.95 with existing bundled Playwright, `node design/build.mjs`, `node design/tests/static.mjs`, `node design/tests/contrast.mjs` (72 pairs) and `node design/tests/browser.mjs` all pass. The browser command uses the installed Chrome through CHROMIUM_PATH and the existing bundled module path; browser execution took7.875s.
+
+The actual browser result covers 320/390/1440px in light/dark themes, zero external requests/console errors, no horizontal overflow, keyboard/focus/skip links, reduced motion, repeated theme/filter/reset/disclosure/navigation, print screen-state restoration, no-JavaScript and CSS zoom=2. Parent visually inspected all six base viewports, all six expanded viewports, no-JS320 and CSS-zoom output. The corrected six base PNGs are byte-identical to the already inspected original-run images; exact-image evidence was reused. No visible overlap or clipping was observed in these images.
+
+Both actual print PDFs (ordinary specimen and empty estimated filter) contain four A4 pages. Parent rendered all pages through installed Poppler and inspected every ordinary page; each corresponding empty-filter rendered PNG is byte-identical. All three insights, expanded evidence tables, Korean text, zero/unknown/pending and controls appear without visible overlap or horizontal omission. Long identifiers and Unknown labels wrap inside narrow cells; complete typography approval remains separate.
+
+The original141 README was read through the actual GitHub Preview DOM and visible banner/intro pixels. Its exact README blob is retained in the candidate. Full-page capture repeated the upper viewport, so it does not establish whole-README pixel acceptance. Aside local-file navigation was unavailable; no new browser access grant or bypass was attempted. The separately authorized repository browser suite produced the actual local images/PDFs above.
+
+The 33 original duration/print VM cases also execute in the composed full suite. Aggregate qualification is4,208 PASS/0 FAIL/90 historical conditional cases not selected, all221 feature cases run, artifact131 and actual scripts-disabled installation pass. VM/event-state and PDF checks remain distinct from physical/native printing.
+
+**Remaining issue10 gates:** native print dialog cancellation/physical printing, assistive technology, actual browser zoom (CSS zoom is separate), complete README pixel inspection and wider visual/accessibility acceptance are NOT RUN. Earlier dated NOT RUN records remain historical evidence; this bounded PR qualification does not close issue10 or establish full product/release/real-user acceptance. Immutable-source CI, authorized merge and final-main CI are recorded separately after observation.
