@@ -672,3 +672,11 @@ The owner requests grouped validation of similar PRs. [P5-SOURCE-DISPLAY-BATCH](
 ### Evidence-stat first prefix developer receipt
 
 The [focused prefix receipt](P5-P6-INTEGRATION-BATCH.md#developer-focused-prefix-evidence--2026-10-04) records actual Node24.21.0 typecheck/build and616 PASS/0 FAIL/10 deferred installed-only cases. Original126 projection/native JSON and161 author tests remain unchanged; new human context and46-mode composition follow the reviewed correction plan. All later prefixes and the parent's one composed full/package/actual-install/schema5/publication gates remain separate.
+
+### Seven-prefix developer handoff
+
+The [ordered prefix receipts](P5-P6-INTEGRATION-BATCH.md#developer-focused-prefix-evidence--2026-10-04) now cover all seven ordinary original/predecessor merges. Every prefix passes direct Node24.21.0 typecheck/build and its original feature assertions; verified unchanged earlier modules/tests are reused. Distinct focused assertions total945 PASS/0 FAIL, with15 actual-installed assertions explicitly deferred to the single composed parent gate. Genuine compiled predecessor output controls and exact original/native-input/global-document-prefix checks pass. This handoff claims code/focused completion only; full/schema5/package/real install/hosted source/final-main and narrow-issue completion remain the parent's gates.
+
+### Parent shared qualification receipt
+
+[Parent composed qualification](P5-P6-INTEGRATION-BATCH.md#parent-composed-qualification--2026-10-04) records actual direct Node24 full3,987 PASS/0 FAIL/90 historical conditional cases, all960 selected new assertions including15 deferred installed cases executed, genuine main/schema5,124-file scripts-disabled package/artifact and68 built plus68 actual-installed independent controls. All65 qualified paths are reviewed without skips; native/old-input bytes are frozen. This documentation-only receipt reuses identical code/test/dist/package inputs rather than repeating the common gate. Exact published-source CI/security, oldest-first merge and final-main/clone/manual narrow completion remain separate [issue143](https://github.com/WhiteKiwi/agentprof/issues/143) gates; browser/native/empirical acceptance remains NOT RUN.
