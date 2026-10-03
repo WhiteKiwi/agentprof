@@ -50,8 +50,10 @@ import type { SourceActiveTimeAnalysis } from "../analysis/source-active-time.js
 import { formatSourceActiveTime } from "./active-time.js";
 import { formatSourceTokens } from "./tokens.js";
 import { formatSourceTimeBreakdown } from "./time-breakdown.js";
+import { formatEvidenceStatsResult, loadEvidenceStats, validateEvidenceStatsOptions } from "./evidence-stats.js";
+import type { EvidenceStatsOptions, EvidenceStatsResult } from "./evidence-stats.js";
 
-export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean; readRevisits?: boolean; invocationOverlap?: boolean; searchRecurrence?: boolean; recovery?: boolean; retryOverhead?: boolean; activeTime?: boolean; tokens?: boolean; timeBreakdown?: boolean; latency?: boolean; toolBusy?: boolean; cacheShare?: boolean; executionStatus?: boolean; durationCoverage?: boolean; usageCoverage?: boolean; readRatio?: boolean; searchRatio?: boolean; overlapSummary?: boolean; cacheWriteShare?: boolean; reasoningShare?: boolean; outcomeMix?: boolean; timingEvidence?: boolean; durationScope?: boolean; usageFinality?: boolean; capabilities?: boolean; statusMix?: boolean; usageSelection?: boolean; diagnostics?: boolean; shapeCoverage?: boolean; durationExclusions?: boolean; usageExclusions?: boolean; cacheComponents?: boolean; outputComposition?: boolean; inventory?: boolean; readiness?: boolean }>;
+export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean; readRevisits?: boolean; invocationOverlap?: boolean; searchRecurrence?: boolean; recovery?: boolean; retryOverhead?: boolean; activeTime?: boolean; tokens?: boolean; timeBreakdown?: boolean; latency?: boolean; toolBusy?: boolean; cacheShare?: boolean; executionStatus?: boolean; durationCoverage?: boolean; usageCoverage?: boolean; readRatio?: boolean; searchRatio?: boolean; overlapSummary?: boolean; cacheWriteShare?: boolean; reasoningShare?: boolean; outcomeMix?: boolean; timingEvidence?: boolean; durationScope?: boolean; usageFinality?: boolean; capabilities?: boolean; statusMix?: boolean; usageSelection?: boolean; diagnostics?: boolean; shapeCoverage?: boolean; durationExclusions?: boolean; usageExclusions?: boolean; cacheComponents?: boolean; outputComposition?: boolean; inventory?: boolean; readiness?: boolean } & EvidenceStatsOptions>;
 export type StatsResult = Readonly<
   { mode: "selected_source_readiness"; summary: SourceSummary }
   |
@@ -116,6 +118,7 @@ export type StatsResult = Readonly<
   | { mode: "selected_source_active_time"; analysis: SourceActiveTimeAnalysis }
   | { mode: "selected_source_tokens"; summary: SourceSummary }
   | { mode: "selected_source_time_breakdown"; summary: SourceSummary }
+  | { mode: "selected_source_evidence_view"; evidence: EvidenceStatsResult }
 >;
 export function validateSourceSelection(value: string): string {
   try { const key = keyId(value.split(":")[1]); return identity(value, "source", key); }
@@ -123,6 +126,7 @@ export function validateSourceSelection(value: string): string {
 }
 const displayFlags = ["latency", "toolBusy", "cacheShare", "executionStatus", "durationCoverage", "usageCoverage", "readRatio", "searchRatio", "overlapSummary", "cacheWriteShare", "reasoningShare", "outcomeMix", "timingEvidence", "durationScope", "usageFinality", "capabilities", "statusMix", "usageSelection", "diagnostics", "shapeCoverage", "durationExclusions", "usageExclusions", "cacheComponents", "outputComposition", "inventory", "readiness"] as const;
 export function validateStatsArguments(options: StatsArguments): string {
+  validateEvidenceStatsOptions(options);
   for (const flag of displayFlags) if (options[flag] !== undefined && typeof options[flag] !== "boolean") throw new SafeError("INVALID_ARGUMENT");
   const selected = displayFlags.filter(flag => options[flag] === true);
   if (selected.length > 1 || selected.length === 1 && (options.source === undefined || options.listSources || options.failures || options.readRevisits || options.invocationOverlap || options.searchRecurrence || options.recovery || options.retryOverhead || options.activeTime || options.tokens || options.timeBreakdown)) throw new SafeError("INVALID_ARGUMENT");
@@ -149,6 +153,8 @@ export function validateStatsArguments(options: StatsArguments): string {
 }
 export async function runStats(options: StatsArguments): Promise<StatsResult> {
   const directory = validateStatsArguments(options);
+  const evidenceView = validateEvidenceStatsOptions(options);
+  const analyzeEvidence = evidenceView === null ? null : await loadEvidenceStats(evidenceView);
   const { withReadOnlyStore } = await import("../db/read-only.js");
   const { createSourceStore } = await import("../db/source-store.js");
   const { summarizeSource } = await import("../analysis/source-summary.js");
@@ -169,6 +175,7 @@ export async function runStats(options: StatsArguments): Promise<StatsResult> {
     try { identity(options.source, "source", key); } catch { throw new SafeError("INVALID_IDENTITY_KEY"); }
     const source = store.readSource(options.source!);
     if (source === null) throw new SafeError("SOURCE_NOT_FOUND");
+    if (analyzeEvidence !== null) return Object.freeze({ mode: "selected_source_evidence_view", evidence: analyzeEvidence(source) });
     if (options.latency === true) return Object.freeze({ mode: "selected_source_latency", summary: summarizeSource(source) });
     if (displayToolBusy !== null) return Object.freeze({ mode: "selected_source_tool_busy", analysis: displayToolBusy(source) });
     if (options.cacheShare === true) return Object.freeze({ mode: "selected_source_cache_share", summary: summarizeSource(source) });
@@ -302,6 +309,7 @@ function formatSelectedSource(s: SourceSummary): string[] {
 
 export function formatStatsResult(result: StatsResult, json: boolean): string {
   if (json) return JSON.stringify({ schema: "agentprof.cli/v1", ok: true, command: "stats", result }) + "\n";
+  if (result.mode === "selected_source_evidence_view") return formatEvidenceStatsResult(result.evidence);
   if (result.mode === "selected_source_latency") return formatSourceLatency(result.summary);
   if (result.mode === "selected_source_tool_busy") return formatSourceToolBusy(result.analysis);
   if (result.mode === "selected_source_cache_share") return formatSourceCacheShare(result.summary);
