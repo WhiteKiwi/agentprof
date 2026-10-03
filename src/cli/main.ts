@@ -48,6 +48,7 @@ export async function run(argv: string[]): Promise<void> {
     .option("--retry-overhead", "show observed failed-attempt retry overhead")
     .option("--active-time", "show observed Codex turn interval union and span")
     .option("--tokens", "show observed final-response token attribution")
+    .option("--latency", "show admitted recorded tool latency quantiles")
     .option("--time-breakdown", "show recorded tool/command/category durations")
     .option("--invocation-overlap", "show observed Claude invocation interval union")
     .option("--read-revisits", "show completed Claude Read file revisits for one --source")
@@ -76,6 +77,8 @@ export async function run(argv: string[]): Promise<void> {
   stats.on("option:active-time", () => { if (++activeTimeFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   let recoveryFlags = 0;
   stats.on("option:recovery", () => { if (++recoveryFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
+  let latencyFlags = 0;
+  stats.on("option:latency", () => { if (++latencyFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   stats.action(async () => {
     const options = { ...program.opts(), ...stats.opts() } as StatsArguments & { json?: boolean };
     const result = await runStats(options);
