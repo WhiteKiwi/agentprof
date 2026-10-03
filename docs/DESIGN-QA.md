@@ -41,3 +41,70 @@ Run `node design/tests/browser.mjs` in an environment with Playwright and a usab
 ## Next verification
 
 Resolve the browser execution environment, run the suite and inspect the resulting screenshots. Keep final logo/vector-master and small-size optical approval open. Connect this design to real snapshot data only through the existing P5/P6 contracts and product acceptance.
+
+## Issue #10 bounded regression verification — 2026-10-03
+
+Baseline: `d0f57e6ecaf797bfe895bd020cc09ba42dc4c756`; branch
+`fix/design-qa-issue-10`. The separate development contributor implemented the
+reviewed issue #10 plan after the coordinator confirmed its saved claim readback.
+This receipt covers the local scoped diff, before parent review/publication.
+Environment: Linux, Node 24.19.0, Vitest 5.0.2; existing locked dependencies were
+installed with lifecycle scripts disabled. The environment's pnpm fallback reports
+11.19.0, distinct from the repository's pinned pnpm 10.34.6 / Node 24.21.0 toolchain.
+
+| Check | Actual result |
+| --- | --- |
+| Negative regression proof, before source changes: `node node_modules/vitest/vitest.mjs run tests/design-foundation.test.ts` | 7 FAIL / 26 PASS of 33 against the original design sources. Four minute/hour-boundary cases emitted `60s`; estimated-filter print and cancellation state did not hide the notice; the notice lacked its screen-only print class |
+| Same ordinary suite after correction | 33 PASS / 0 FAIL. Includes independent expected strings, below-boundary/fractional/exact-minute/sub-minute/zero/unknown/invalid controls; all/direct/estimated filters; mixed disclosure states; repeated and unmatched print notifications; cancellation-event restoration and a fresh second snapshot |
+| `node design/build.mjs` | PASS; local gitignored synthetic HTML, 1,279,002 bytes; no generated artifact committed |
+| `node design/tests/static.mjs` | PASS with the gate unchanged: safe formatting/escaping, null/zero, roles, fixture arithmetic, hash CSP, single original image and no remote resources/storage |
+| `node design/tests/contrast.mjs` | PASS with the gate/tokens/CSS unchanged: all 72 theme/state pairs; not full accessibility evidence |
+| `node --check design/showcase.mjs` and `node --check design/tests/browser.mjs` | PASS; syntax only |
+| `git diff --check` | PASS |
+| README/specimen wording | Corrected the stale unmerged-P1/no-CLI claim using actual baseline `src/cli/main.ts`, maintained contracts and the distinct historical `docs/NPM-ALPHA.md` record; no open feature branch described as shipped |
+
+The fix carries only the rounded minute remainder and uses the existing
+`ap-no-print` style for the empty notice. Print-event state now snapshots/restores
+that notice with disclosures while leaving the filter and insight hidden flags
+unchanged. No product CLI, parser, store, analyzer, dependency, workflow, semantic
+color token or contrast threshold changed.
+
+`tests/design-foundation.test.ts` executes the real enhancement script in a small
+Node VM DOM seam. Its passing assertions establish event/state logic only. The
+optional browser suite now also checks direct and empty/estimated print views,
+full screen-state restoration, repeated notifications, and the synthetic
+cancellation-event path. **Those browser assertions are NOT RUN.** No browser was
+launched or restriction retried in this implementation pass: the prior local
+Chromium socket restriction and coordinator CUA approval blocker remain in force.
+
+Outstanding gates remain actual browser layout and interactions, native print
+and dialog cancellation, actual browser zoom (CSS `zoom=2` is a separate test),
+assistive-technology/accessibility review, README GitHub rendering, and parent
+full-check/review/remote-commit/merge qualification. This bounded correction does
+not complete issue #10, a product release, a real-user pilot, or P4–P7 acceptance.
+
+### Final scoped review and local aggregate checks
+
+The reviewed delta is limited to twelve design/test/documentation paths. Existing
+product source, dependency manifests/lockfiles, workflows, design tokens/CSS and
+the original static/contrast gates are unchanged. Remote main was still
+`d0f57e6ecaf797bfe895bd020cc09ba42dc4c756` at review.
+
+- `npm run typecheck`: PASS; `npm run build`: PASS.
+- Full ordinary Vitest run, one worker with a 512 MiB Node heap: **2,843 PASS,
+  79 SKIP, 0 FAIL; 102 files PASS, 2 files SKIP**; elapsed 211.79 seconds.
+  `AGENTPROF_PRE_RESUME_DIST` pointed to the built historical commit
+  `5614a3107b53022f29ea32d44ba83f533fd58b92`, independently checked against tree
+  `c1361a2fea2386ced7c30f88da82ce421017dca6` and runtime schema version 5.
+  Skipped tests are not counted as passed. The 33 new design cases all executed.
+- `npm run verify:artifact`: **PASS**, 73 artifact files, tarball npm exec and
+  isolated global install with lifecycle scripts disabled; synthetic packed
+  read-only stats/insights/failures and unchanged-store checks passed.
+  `published:false`; this check did not publish a package.
+- Focused design checks were rerun against the final template and scripts:
+  33 regression cases, build/static/72 contrast pairs, syntax and whitespace PASS.
+
+Local verification used Node 24.19.0 on Linux x64 and the environment's pnpm
+11.19.0 fallback. The repository-pinned Node/pnpm CI matrix is separate remote
+verification, not inferred from these local runs. Native browser/print/visual
+and full README rendering remain NOT RUN, and issue #10 stays open.

@@ -14,13 +14,14 @@
 
   const filter = document.querySelector('#evidence-filter');
   const insights = [...document.querySelectorAll('.ap-insight')];
+  const emptyResults = document.querySelector('#empty-results');
   function filterInsights() {
     let visible = 0;
     for (const insight of insights) {
       insight.hidden = filter.value !== 'all' && insight.dataset.evidence !== filter.value;
       if (!insight.hidden) visible++;
     }
-    document.querySelector('#empty-results').hidden = visible !== 0;
+    emptyResults.hidden = visible !== 0;
     document.querySelector('#filter-status').textContent = `Showing ${visible} of ${insights.length} examples`;
   }
   filter.addEventListener('change', filterInsights);
@@ -61,15 +62,21 @@
     document.querySelector('#label-error').hidden = !invalid;
   });
   document.querySelector('#print-report').addEventListener('click', () => print());
-  // Expand hidden evidence for printing; restore disclosure/filter state afterward.
+  // Print all evidence without its screen-only empty notice; preserve screen state.
   let printState;
   addEventListener('beforeprint', () => {
     if (printState) return;
-    printState = [...document.querySelectorAll('details')].map(details => [details, details.open]);
-    printState.forEach(([details]) => { details.open = true; });
+    printState = {
+      details: [...document.querySelectorAll('details')].map(details => [details, details.open]),
+      emptyHidden: emptyResults.hidden,
+    };
+    printState.details.forEach(([details]) => { details.open = true; });
+    emptyResults.hidden = true;
   });
   addEventListener('afterprint', () => {
-    printState?.forEach(([details, wasOpen]) => { details.open = wasOpen; });
+    if (!printState) return;
+    printState.details.forEach(([details, wasOpen]) => { details.open = wasOpen; });
+    emptyResults.hidden = printState.emptyHidden;
     printState = undefined;
   });
 })();

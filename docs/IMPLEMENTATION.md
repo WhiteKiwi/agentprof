@@ -660,3 +660,44 @@ Direct actual Node24.21.0/darwin-arm64 typecheck/build and final67 PASS/0 FAIL/1
 ### Duration breakdown parent qualification before publication
 
 The [parent receipt](P5-SOURCE-TIME-BREAKDOWN.md#parent-qualification-before-publication--2026-10-03) completes thirteen-path review, ordinary original/current-main composition and direct Node 24.21.0 typecheck/build/full actual-schema5 tests: 2,806 PASS / 83 existing optional SKIP / 0 FAIL of 2,889. All 68 new duration cases PASS with genuine PR61 and real installed witnesses. The allowlisted 73-file artifact and separate ten-store built/installed controls preserve byte-identical complete JSON, independent null/zero/statistic/eligibility context and immutable DB/key files. Actual 4,096-event human outputs are 4,878 bytes / 46 lines and 2,863 bytes / 28 lines with exact omissions; full memberships remain complete. Exact-source/security/merge/main/manual narrow62 gates remain pending here.
+
+## Design QA issue #10: bounded regressions (2026-10-03)
+
+Reviewed source baseline: `d0f57e6ecaf797bfe895bd020cc09ba42dc4c756`.
+Separate research in FINDINGS reproduces minute carry errors and establishes the
+print empty-state contradiction. The existing browser suite cannot launch cloud
+Chromium because local socket creation is denied; automated rendering and visual
+QA remain NOT RUN. No product renderer, CLI, analyzer, parser, storage, dependency,
+or workflow changes belong to this continuation.
+
+1. Correct the duration primitive and print-state handling, using a separate
+   development contributor. Preserve sub-minute output and existing validation;
+   snapshot/restore the empty notice together with disclosures without changing
+   the selected filter. **Verify:** independent minute/hour-boundary oracles,
+   fractional/no-carry/zero/unknown/invalid controls, empty and nonempty print
+   flows, repeated before/after notifications, and cancelled-print restoration.
+2. Add ordinary Vitest coverage in `tests/design-foundation.test.ts`, and extend
+   the existing optional browser suite with the empty-filter print regression.
+   **Verify:** tests fail against original source and pass against the corrected
+   source; existing build/static/72-pair contrast checks remain passing. VM DOM
+   checks establish event-state logic only, not real browser layout or print.
+3. Reconcile narrow README/specimen status wording with this fixed main baseline
+   and record actual QA evidence and remaining gates. **Verify:** no open PR is
+   described as shipped; existing main CLI/parser/report capabilities and the
+   distinct historical parser alpha are accurately bounded. No product release,
+   real-user pilot, full accessibility, or browser PASS is inferred.
+4. Review the scoped delta, run applicable full checks, and publish a Draft PR.
+   **Verify:** final typecheck/build/test/artifact results and exact remote commit
+   checks are reported separately; all changed files fit the reservation; #10
+   remains open for its outstanding browser/visual/README rendering and merge
+   gates. No merge, deployment, release, or broad-parent closeout.
+
+Shared planning documents receive append-only sections. Reservation additionally
+includes the single new ordinary Vitest test above. Historical claims and failures
+are retained; no generated showcase or user data is committed.
+
+Design-contract clarification before publication: root `DESIGN.md` requires the
+canonical guideline and QA evidence to be updated together. Include only an
+additive `docs/DESIGN-GUIDELINES.md` clarification of the already reviewed carry
+and print-state semantics; no palette, layout, product contract, or implementation
+scope changes. Its browser/visual gates remain unverified in this cloud runtime.

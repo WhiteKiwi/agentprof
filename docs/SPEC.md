@@ -426,3 +426,22 @@ The optional `stats --source FULL_ID --time-breakdown` presents existing admitte
 Human detail presents at most six identity-ordered compatible partitions and, per shown partition, three known-sum and three unknown-sum cohorts with exact omissions. Known sums compare only within their partition; unknown sums stay unranked. Complete JSON and all source-wide eligibility/reason counters remain available with inherited source support, limitations and readiness context.
 
 Expose source generation, availability and capability/readiness limits. Preserve every earlier command and selected view when the flag is absent/false; reject conflicting selections before storage. [P5-SOURCE-TIME-BREAKDOWN](P5-SOURCE-TIME-BREAKDOWN.md) records separate research and subsequent reviewed correction/verification. Broad P5 acceptance remains independent.
+
+## Design QA continuation — issue #10 (2026-10-03)
+
+The synthetic design showcase must remain usable across its declared viewport,
+keyboard, reduced-motion, print, and no-JavaScript modes. This continuation verifies
+the existing browser contract and corrects only reproducible design-foundation
+regressions. Preserve the existing product analysis, storage, and CLI contracts and
+all other issue reservations. Record observed passes, failures, and unexecuted
+checks separately; neither static checks nor this specimen establish full product
+or accessibility acceptance. The README's implementation claims must match the
+verified main revision without presenting open feature branches as shipped.
+
+The design duration primitive's existing millisecond-rounded minute display must
+carry a rounded 60-second remainder into the next minute, rather than showing
+`1m 60s`. Preserve existing sub-minute precision, null/unknown semantics, zero,
+input validation, and the minutes-only representation (no new hours unit).
+Printing all synthetic insight cards must suppress the empty-filter notice and
+restore the prior screen filter/disclosure/notice state afterward. Repeated print
+notifications must not overwrite the original state snapshot.

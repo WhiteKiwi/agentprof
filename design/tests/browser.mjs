@@ -84,17 +84,35 @@ await page.evaluate(() => { document.documentElement.style.zoom = '2'; });
 assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
 await page.screenshot({ path: `${output}/light-200percent-css-zoom.png`, fullPage: true });
 await page.evaluate(() => { document.documentElement.style.zoom = ''; });
-await page.selectOption('#evidence-filter', 'direct');
-await page.emulateMedia({ media: 'print' });
-await page.evaluate(() => dispatchEvent(new Event('beforeprint')));
-assert.equal(await page.locator('.ap-insight:visible').count(), 3);
-assert.equal(await page.locator('.ap-theme').isVisible(), false);
-assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgb(255, 255, 255)');
-assert.equal(await page.locator('details:not([open])').count(), 0);
-await page.pdf({ path: `${output}/print-specimen.pdf`, format: 'A4', printBackground: true });
-await page.evaluate(() => dispatchEvent(new Event('afterprint')));
-await page.emulateMedia({ media: 'screen' });
-assert.equal(await page.locator('.ap-insight:visible').count(), 1);
+const printScreenState = () => page.evaluate(() => ({
+  filter: document.querySelector('#evidence-filter').value,
+  emptyHidden: document.querySelector('#empty-results').hidden,
+  status: document.querySelector('#filter-status').textContent,
+  hiddenInsights: [...document.querySelectorAll('.ap-insight')].map(insight => insight.hidden),
+  openDetails: [...document.querySelectorAll('details')].map(details => details.open),
+}));
+for (const filter of ['direct', 'estimated']) {
+  await page.selectOption('#evidence-filter', filter);
+  await page.locator('details').evaluateAll(elements => elements.forEach((details, index) => { details.open = index % 2 === 0; }));
+  const beforePrint = await printScreenState();
+  assert.equal(beforePrint.emptyHidden, filter !== 'estimated');
+  await page.emulateMedia({ media: 'print' });
+  await page.evaluate(() => { dispatchEvent(new Event('beforeprint')); dispatchEvent(new Event('beforeprint')); });
+  assert.equal(await page.locator('.ap-insight:visible').count(), 3);
+  assert.equal(await page.locator('#empty-results').isVisible(), false);
+  assert.equal(await page.locator('.ap-theme').isVisible(), false);
+  assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgb(255, 255, 255)');
+  assert.equal(await page.locator('details:not([open])').count(), 0);
+  await page.pdf({ path: `${output}/${filter === 'direct' ? 'print-specimen' : 'print-empty-filter'}.pdf`, format: 'A4', printBackground: true });
+  await page.evaluate(() => { dispatchEvent(new Event('afterprint')); dispatchEvent(new Event('afterprint')); });
+  await page.emulateMedia({ media: 'screen' });
+  assert.deepEqual(await printScreenState(), beforePrint);
+  assert.equal(await page.locator('.ap-insight:visible').count(), filter === 'direct' ? 1 : 0);
+  assert.equal(await page.locator('#empty-results').isVisible(), filter === 'estimated');
+  // Exercise the cancellation event path without generating another PDF.
+  await page.evaluate(() => { dispatchEvent(new Event('beforeprint')); dispatchEvent(new Event('afterprint')); });
+  assert.deepEqual(await printScreenState(), beforePrint);
+}
 await page.close();
 const noJs = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 320, height: 900 } });
 await noJs.setOffline(true);
