@@ -8,6 +8,7 @@ export function nativeContext(title: string, a: Context): string[] {
     `Scope: ${a.scope}; availability=${a.availability}; evidence=${a.persistedScope}; assessment=${a.assessment}; suppression=${a.suppressionReason ?? "none"}`,
     "sourceFreshnessChecked=false; crossSourceReconciled=false; aggregationReady=false; parserResumeReady=false",
     `Inventory: events=${i.events}; turns=${value(i.turns)}; stored usage rows=${value(i.usage)}; observations=${value(i.observations)}; diagnostics=${value(i.diagnostics)}`,
+    `Stored event inventory state: ${i.events === 0 ? "present_empty" : "observed_prefix"}`,
     `Event status inventory: ${counts(i.eventStatuses)}`,
     c === null ? "Capabilities: unavailable" : `Capabilities: parser version=${c.parserVersion}; support=${c.support}; coverage=${c.coverage}; unsupported records=${c.unsupportedRecords}; ambiguous records=${c.ambiguousRecords}; state limited=${c.stateLimited}; dropped diagnostics=${c.diagnosticsDropped}`,
     `Observed shapes: ${c?.observedShapes.join(",") || "none"}`];
