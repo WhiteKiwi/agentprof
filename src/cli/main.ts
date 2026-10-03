@@ -68,6 +68,7 @@ export async function run(argv: string[]): Promise<void> {
     .option("--usage-selection", "show source-local usage-selection evidence")
     .option("--diagnostics", "show source-local diagnostics evidence")
     .option("--shape-coverage", "show source-local shape-coverage evidence")
+    .option("--duration-exclusions", "show source-local duration-exclusions evidence")
     .option("--time-breakdown", "show recorded tool/command/category durations")
     .option("--invocation-overlap", "show observed Claude invocation interval union")
     .option("--read-revisits", "show completed Claude Read file revisits for one --source")
@@ -136,6 +137,8 @@ export async function run(argv: string[]): Promise<void> {
   stats.on("option:diagnostics", () => { if (++diagnosticsFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   let shapeCoverageFlags = 0;
   stats.on("option:shape-coverage", () => { if (++shapeCoverageFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
+  let durationExclusionsFlags = 0;
+  stats.on("option:duration-exclusions", () => { if (++durationExclusionsFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   stats.action(async () => {
     const options = { ...program.opts(), ...stats.opts() } as StatsArguments & { json?: boolean };
     const result = await runStats(options);

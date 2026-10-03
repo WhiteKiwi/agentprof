@@ -118,5 +118,11 @@ export const displayCases = [
     "prop": "shapeCoverage",
     "flag": "shape-coverage",
     "mode": "selected_source_shape_coverage"
+  },
+  {
+    "pr": 110,
+    "prop": "durationExclusions",
+    "flag": "duration-exclusions",
+    "mode": "selected_source_duration_exclusions"
   }
 ] as const;
