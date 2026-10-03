@@ -1,0 +1,41 @@
+name: Temporary source validation bundle
+on:
+  push:
+    branches: [feat/unified-evidence-report]
+    paths: [.github/workflows/chat-source-bundle.yml]
+permissions:
+  contents: read
+jobs:
+  bundle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+        with:
+          mise_toml: |
+            [tools]
+            node = "24.21.0"
+            pnpm = "10.34.6"
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Package only tracked source and public development tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$RUNNER_TEMP/agentprof-validation"
+          mkdir -p "$bundle/.runtime"
+          git archive HEAD | tar -x -C "$bundle"
+          cp "$(node -p 'process.execPath')" "$bundle/.runtime/node"
+          cp -a node_modules "$bundle/node_modules"
+          git rev-parse HEAD > "$bundle/.runtime/source-commit.txt"
+          tar -czf "$RUNNER_TEMP/agentprof-validation.tar.gz" -C "$bundle" .
+          sha256sum "$RUNNER_TEMP/agentprof-validation.tar.gz"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: agentprof-validation
+          path: ${{ runner.temp }}/agentprof-validation.tar.gz
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
