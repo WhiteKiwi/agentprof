@@ -31,4 +31,18 @@ Provider error/content/change/validation-scope/usage timestamps, daily token cal
 
 ## Execution record
 
-Plan recorded before code. No new tests have run yet. Supported-runtime and browser verification are not inferred from static source review.
+Initial planning state: plan recorded before code; no new tests had run. Supported-runtime and browser verification were not inferred from static source review.
+
+### Executed qualification and handoff — 2026-10-03
+
+[Draft PR #132](https://github.com/WhiteKiwi/agentprof/pull/132), [issue #131](https://github.com/WhiteKiwi/agentprof/issues/131). Source/test head `34442895318dba52b56be397a4ba618e447ae169`; fixed base `f8b6c6071e48fc052f5c3b63d1d9c1a0e9323d7d`. [Run 37125326856](https://github.com/WhiteKiwi/agentprof/actions/runs/37125326856) completed successfully in all four jobs: Node24.15.0/24.21.0/26.7.0 `pnpm check` and Node22 unsupported-runtime guard.
+
+Directly read Node26.7 job `111209355380`: checkout `0daeef1f357806e1df64fc9157218fced0987590`, GitHub's test merge of this head into the fixed parent, not a real PR merge. Typecheck/build pass; full suite **2,737 PASS / 68 inherited conditional SKIP / 0 FAIL**, 107 files (105 PASS / 2 SKIP). The three new suites all execute without skips: **page14 + CLI14 + installed1 = 29 PASS**. The unchanged artifact verifier passes with82 files, scripts disabled and published:false.
+
+Actual new checks include ordinary synthetic Codex/Claude scan/store/raw-deletion/export with one pinned read; scripts-disabled installed tarball identical/conflicting copy inputs and built/installed HTML parity; unchanged private DB/key bytes; mode0600; no overwrite/private-store/symlink output; preserved default human/JSON results; deliberate postpublication warning; exact calendar/interval arithmetic; CSP hash, escaping, unique resolving local links and deterministic omissions. The new installed scenario runs by default, not as one of the inherited optional skips. No new test failure was observed in this first published run.
+
+Final implementation additionally caps distinct execution-detail sections at64 across the displayed days and reason rows at64. The8-per-day ceiling remains, and links are limited to actually displayed detail sections with exact omissions. The13-series/32-day fixture verifies12/13 series,372/416 days and64/372 distinct execution details without dangling links and below the1MiB refusal boundary. This is not a representative performance benchmark or exhaustive maximum-combination qualification.
+
+The exact comparison lists only eight scoped paths. The inherited history modification is its --output option/duplicate guard/type and export action; existing runHistory, formatter, main, old report/insights/stats, analyzers/parser/store/schema and dependencies/CI are untouched. This final documentation commit records the already executed code-head result; its own hosted status must be checked separately.
+
+Release the active implementation reservation at handoff; #131 remains open for independent review and parent-first current-main integration/merge. The shared static helper may be consumed read-only by a separately claimed patterns export. No browser runtime/visual/keyboard/print or macOS, real-user calibration, package release, independent subagent review or broad P5/P6 completion is claimed.
