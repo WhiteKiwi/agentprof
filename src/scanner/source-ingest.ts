@@ -2,7 +2,7 @@ import { adapterLimitsFingerprint, validateIngestionCandidate, validatePredecess
 import { resolve } from "node:path";
 import type { createSourceStore, SourceIngestionCandidate, SourceSnapshotInput } from "../db/source-store.js";
 import type { IdentityContext } from "../normalize/identity.js";
-import { createCodexAdapter } from "../parsers/codex/index.js";
+import { CodexAdapter, createCodexAdapter } from "../parsers/codex/index.js";
 import { ClaudeAdapter, createClaudeAdapter } from "../parsers/claude/index.js";
 import type { ParserCapabilities } from "../parsers/types.js";
 import type { ClaudeCapabilities } from "../parsers/claude/types.js";
@@ -21,7 +21,7 @@ export type SourceIngestResult = IngestEvidence & Readonly<
   | { status: "aborted" } | { status: "rejected"; reason: "file_limit" | "record_limit" | "reader_error" | "input_changed" | "consumer_stopped" | "state_limit" }
 >;
 
-/** Explicit byte-zero ingestion; ordinary Claude captures optional durable state. */
+/** Explicit byte-zero ingestion; ordinary providers capture optional durable state. */
 export async function ingestSourceFile(store: ReturnType<typeof createSourceStore>, context: IdentityContext, input: SourceIngestInput): Promise<SourceIngestResult> {
   return ingest(store, context, input);
 }
@@ -41,7 +41,7 @@ async function ingest(store: ReturnType<typeof createSourceStore>, context: Iden
   let adapter = provider === "codex" ? createCodexAdapter(context) : createClaudeAdapter(context);
   const parserVersion = adapter.snapshot().capabilities.parserVersion;
   if (candidate !== undefined) {
-    if (provider !== "claude" || candidate.source !== null && (candidate.source.sourceId !== sourceId || candidate.source.provider !== provider
+    if (candidate.source !== null && (candidate.source.sourceId !== sourceId || candidate.source.provider !== provider
       || candidate.source.keyId !== context.keyId || candidate.source.revision !== expectedRevision)
       || candidate.source === null && expectedRevision !== null) throw new SafeError("INVALID_ARGUMENT");
     validatePredecessor(candidate.predecessor, context.keyId);
@@ -55,10 +55,12 @@ async function ingest(store: ReturnType<typeof createSourceStore>, context: Iden
   };
   const contract = { sourceId, provider, parserVersion } as const, old = candidate?.source, checkpoint = candidate?.checkpoint;
   let prefix: ProvenSourcePrefixResult;
-  if (old && checkpoint && old.parserVersion === parserVersion && checkpoint.adapterLimitsFingerprint === adapterLimitsFingerprint()
+  if (old && checkpoint && old.parserVersion === parserVersion && checkpoint.adapterLimitsFingerprint === adapterLimitsFingerprint(provider)
     && checkpoint.maxFileBytes === maxFileBytes && checkpoint.maxRecords === maxRecords && checkpoint.maxLineBytes === maxLineBytes) {
     if (old.cacheEvidence === null || old.availability !== "available") throw new SafeError("DATABASE_ACCESS_FAILED");
-    const restored = ClaudeAdapter.restoreCheckpoint(context, checkpoint.checkpoint, { sourceId, completedOffset: old.completedOffset, nextOrdinal: checkpoint.nextOrdinal });
+    const binding = { sourceId, completedOffset: old.completedOffset, nextOrdinal: checkpoint.nextOrdinal };
+    const restored = provider === "codex" ? CodexAdapter.restoreCheckpoint(context, checkpoint.checkpoint, binding)
+      : ClaudeAdapter.restoreCheckpoint(context, checkpoint.checkpoint, binding);
     if (restored.status !== "restored") throw new SafeError("DATABASE_ACCESS_FAILED");
     adapter = restored.adapter; ordinal = checkpoint.nextOrdinal;
     const suffix = await readSourceSuffixWithProof(fileIdentity, context, { ...contract, completedOffset: old.completedOffset, observedSize: old.observedSize,
@@ -66,7 +68,7 @@ async function ingest(store: ReturnType<typeof createSourceStore>, context: Iden
       maxFileBytes: checkpoint.maxFileBytes, maxRecords: checkpoint.maxRecords, maxLineBytes: checkpoint.maxLineBytes }, consume, options);
     if (suffix.status === "corrupt_checkpoint") throw new SafeError("DATABASE_ACCESS_FAILED");
     if (suffix.status === "mismatch") {
-      adapter = createClaudeAdapter(context); ordinal = 0;
+      adapter = provider === "codex" ? createCodexAdapter(context) : createClaudeAdapter(context); ordinal = 0;
       prefix = await readSourcePrefixWithProof(fileIdentity, context, contract, consume, options);
     } else prefix = suffix;
   } else prefix = await readSourcePrefixWithProof(fileIdentity, context, contract, consume, options);
@@ -86,11 +88,9 @@ async function ingest(store: ReturnType<typeof createSourceStore>, context: Iden
       : { contractVersion: 1 as const, capturePolicyVersion: 1, status: "captured" as const, provider: "claude" as const, metadata: snapshot.metadata, messages: snapshot.messages },
     events: snapshot.events, evidence: { turns: snapshot.turns, usage: snapshot.usage, observations: snapshot.observations,
       diagnostics: snapshot.diagnostics, capabilities: snapshot.capabilities } };
-  let result;
-  if (provider === "claude" && adapter instanceof ClaudeAdapter) {
-    const exported = adapter.exportCheckpoint({ sourceId, completedOffset: prefix.completedOffset, nextOrdinal: ordinal });
-    const capture = exported.status === "captured" ? { checkpoint: exported.checkpoint, nextOrdinal: ordinal, maxFileBytes, maxRecords, maxLineBytes } : null;
-    result = store.replaceSourceSnapshotWithCheckpoint(sourceInput, capture, context, expectedRevision, candidate?.predecessor, signal);
-  } else result = store.replaceSourceSnapshot(sourceInput, expectedRevision, signal);
+  const exported = adapter.exportCheckpoint({ sourceId, completedOffset: prefix.completedOffset, nextOrdinal: ordinal });
+  const capture = exported.status === "captured" ? { checkpoint: exported.checkpoint, nextOrdinal: ordinal, maxFileBytes, maxRecords, maxLineBytes } : null;
+  // Optional capture failure never bypasses the originally observed generation CAS.
+  const result = store.replaceSourceSnapshotWithCheckpoint(sourceInput, capture, context, expectedRevision, candidate?.predecessor, signal);
   return Object.freeze({ ...evidence, ...result });
 }

@@ -5,6 +5,8 @@ import type { DatabaseSync } from "node:sqlite";
 import type { IdentityContext } from "../normalize/identity.js";
 import { ClaudeAdapter, createClaudeAdapter, DEFAULT_CLAUDE_LIMITS } from "../parsers/claude/index.js";
 import { decodeClaudeCheckpoint, MAX_CLAUDE_CHECKPOINT_BYTES } from "../parsers/claude/checkpoint.js";
+import { CodexAdapter, createCodexAdapter, DEFAULT_CODEX_LIMITS } from "../parsers/codex/index.js";
+import { decodeCodexCheckpoint, MAX_CODEX_CHECKPOINT_BYTES } from "../parsers/codex/checkpoint.js";
 import { SafeError } from "../privacy/diagnostics.js";
 import { MAX_LINE_BYTES } from "../scanner/jsonl.js";
 import { MAX_SOURCE_FILE_BYTES, MAX_SOURCE_RECORDS } from "../scanner/source-prefix.js";
@@ -36,7 +38,15 @@ export function encodedProjection(encoded: EncodedSnapshot): string {
   if (r) for (const row of [...r.rows].sort(compare)) projectionFrame(digest, row.kind, row.ordinal, row.id, row.json);
   return digest.digest("hex");
 }
-export function adapterLimitsFingerprint(): string { return sha(JSON.stringify(["agentprof.claude-limits/v1", Object.entries(DEFAULT_CLAUDE_LIMITS)])); }
+type SourceProvider = SourceHeaderInput["provider"];
+export function adapterLimitsFingerprint(provider: SourceProvider = "claude"): string {
+  return provider === "codex" ? sha(JSON.stringify(["agentprof.codex-limits/v1", Object.entries(DEFAULT_CODEX_LIMITS)]))
+    : sha(JSON.stringify(["agentprof.claude-limits/v1", Object.entries(DEFAULT_CLAUDE_LIMITS)]));
+}
+function checkpointMaximum(provider: SourceProvider): number { return provider === "codex" ? MAX_CODEX_CHECKPOINT_BYTES : MAX_CLAUDE_CHECKPOINT_BYTES; }
+function currentParserVersion(context: IdentityContext, provider: SourceProvider): number {
+  return (provider === "codex" ? createCodexAdapter(context) : createClaudeAdapter(context)).snapshot().capabilities.parserVersion;
+}
 function boundedInteger(value: unknown, maximum: number, minimum = 0): number {
   const result = integer(value, minimum);
   if (Object.is(result, -0) || result > maximum) invalid();
@@ -70,7 +80,8 @@ export function validateIngestionCandidate(value: unknown, keyId: string): Sourc
   let checkpoint: SourceCheckpoint | null = null;
   if (v["checkpoint"] !== null) {
     const c = own(v["checkpoint"], ["checkpoint", "nextOrdinal", "maxFileBytes", "maxRecords", "maxLineBytes", "contractVersion", "checkpointBytes", "adapterLimitsFingerprint", "generationSeal"]);
-    const capture = captureFields({checkpoint:c["checkpoint"], nextOrdinal:c["nextOrdinal"], maxFileBytes:c["maxFileBytes"], maxRecords:c["maxRecords"], maxLineBytes:c["maxLineBytes"]});
+    if (source === null) invalid();
+    const capture = captureFields({checkpoint:c["checkpoint"], nextOrdinal:c["nextOrdinal"], maxFileBytes:c["maxFileBytes"], maxRecords:c["maxRecords"], maxLineBytes:c["maxLineBytes"]}, source.provider);
     if (c["contractVersion"] !== 1 || c["checkpointBytes"] !== Buffer.byteLength(capture.checkpoint) || source === null) invalid();
     checkpoint = Object.freeze({...capture, contractVersion:1, checkpointBytes:Buffer.byteLength(capture.checkpoint), adapterLimitsFingerprint:hex(c["adapterLimitsFingerprint"]), generationSeal:identity(c["generationSeal"], "source", keyId)});
   }
@@ -83,29 +94,35 @@ export function generationObservation(source: StoredSource | null, projection: s
     source.keyVersion, source.keyId, source.revision, source.availability, source.completedOffset, source.observedSize, source.boundaryFingerprint,
     source.cacheEvidence?.contractVersion ?? null, source.cacheEvidence?.contentFingerprint ?? null, projection]));
 }
-function captureFields(value: unknown): SourceCheckpointCapture {
+function captureFields(value: unknown, provider: SourceProvider): SourceCheckpointCapture {
   if (types.isProxy(value)) invalid();
   const v = fields(value, ["checkpoint", "nextOrdinal", "maxFileBytes", "maxRecords", "maxLineBytes"]);
   const checkpoint = v["checkpoint"], nextOrdinal = boundedInteger(v["nextOrdinal"], MAX_SOURCE_RECORDS), maxRecords = boundedInteger(v["maxRecords"], MAX_SOURCE_RECORDS, 1);
-  if (typeof checkpoint !== "string" || checkpoint.length === 0 || Buffer.byteLength(checkpoint) > MAX_CLAUDE_CHECKPOINT_BYTES || nextOrdinal > maxRecords) invalid();
+  if (typeof checkpoint !== "string" || checkpoint.length === 0 || Buffer.byteLength(checkpoint) > checkpointMaximum(provider) || nextOrdinal > maxRecords) invalid();
   return Object.freeze({ checkpoint, nextOrdinal, maxRecords, maxFileBytes: boundedInteger(v["maxFileBytes"], MAX_SOURCE_FILE_BYTES, 1), maxLineBytes: boundedInteger(v["maxLineBytes"], MAX_LINE_BYTES, 1) });
 }
 function requireGeneration(source: SourceHeaderInput, hasEvidence: boolean, cache: unknown, currentRelationships: boolean): void {
-  if (source.provider !== "claude" || !hasEvidence || !cache || !currentRelationships) invalid();
+  if ((source.provider !== "claude" && source.provider !== "codex") || !hasEvidence || !cache || !currentRelationships) invalid();
 }
 /** Current-compatible tokens are decoded strictly and must project to this generation. */
-export function restoreSourceCheckpoint(context: IdentityContext, source: SourceHeaderInput, capture: SourceCheckpointCapture, projection: string): ClaudeAdapter {
+export function restoreSourceCheckpoint(context: IdentityContext, source: SourceHeaderInput, capture: SourceCheckpointCapture, projection: string): ClaudeAdapter | CodexAdapter {
   const binding = { sourceId: source.sourceId, completedOffset: source.completedOffset, nextOrdinal: capture.nextOrdinal };
-  const currentVersion = createClaudeAdapter(context).snapshot().capabilities.parserVersion;
-  const decoded = decodeClaudeCheckpoint(context, capture.checkpoint, binding, DEFAULT_CLAUDE_LIMITS, currentVersion), p = decoded.position;
+  const currentVersion = currentParserVersion(context, source.provider);
+  const decoded = source.provider === "codex"
+    ? decodeCodexCheckpoint(context, capture.checkpoint, binding, DEFAULT_CODEX_LIMITS, currentVersion)
+    : decodeClaudeCheckpoint(context, capture.checkpoint, binding, DEFAULT_CLAUDE_LIMITS, currentVersion);
+  const p = decoded.position;
   if (p.recordCount !== capture.nextOrdinal || (p.recordCount === 0 ? p.firstOrdinal !== null || p.lastOrdinal !== null || p.lastByteOffset !== null
     : p.firstOrdinal !== 0 || p.lastOrdinal !== capture.nextOrdinal - 1)) invalid();
-  const restored = ClaudeAdapter.restoreCheckpoint(context, capture.checkpoint, binding);
+  const restored = source.provider === "codex" ? CodexAdapter.restoreCheckpoint(context, capture.checkpoint, binding)
+    : ClaudeAdapter.restoreCheckpoint(context, capture.checkpoint, binding);
   if (restored.status !== "restored") invalid();
   const snapshot = restored.adapter.snapshot();
   const encoded = encodeSourceSnapshot({ ...source, events: snapshot.events,
     evidence: { turns: snapshot.turns, usage: snapshot.usage, observations: snapshot.observations, diagnostics: snapshot.diagnostics, capabilities: snapshot.capabilities },
-    relationshipEvidence: { contractVersion: 1, capturePolicyVersion: 1, status: "captured", provider: "claude", metadata: snapshot.metadata, messages: snapshot.messages } }, context.keyId);
+    relationshipEvidence: "wrappers" in snapshot
+      ? { contractVersion: 1, capturePolicyVersion: 1, status: "captured", provider: "codex", metadata: snapshot.metadata, wrappers: snapshot.wrappers }
+      : { contractVersion: 1, capturePolicyVersion: 1, status: "captured", provider: "claude", metadata: snapshot.metadata, messages: snapshot.messages } }, context.keyId);
   if (encodedProjection(encoded) !== projection) invalid();
   return restored.adapter;
 }
@@ -114,14 +131,14 @@ function headerOnly(source: SourceHeaderInput): SourceHeaderInput {
     keyVersion: source.keyVersion, keyId: source.keyId, completedOffset: source.completedOffset, observedSize: source.observedSize, boundaryFingerprint: source.boundaryFingerprint };
 }
 export function validateCapture(value: unknown, encoded: EncodedSnapshot, context: IdentityContext): SourceCheckpointCapture {
-  const capture = captureFields(value), h = encoded.header;
+  const h = encoded.header, capture = captureFields(value, h.provider);
   requireGeneration(h, true, encoded.cacheEvidence, relationshipCurrent(encoded.relationships?.evidence));
-  if (h.parserVersion !== createClaudeAdapter(context).snapshot().capabilities.parserVersion || h.observedSize > capture.maxFileBytes) invalid();
+  if (h.parserVersion !== currentParserVersion(context, h.provider) || h.observedSize > capture.maxFileBytes) invalid();
   restoreSourceCheckpoint(context, h, capture, encodedProjection(encoded));
   return capture;
 }
 export function generationSeal(context: IdentityContext, source: SourceHeaderInput, revision: number, proof: NonNullable<StoredSource["cacheEvidence"]>, capture: SourceCheckpointCapture, limits: string, projection: string): string {
-  return context.fingerprint("source", ["agentprof.claude-source-generation/v1", sha(JSON.stringify([1, source.sourceId, "claude", source.parserVersion,
+  return context.fingerprint("source", [source.provider === "codex" ? "agentprof.codex-source-generation/v1" : "agentprof.claude-source-generation/v1", sha(JSON.stringify([1, source.sourceId, source.provider, source.parserVersion,
     source.normalizationVersion, source.keyVersion, source.keyId, revision, source.completedOffset, source.observedSize, source.boundaryFingerprint,
     proof.contractVersion, proof.contentFingerprint, capture.nextOrdinal, capture.maxFileBytes, capture.maxRecords, capture.maxLineBytes,
     Buffer.byteLength(capture.checkpoint), sha(capture.checkpoint), limits, projection]))]);
@@ -139,7 +156,7 @@ export function readCheckpoint(database: DatabaseSync, sourceId: string, source:
   requireGeneration(source, source.evidence !== null && source.persistedScope === "events_and_metric_evidence", source.cacheEvidence, relationshipCurrent(source.relationshipEvidence));
   const r = rows[0]!;
   if (r["contract_version"] !== 1 || r["payload_type"] !== "text") invalid();
-  const checkpointBytes = boundedInteger(r["checkpoint_bytes"], MAX_CLAUDE_CHECKPOINT_BYTES, 1);
+  const checkpointBytes = boundedInteger(r["checkpoint_bytes"], checkpointMaximum(source.provider), 1);
   if (r["actual_bytes"] !== checkpointBytes) invalid();
   const nextOrdinal = boundedInteger(r["next_ordinal"], MAX_SOURCE_RECORDS), maxRecords = boundedInteger(r["max_records"], MAX_SOURCE_RECORDS, 1);
   const maxFileBytes = boundedInteger(r["max_file_bytes"], MAX_SOURCE_FILE_BYTES, 1), maxLineBytes = boundedInteger(r["max_line_bytes"], MAX_LINE_BYTES, 1);
@@ -147,11 +164,11 @@ export function readCheckpoint(database: DatabaseSync, sourceId: string, source:
   const limits = hex(r["adapter_limits_fingerprint"]), seal = identity(r["generation_seal"], "source", context.keyId);
   // Never select the opaque token until both SQL type and actual UTF-8 size passed.
   const payload = database.prepare("SELECT checkpoint_json FROM source_parser_checkpoints WHERE source_id=? LIMIT 1").get(sourceId)?.["checkpoint_json"];
-  const capture = captureFields({ checkpoint: payload, nextOrdinal, maxFileBytes, maxRecords, maxLineBytes });
+  const capture = captureFields({ checkpoint: payload, nextOrdinal, maxFileBytes, maxRecords, maxLineBytes }, source.provider);
   if (Buffer.byteLength(capture.checkpoint) !== checkpointBytes) invalid();
   const expected = generationSeal(context, source, source.revision, source.cacheEvidence!, capture, limits, projection!);
   if (!timingSafeEqual(Buffer.from(expected), Buffer.from(seal))) invalid();
-  if (source.parserVersion === createClaudeAdapter(context).snapshot().capabilities.parserVersion && limits === adapterLimitsFingerprint()) {
+  if (source.parserVersion === currentParserVersion(context, source.provider) && limits === adapterLimitsFingerprint(source.provider)) {
     restoreSourceCheckpoint(context, headerOnly(source), capture, projection!);
   }
   return Object.freeze({ ...capture, contractVersion: 1, checkpointBytes, adapterLimitsFingerprint: limits, generationSeal: seal });

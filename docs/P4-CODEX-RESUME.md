@@ -1,0 +1,163 @@
+# P4-CODEX-RESUME: independent pre-code contract
+
+2026-10-02 UTC. Proposal for coordinator review, not implementation approval, live Project claim, production verification, or broad P4 completion.
+
+## Dependency decision and scope
+
+The read-only oracle composition is PR40 `646f58e0`, tree `55a4d7be76d03b3e077e538d98adbf0f6bb554dc`, plus the three Codex adapter production files and two checkpoint tests from PR38 `5614a310`, tree prefix `c1361a2f`. Exact copied bytes are listed in composition.json. No production file is edited in this work. Both snapshots were built on older main `063ee04`; the coordinator reports current main has advanced through PR36 to `ffd87e1` (Claude search parser2). The composition is not a merge candidate. Before production: resolve actual full dependency SHAs, refresh current main and dependency heads, choose merged-base versus explicit stacked PR ordering, reconcile docs/test ownership, and update the Project-only draft with owner/developer/branch/dependencies/Verify. Do not imply the next CODE ticket was claimed.
+
+Minimum production ownership: src/scanner/source-ingest.ts, src/scanner/scan-run.ts, src/db/source-checkpoint-validation.ts, src/db/source-store.ts. No parser codec changes, framework, schema migration, broad generic provider registry, report/CLI shape change, or source-prefix reader rewrite belongs in this slice. Schema6 table and existing same-descriptor whole-byte/boundary proof are reused unchanged. Codex checkpoint codec bytes must remain identical to approved PR38; Claude seal/fingerprint framing remains byte-exact to PR40, even if the provider selector signature evolves.
+
+## Observable contract
+
+Repeated explicit-root scans can continue an ordinary Codex source only from its last committed complete LF boundary, under authenticated adapter state, exact previous physical bytes, the original source/checkpoint generation and current interpretation. Prefix bytes must be read for integrity, but must not be fed to CodexAdapter.ingest. Each suffix descriptor starts at or beyond completedOffset with ordinal at or beyond nextOrdinal. Public events, turns, usage, observations, diagnostics, capabilities, metadata and wrappers equal a fresh cold adapter replay. The cold reference never exports or restores state. Independent literal HMAC/numeric assertions constrain shared semantic mistakes in both paths.
+
+Preserve pending result/call matching, process launch and write_stdin poll links, result replay suppression, native terminal response usage classification, cumulative snapshot-only usage, reset/reordering diagnostics, and source-reported versus paired timing. Restore a zero-record source and all complete-record splits. Test beyond a single cycle; optional historical absence is not fatal. Global aggregationReady and parserResumeReady remain false in every public result/source/report.
+
+A generation atomically contains source header/revision, events, metrics, relationships, whole-byte proof, and optional checkpoint. Cold accepted Codex ingestion captures optional state; export-unavailable remains an accepted ordinary source and atomically removes prior optional state. Every candidate-derived write, including export-unavailable, historical absence, incompatible limits/version, physical mismatch and resumed suffix, retains the original expectedRevision and predecessor. Never bypass with legacy replacement or refresh candidate/revision. A changed revision is stale; same-revision changed presence/seal/public generation is a safe database failure. A failed/cancelled read or write preserves all persisted rows.
+
+## Provider-specific durable integrity
+
+- Reuse existing contractVersion1 schema6 source_parser_checkpoints with a source-owned optional row and <=4,194,304 UTF-8 bytes
+- Codex limits fingerprint: SHA256(UTF8(JSON.stringify(["agentprof.codex-limits/v1", Object.entries(DEFAULT_CODEX_LIMITS)]))) in declaration order
+- Claude existing fingerprint stays SHA256(JSON.stringify(["agentprof.claude-limits/v1", Object.entries(DEFAULT_CLAUDE_LIMITS)]))
+- Codex generation seal: context.fingerprint("source", ["agentprof.codex-source-generation/v1", SHA256(JSON.stringify(tuple))])
+- Tuple is exactly [1, sourceId, "codex", parserVersion, normalizationVersion, keyVersion, keyId, revision, completedOffset, observedSize, boundaryFingerprint, proofContractVersion, contentFingerprint, nextOrdinal, maxFileBytes, maxRecords, maxLineBytes, checkpointBytes, SHA256(checkpointString), adapterLimitsFingerprint, projectionDigest]
+- Claude tuple and its "agentprof.claude-source-generation/v1" domain are unchanged
+- Projection digest framing stays "agentprof.source-projection/v1\n"; order and exact serialized event/metric/relationship strings match PR40. Codex wrapper rows participate
+- Current-compatible Codex restore strictly validates sourceId, zero-based complete-record count/position, key, parser/normalization version, exact default limits and checkpoint/public projection. Token from Claude cannot substitute for Codex, including after independently resigning the outer seal; inverse substitution must also fail
+- Preflight at most two rows, SQL typeof, actual UTF-8 length, scalar bounds and recorded byte agreement before selecting opaque payload. Corruption fails with safe DATABASE_ACCESS_FAILED; it never becomes a replay miss or repairs itself
+- A correctly sealed old parser/limits interpretation is a replay miss under original CAS. Validate outer generation before making that compatibility choice; a bad seal wins over an otherwise legitimate version/limits mismatch
+
+## Physical source contract
+
+Keep the existing same-open-descriptor stat and path identity validation. Verify all old observed bytes, including unfinished tail; start decoding at saved completedOffset, not observedSize. Changing old tail or prefix and stable truncation causes full replay; concurrent append/rewrite/replace/unlink/symlink/short-read/abort/read-error/close-error rejects without commit. BOM, CRLF, empty file, split UTF-8, and 1-byte chunks must obey actual physical byte offsets. A partial multibyte tail can later complete; appending LF prematurely yields INVALID_UTF8 and unchanged generation. An oversized incomplete tail can be observed but its later terminating LF yields RECORD_TOO_LARGE with no commit. No decoded-string tail surrogate is accepted as a byte proof.
+
+## Frozen acceptance inventory
+
+Test files are outside production and copied into an unpublished dependency-only composition. test-freeze manifests bind source bytes before a production implementation exists.
+
+1. codex-source-resume.test.ts: independent HMAC event/response/usage IDs; terminal eligible versus cumulative snapshot-only usage; paired 4000ms no-match result; process/poll completion; replay deduplication; cumulative reset/reorder literal diagnostics/totals. All complete-record splits through four semantically distinct streams, actual db.close/openDatabase, real suffix-only ingest counts and descriptor bounds; physical UTF-8 BOM/CRLF tails; invalid/oversized tail rollback; stable prefix/tail/truncate fallback; scan routing then unchanged no-ingest confirmation.
+2. codex-source-store.test.ts: independent SQL projection/seal and limits domains; schema6 and same-DB Claude/Codex rows; cross-provider substitution with resigned outer seal; eight insertion-failure rollback points; abort after real checkpoint insert; bounded malformed row variants; checkpoint deletion on resume/limits/mismatch/export-unavailable paths; absent-to-present same-revision CAS; peer revision stale without refresh; sealed old limits fallback vs corrupt seal; absence full replay and capture; export-unavailable accepted clear.
+3. codex-resume-crash.test.ts: real child SIGKILL immediately before/after real COMMIT after source and checkpoint insertion, existing and first generation; before/after export-unavailable clear. Actual reopen all-row comparison, final independent cold projection, restart scan idempotency. Must use a freshly built composition dist; unbuilt/mismatched dist is a harness blocker, not expected feature RED.
+4. codex-pre-resume.test.ts: portable child harness against explicit immutable pre-resume PR38 dist. It generates schema5 through real prior ingestSourceFile, closes process, opens current schema6, verifies no synthesized checkpoint, appends, counts full replay, then requires new capture. No manually fabricated legacy token, silent current-dist fallback, or production API shim. Environment AGENTPROF_PRE_RESUME_DIST is required and validated by schema5 receipt.
+5. Inherited gates unchanged: PR38 codec boundary/validation suites and PR40 source-prefix same-FD, generation preflight, Claude resume/crash/store tests. Passing new targeted tests is not substitute for re-running affected inherited suites against final integration.
+
+## Remaining proof before production acceptance
+
+The new frozen tests are an independent starting gate, not complete QA. Still require: exact current-main dependency reconciliation; execute newly frozen symmetric cross-provider substitution, unchanged same-revision checkpoint mutation, public projection substitution and three-reopen cases beyond their capture precondition; stronger SQL payload-not-selected preflight spy; Codex wrapper projection mutation; changed parser version valid-seal fallback; same-FD adversarial reader inherited suite unchanged on final tree; direct proof of source-prefix and codec byte preservation; complete crash suite built for exact candidate; genuine near-budget export refusal (rather than only store-level injected unavailable); aggregate/typecheck/build/install/artifact and product-specific 13-stream QA owned separately. Do not count planned cases or inherited historical receipts as newly passed.
+
+## Execution and resource gates
+
+Root authorizes only bounded focused light tests, one worker, NODE_OPTIONS=--max-old-space-size=512, timeout600s, pinned existing dependencies, no installation. Crash/legacy child receipts are meaningful only with verified dist identity. No build, aggregate suite, installed artifact run, Project write, push, PR creation, merge or publication was authorized here. Record individual tests as passed/expected-feature-RED/harness-error/not-run. A missing Codex checkpoint is an expected feature failure; fixture literal errors and import/build/path failures must be corrected and distinguished. Keep any amendment as a new freeze version with rationale; do not quietly weaken the oracle to produce RED or green.
+
+## Actual pre-code receipt
+
+The v1 focused gate ran 66 cases: 2 independent literal semantic/HMAC cases passed; 64 feature failures (62 absent durable captures, 1 full-replay count 4 instead of suffix2, 1 Codex candidate INVALID_ARGUMENT after real prior schema5 seed/reopen). Initial command used an incorrect relative copy cwd; its no-test-files output is isolated in harness-path-correction.log and is not feature evidence. No production fixture/API shims were introduced. A v2 freeze adds three explicit reopen cycles, unchanged optional-presence confirmation, resigned public projection mismatch, and symmetric provider-token substitution; these remain expected feature RED until capture exists. The old seeder successfully produced schema5; pinned dist file hashes are recorded, but no new build was run here. Crash, typecheck, aggregate and artifact/installed verification are unrun.
+
+Final v2 focused receipt: 69 cases in 3.31s, 2 independent oracle passes and 67 expected feature RED (65 MISSING_CODEX_DURABLE_CAPTURE, one actual scanner prefix replay 4≠2, one existing provider guard INVALID_ARGUMENT). These failures establish missing integration, not successful execution of the downstream store/crash assertions. All checked PR38/PR40 source-manifest entries match, and source-prefix.ts, database.ts and all three Codex codec paths are byte-identical to their designated inputs.
+
+## v3 independent-review amendment (not executed)
+
+Preserve v2 sources under freeze-v2/ and its prior receipts unchanged. Exact v3 changes are fixture-v3.patch; test-freeze-v3.json binds final authored test bytes. This amendment touches only tests and this proposal, not production or architecture.
+
+- SQL rollback cases must hit the actual targeted INSERT exactly once before injected failure, verify complete rollback, then commit the identical source/capture/original-CAS input after removing the injection. Abort-after-insert has the same hit proof and uninjected positive control. An earlier unrelated exception can no longer satisfy a test.
+- FICTITIOUS_CORRUPTION has 21 UTF-8 bytes, not20. The existing corruption case now records21 but retains its stale seal. A separate independently resealed, correctly-sized invalid token requires the real Codex decoder to be called once and safe failure without repair, isolating decoding from row-size/seal failure.
+- A nonempty ordinary exec wrapper call/result stream crosses every complete-LF split with actual reopen. Literal HMAC wrapper/session IDs, pending callSeen=true/resultSeen=false and completed true/true states, unknown relationship and empty child IDs are asserted independently. A valid-shaped wrapper resultSeen substitution updates relationship byte accounting and independently recomputes the outer seal; public row read succeeds, authenticated checkpoint projection read must fail.
+- All six crash cases now use a fixture containing nonempty wrapper and metadata state. Committed recovery and post-restart source compare full relationshipEvidence exactly, alongside events and metrics, including export-unavailable before/after-COMMIT cases.
+
+v3 collection, independent-oracle execution, and focused expected-RED receipt are NOT RUN until the coordinator releases a resource slot. Crash/typecheck/build/aggregate/install gates remain NOT RUN. Earlier v2 missing-capture RED proves missing integration only; it does not prove rollback hooks, decoder reachability, wrapper substitutions, or crash assertions execute correctly. These require implementation-present execution plus the relevant separately authorized build.
+
+## v3 authorized pre-code execution receipt
+
+After explicit resource release, all stages ran serially with512MiB heap cap, one test worker,600s per-stage timeout and existing dependencies only. Frozen tests and all218 dependency-composition files are unchanged. Exact dist hashes are in execution-v3.json.
+
+- Focused:79 cases,3 independent oracle passes,76 feature failures,2.23s. The new nonempty-wrapper literal HMAC/pending/completed oracle passes alongside the earlier ordinary usage/process/cumulative oracles.74 cases stop at missing Codex durable capture; scanner routing observes full replay4 instead of suffix2; real prior-schema5 seeding/reopen succeeds then Codex candidate routing rejects INVALID_ARGUMENT.
+- Exact-composition build:PASS, exit0. This is a build receipt, not typecheck or aggregate proof.
+- Crash:6 failures in0.936s. Four existing-generation cases stop at missing capture. Two first-generation children exit1 before any staging marker or SIGKILL. diagnose-crash-v3.mjs runs the unchanged frozen child template with the same six-record wrapper fixture and confirms the current source-ingest Codex provider guard throws INVALID_ARGUMENT for both phases. No import/missing-dist failure occurred.
+- Actual reachable coverage is source cold-ingestion, independent literals, real historical seed/migration, current missing capture and routing rejection. Rollback injection, positive commit control, decoder reachability, wrapper projection substitution, successful resume and real crash recovery assertions remain unexecuted behind the missing feature. Do not describe the failed crash tests as successful kill/recovery evidence.
+
+All execution is terminal. No production edits, dependency installation, Project writes or publication occurred. Current-main reconciliation remains a prerequisite to production. Typecheck, aggregate, installed artifact and implementation-present acceptance gates remain pending.
+
+
+## Refreshed foundation and implementation gate (2026-10-02 15:45 UTC)
+
+The preceding pre-code receipts are historical. The coordinator accepted the explicit local dependency foundation tree `837523490ef2521ddf8db4ba99fc4c9deea1ed40` (235 files), combining qualified PR40 tree `f5e54b08a8eefdec5cb34a3fe2b4206198fe9689` and PR38 tree `36653175fd8eeee060635bc855601570706d6cee` on main `106d6c1329499fdb57e63c7aad3f8aac78987249`. Independent foundation review is CLEAR; the isolated materialization independently reproduces all hashes, modes and the exact Git tree. PR40 remote integration publication remains pending and must be pinned before publication; no main merge is authorized.
+
+The [Project child](https://github.com/users/WhiteKiwi/projects/2?pane=issue&itemId=260733853) records and reload-verifies the actual development owner, coordinator, branch, 14-path reservation, dependency decision and next Verify. Earlier planning ownership is retained as history. The coordinator released the four frozen PR40 production paths for this separate Codex-only slice. All five independent v3 tests retain their exact frozen bytes (freeze SHA256 `25661cd8f8a79151423284e128a2689bc78489bb956ee90b13ab3fdb623efd90`). The historical schema5 input has 51 dist files independently matched to the retained legacy manifest.
+
+Refreshed runtime gates are NOT RUN. Before production edits, run the coordinator-authorized serial bounded focused precode gate, exact-foundation build and six crash prerequisite cases, and report the receipts for release. The three independent oracles must pass; missing-feature failures must be distinguished from harness errors. Missing capture or provider guards are never successful SIGKILL/crash-recovery evidence.
+
+
+## Reviewed minimal provider-guard amendment (2026-10-02 15:53 UTC)
+
+Implementation-present execution exposed a previously unreachable Claude-only guard in `source-prefix.ts:167`; the coordinator independently confirmed it. The saved/reloaded Project scope is now 15 paths, adding this fifth production path for only the explicit Claude-or-Codex allowlist condition. Reader/proof algorithms, framing, descriptor checks and errors are otherwise unchanged. The original v3 run remains retained: 28 PASS/51 FAIL, with suffix guard failures and two independent test precondition defects. Any fixture amendment is independently authored, reviewed and frozen; production validation is not relaxed to satisfy an invalid fixture.
+
+
+## Reviewed fixture and inherited-test amendment (2026-10-02 16:00 UTC)
+
+The Project claim was saved/reloaded with 16 reserved paths before application. The added inherited tests/claude-resume.test.ts path changes only one mixed test title and its two obsolete Codex checkpoint-absence assertions: committed revision1/2 and validated checkpoint ordinal1/2 are now required. All unchanged-Claude assertions and explicit cold Codex two-ingest calls are retained. Original inherited receipt174/175 remains recorded.
+
+Independent v4 test patch SHA256 `944a350d1a01aa45f24bd3325c91df8c1e6dcc364a5221ae8ff0462c46bcf924` and freeze SHA256 `19e8a9b7d4cdaae75abc4b13ae4e157039cbf935d427b923ba3cea44030d7574` were reviewed and applied exactly. Fixes align only the unchanged-scan seed to16MiB and substitute a valid closed command pattern; two direct suffix provider allowlist controls are added. Original v3 source and its77/79 receipt are preserved. No production changes accompany these amendments.
+
+
+## Implementation-present qualified slice (2026-10-02 16:08 UTC)
+
+Five production files are independently reviewed CLEAR and retain the frozen source hashes. The only source-prefix change admits the already typed Codex provider in the suffix allowlist; all proof framing, descriptor checks and reader algorithms remain byte-identical. Schema/migrations, Codex adapter/codec, Claude parser/search and public readiness flags are unchanged. Explicit ingestSourceFile remains a byte-zero replay for either provider and now captures optional Codex state; scan and candidate-derived ingestion may genuinely resume.
+
+The independently reviewed v5 amendment adds a real aggregate checkpoint-budget witness and bounded SQL payload-read witnesses. The budget case uses the actual unmocked exporter: the last successful token is within65,536 bytes of the4,194,304-byte ceiling; one appended record causes real checkpoint_budget refusal while accepted public rows stay below existing row/aggregate limits. Original-CAS ingestion commits revision2 and atomically clears optional state with cold-equal evidence. SQL positive control selects the payload once; actual oversized payload with truthful or understated recorded bytes selects no raw token and never calls the decoder.
+
+Developer receipts on the exact frozen candidate: v4 focused plus inherited Claude/store/reader/cache256/256 PASS; v5 Codex focused85/85 PASS, real Codex crash6/6 PASS, inherited Claude crash5/5 PASS, combined96/96 in14.74s. Exact-candidate build PASS. All crash cases require real staging markers, requested SIGKILL before/after COMMIT and idempotent reopen/restart; Codex compares full nonempty metadata/wrapper relationships and public metrics to cold replay. Code and test hashes matched before and after; exact dist hashes were retained. Earlier missing-capture crash failures remain prerequisite diagnostics and are not reused as successful evidence.
+
+An authentic older positive Codex parser version is NOT APPLICABLE: current parser version is1. Do not fabricate version0 or a future version2 as historical evidence. Valid old adapter-limits mismatch replay and bad-seal precedence are exercised. Historical schema5 source migration uses the verified51-file PR38 dist, never the current schema6 build.
+
+Aggregate, artifact, installed CLI and dependency-final publication qualification remain pending coordinator release. No main merge, global readiness promotion, broad13-stream acceptance, performance or savings claim follows from this bounded slice.
+
+
+## Final original-foundation qualification (2026-10-02 16:42 UTC)
+
+This later receipt supersedes the pending aggregate state above; earlier failed and partial receipts remain history. The saved/reloaded Project scope expanded to18 paths solely for the independently reviewed tests/scan-run.test.ts and tests/source-relationship-integration.test.ts amendment. Exact patch SHA256 `b567fe441039b0185b74721865df42c0d5a8c35f190f9d91dc64e58c733f8ba9` adapts legacy API hooks to authenticated checkpoint-aware calls, requires actual hook hits, distinguishes whitespace-only suffix from complete-record ingestion, and models legitimate historical state without a checkpoint. Five retained-seal mutation controls separately require hard failure without reparsing or repair. No production changes were made.
+
+Initial full run1,842 PASS/17 FAIL/41 SKIP remains recorded. Reviewed v6 affected suites now74 PASS/13 optional SKIP, and full aggregate1,864 PASS/41 SKIP/0 FAIL across66 files (65 passed/1 skipped),215.66s. All18 pre-run file hashes matched after the gate. Typecheck, exact candidate build and standard artifact verifier PASS. The retained npm artifact has55 files and SHA256 `6d54d13e977d5eed3c685ea0f7d3dcb7c1d7d86cddc52cc55ae0d26cc103cc44`.
+
+Fresh exact235-file foundation tree837523490ef2521ddf8db4ba99fc4c9deea1ed40, candidate and retained installed binary passed147 three-way CLI comparisons/441 subprocesses over10 synthetic fixtures. Retained installed SDK independently proves actual close/reopen, exactly two suffix adapter calls at ordinals2/3, cold-equal full public evidence, then zero adapter calls and unchanged rows on repeat.
+
+These gates used Node24.19.0, pinned pnpm10.33.0, one test worker,512MiB heap,600-second stages and explicit writable npm cache.41 optional cases remain skipped; no raw-log pilot, broad13-stream acceptance, readiness promotion or performance claim is made. Current-main6f toolchain/docs foundation reconciliation and publication are separate coordinator-owned gates and have not been applied to this candidate.
+
+
+## Current dependency composition and hosted seed gate (2026-10-02 16:56 UTC)
+
+After original-foundation qualification, the coordinator approved a dependency-only refresh using published PR40 head `f00f3083b9eb7901585a69492626c68143fde292` (tree `9a007e2aca599a4af7eb11186f92ee7c40a7043f`) and PR38 head `628d6eaa6ceb5ed5a2d71a860325dd5bb269a347` (tree `8c222ab0752ad8fc7c51d9162cbc031703ff8f64`), both on main `6f7a538d1806a1973a647fb16ab6c1fecc74bd49` and pnpm10.34.6. Their exact235-file foundation is tree `7b8c7f6598a830d5a9b31e4467dfc7d192898dc4`. All source/tests/scripts/lock bytes remain identical to the original qualified foundation; complete dependency document suffixes are preserved. All five feature production and eight test/helper paths remain byte-identical to the qualified18-path candidate.
+
+The saved/reloaded scope is19 paths, adding only `.github/workflows/ci.yml` for independently reviewed historical seed provisioning (patch SHA256 `bf1d28d65eaece783c14ee913dea05a40a93d9cb1aa160400da0d8f5f9544cc1`). The existing pinned checkout action retrieves immutable original PR38 `5614a3107b53022f29ea32d44ba83f533fd58b92`/tree `c1361a2fea2386ced7c30f88da82ce421017dca6` with persist-credentials:false. It verifies those identities, moves the checkout outside current test discovery, installs its unchanged npm lock with scripts disabled, builds under the matrix runtime and asserts schema5 before setting AGENTPROF_PRE_RESUME_DIST. The mandatory legacy test is not skipped or replaced with current schema6. Existing candidate checkout/cwd, runtime matrix, unsupported-Node22 guard and contents:read permissions are unchanged; no new credentials or secrets.
+
+The1,864-pass/41-skip local full receipt and installed/artifact checks qualify the unchanged source/test slice on the original pnpm10.33 foundation. They are not relabeled as fresh hosted pnpm10.34.6 results. The coordinator must verify new hosted full/artifact and historical-seed execution on the published feature head. No duplicate local full run is claimed for the toolchain/document-only refresh. Planned publication uses a dependency merge commit with the exact PR40/PR38 parents and then a feature commit; the draft PR is stacked on feat/claude-source-resume with the PR38 prerequisite explicit. No main merge or readiness/performance promotion is authorized.
+
+
+## Merged Codex prerequisite correctness refresh (2026-10-02 17:18 UTC)
+
+Publication guard observed PR38 merged at main `39070c8a1214215fea6337677b19cc9fab193a05` (tree `048f8d71c1c06ce1941b36f299db6f049f016ddd`), after its final head `32791e04051e696c8edb6f72c4b15e1783e07a18` added constructor-order validation for token-count objects and nine additive regressions. The earlier19-path candidate is superseded and must not be published. This is a production dependency correction, so prior full-suite receipts do not qualify it without new execution.
+
+A new exact235-file foundation tree `52f296dea7853cab587dda78fd4c494e9169feaa` composes verified merged main with preserved PR40 head `f00f3083b9eb7901585a69492626c68143fde292`. The incoming checkpoint codec and regression bytes are exact merged-main blobs; all earlier144 checkpoint cases and nine additions are retained. Complete current-main Codex document suffixes and PR40 documents are preserved. The existing19-path feature delta remains unchanged in production/tests, and the authentic historical5614a310 schema5 CI seed remains immutable. No Project write or remote publication is part of this preparation.
+
+New codec, durable continuation, real crash, typecheck/build/full and artifact qualification is required. Local execution uses retained pnpm10.33.0, explicitly separate from mandatory new hosted pnpm10.34.6 matrix qualification. No weaker decoder, fixture normalization, skipped mandatory history gate or readiness/performance promotion is introduced.
+
+
+## Final merged-prerequisite qualification (2026-10-02 17:31 UTC)
+
+The corrected merged Codex prerequisite now has fresh local qualification; this later entry supersedes the pending gate immediately above. Node24.19.0 with retained pinned pnpm10.33.0 ran typecheck/build,153 checkpoint codec tests (144 retained plus9 incoming),85 durable-source cases and11 actual crash cases:249/249 PASS. Standard55-file artifact verification and a newly packed/installed SDK close/reopen witness PASS, with exactly2 appended adapter calls at ordinals2/3, then0 calls and identical rows on unchanged reuse. Initial pnpm automatic10.34.6 provisioning failed before checks in an unavailable default tool directory; that harness receipt is retained separately. The authorized local invocation explicitly sets npm_config_manage_package_manager_versions=false, without editing repository pins.
+
+An independently authored additive store regression (patch SHA256 `311c94fa35cc89a73bba8f9695a359a75b998ef4f89e229755e7bab365dfd582`) establishes a genuine exported positive control, then independently resigns a token-count field-order mutation and its outer generation seal while leaving public rows unchanged. The old codec accepts it (expected RED); the merged codec rejects it at direct DB and scanner boundaries before adapter replay or writes (GREEN), preserving all rows. The approved amendment touches only the already owned codex-source-store test; all earlier tests and production bytes are retained. Developer store suite36/36 PASS.
+
+Final full aggregate:1,874 PASS,41 explicit optional SKIP,0 FAIL,1915 total across66 files (65 passed/1 skipped),200.25s. All241 pre/post source/test/document hashes match; final documentation append is evidence-only. The prior merged1873/41 run and original1842/17/41 failure remain historical receipts rather than being relabeled. One worker,512MiB heap,600-second stage caps and explicit writable npm cache were used.
+
+Publication proposal remains feature branch feat/codex-source-resume based on feat/claude-source-resume. Foundation parents are preserved PR40 `f00f3083b9eb7901585a69492626c68143fde292` and already merged main `39070c8a1214215fea6337677b19cc9fab193a05`; PR38 is now a merged prerequisite, not an unmerged branch assumption. Exact-head hosted pnpm10.34.6 matrix/full/artifact and immutable5614 schema5 provisioning remain required after publication. This local preparation performed no remote or Project writes. No main merge, broad real-log acceptance, public readiness promotion or performance claim is made.
+
+
+### Merged-main Codex durable qualification — 2026-10-03 UTC
+
+The existing nineteen-path Codex durable delta is now composed directly on merged main `8e3118155038a04adcf08f97113186af4243bc2d`, preserving all upstream source, tests, document history and modes. All five production files, eight test files and the immutable schema5 CI provisioning remain byte-identical to the previously reviewed feature. The intended branch is `feat/codex-source-resume`, with PR base `main`; a stacked prerequisite merge is no longer needed.
+
+The exact composed source passed typecheck/build, **250 focused tests** including genuine schema5 migration, strict count-order rejection and six Codex/five Claude crash cases, then **2,159 passed / 57 explicit optional or platform skips / 0 failures** across79 test files. The full run took187.10 seconds. The61-file artifact gate passed. A freshly packed, script-disabled installed artifact proved actual reopen, two suffix ingestion calls at ordinals2/3, zero unchanged ingestion calls, exact cold public projection and unchanged reuse rows. A separately built exact-main control, candidate and installed CLI matched147 comparisons/441 subprocess calls across ten synthetic provider fixtures, including help/version and retained store bytes/modes.
+
+Local qualification used Linux x64 Node24.19.0 and retained pnpm10.33.0 with package-manager auto-selection explicitly disabled; the repository pin remains10.34.6. All265 source bytes/modes were unchanged after execution; this evidence append follows that freeze. One interrupted retained-install attempt has no success claim; its partial state was inspected and one authorized exact retry passed. Previous receipts remain historical. Exact-head hosted pnpm10.34.6 matrix/full/artifact qualification, publication and merge remain pending. These synthetic results do not establish real-user coverage, performance savings, broader P4 completion or either public readiness flag.

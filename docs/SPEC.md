@@ -314,3 +314,8 @@ Immediately continue separate post-SPEC research over all nineteen original path
 ### PR #44 responsive-resolution amendment (2026-10-03)
 
 Browser reproduction confirms that a positive interval with normalized SVG width2 can occupy only0.633972 CSSpx at a375px viewport while the original conditional scale guidance is absent. Available charts containing positive displayed intervals must provide static responsive-resolution guidance at any viewport. Explain that scaling can make small positive intervals hard to resolve and that the exact millisecond table remains authoritative. This is a general limitation, not runtime pixel detection. Preserve exact native S/U/excess, full axis, row coordinates/widths, zero/failure/unknown states, caps and script-free privacy/CSP contracts. Do not widen positive bars or add viewport-dependent JavaScript.
+
+
+## Ordinary Codex durable-source continuation (2026-10-02)
+
+Ordinary Codex sources may capture optional bounded durable state and continue from a committed complete-LF boundary after exact previous-byte and generation authentication. Restored public evidence, metadata and wrappers must equal cold replay. Export-unavailable remains an accepted source. Incompatible valid interpretations replay with original CAS; corruption is a hard failure. Both readiness flags remain false. See [P4-CODEX-RESUME](P4-CODEX-RESUME.md).

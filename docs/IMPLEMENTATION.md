@@ -454,3 +454,13 @@ This contributor did not run typecheck, build, pack/install, full suite, browser
 ### PR #44 aggregate qualification outcome (2026-10-03)
 
 The corrected frozen source passed75-file full qualification (2081PASS/38 explicit skips),32 genuine split-baseline cases and all7 actual Linux process cases, with2119 unique cases qualified across executions. Enabled-prepack/script-disabled installation and61-file artifact controls pass;59 runtime byte/mode maps remain identical. Seven corrected synthetic browser contexts and five raw-deleted/store-preserving CLI controls pass. Only append-only evidence follows the source freeze. [P6-INVOCATION-TIMELINE](P6-INVOCATION-TIMELINE.md) records exact environments, filtered/optional/platform exclusions and physical-device/AT/print/native-GUI NOT RUN boundaries. Hosted final-head and merge/main CI remain pending at this revision.
+
+
+## Ordinary Codex durable-source continuation (2026-10-02)
+
+Reuse the schema6 checkpoint transaction and existing same-descriptor source-prefix proof unchanged. Add minimal Codex/Claude dispatch in source-checkpoint-validation, source-store, source-ingest and scan-run only. Preserve Claude limits/seal framing byte-for-byte; select Codex defaults, codec and distinct domain strings. Authenticate bounded SQL payload and outer generation before compatibility decisions, then validate complete-record position and restored public projection including wrappers. Every candidate-derived write and unchanged confirmation retains original revision and predecessor even when export is unavailable or a checkpoint is absent. No codec, schema, prefix reader or generic provider registry change. Implement store dispatch first, then scanner capture/restore routing under this contract. Frozen independent v3 tests remain unchanged.
+
+
+### Minimal suffix-provider guard amendment
+
+The original four-path implementation boundary omitted the existing Claude-only allowlist in source-prefix.ts. Coordinator review authorizes only admitting the already typed Codex provider in that condition; exact proof and descriptor mechanics remain unchanged. Project scope is amended to 15 paths before editing. Direct positive Codex and negative unknown-provider validation plus inherited reader tests are required.

@@ -22,6 +22,25 @@ jobs:
             [tools]
             node = "${{ matrix.node }}"
             pnpm = "10.34.6"
+      - name: Check out immutable schema5 Codex seed
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: WhiteKiwi/agentprof
+          ref: 5614a3107b53022f29ea32d44ba83f533fd58b92
+          path: .ci/pre-resume
+          persist-credentials: false
+      - name: Build verified historical schema5 seed outside candidate test discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C .ci/pre-resume rev-parse HEAD)" = 5614a3107b53022f29ea32d44ba83f533fd58b92
+          test "$(git -C .ci/pre-resume rev-parse 'HEAD^{tree}')" = c1361a2fea2386ced7c30f88da82ce421017dca6
+          legacy="$RUNNER_TEMP/agentprof-pre-resume"
+          mv .ci/pre-resume "$legacy"
+          npm --prefix "$legacy" ci --ignore-scripts --no-audit --no-fund --cache "$RUNNER_TEMP/agentprof-pre-resume-npm-cache"
+          npm --prefix "$legacy" run build
+          AGENTPROF_PRE_RESUME_DIST="$legacy/dist" node --input-type=module -e 'import { pathToFileURL } from "node:url"; const m = await import(pathToFileURL(process.env.AGENTPROF_PRE_RESUME_DIST + "/db/database.js")); if (m.DATABASE_SCHEMA_VERSION !== 5) throw new Error("Historical seed must be schema5");'
+          echo "AGENTPROF_PRE_RESUME_DIST=$legacy/dist" >> "$GITHUB_ENV"
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm check
 
