@@ -18,7 +18,7 @@ function sessionSelection(value: string): string {
 }
 export function validateHistoryArguments(options: HistoryArguments) {
   if (!Array.isArray(options.source) || options.source.length < 1 || options.source.length > HISTORY_LIMITS.sources
-    || options.source.some(s => typeof s !== "string") || new Set(options.source).size !== options.source.length
+    || Array.from(options.source).some(s => typeof s !== "string") || new Set(options.source).size !== options.source.length
     || options.json !== undefined && typeof options.json !== "boolean"
     || options.codexRoot !== undefined && (!Array.isArray(options.codexRoot) || options.codexRoot.length !== 0)
     || options.claudeRoot !== undefined && (!Array.isArray(options.claudeRoot) || options.claudeRoot.length !== 0)
