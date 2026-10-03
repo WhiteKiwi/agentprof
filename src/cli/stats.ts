@@ -14,10 +14,11 @@ import { formatSourceInvocationOverlap } from "./invocation-overlap.js";
 
 import type { SourceSearchRecurrenceAnalysis } from "../analysis/source-search-recurrence.js";
 import { formatSourceSearchRecurrence } from "./search-recurrence.js";
+import { formatRecoveryDistribution } from "./recovery-distribution.js";
 import type { SourceRecoveryAnalysis } from "../analysis/source-recovery.js";
 import { formatSourceRecovery } from "./recovery.js";
 
-export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean; readRevisits?: boolean; invocationOverlap?: boolean; searchRecurrence?: boolean; recovery?: boolean }>;
+export type StatsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; listSources?: boolean; source?: string; failures?: boolean; readRevisits?: boolean; invocationOverlap?: boolean; searchRecurrence?: boolean; recovery?: boolean; recoveryDistribution?: boolean }>;
 export type StatsResult = Readonly<
   { mode: "list_sources"; catalogue: SourceCatalogue }
   | { mode: "selected_source"; sourceFreshnessChecked: false; summary: SourceSummary }
@@ -32,6 +33,8 @@ export function validateSourceSelection(value: string): string {
   catch { throw new SafeError("INVALID_ARGUMENT"); }
 }
 export function validateStatsArguments(options: StatsArguments): string {
+  if (options.recoveryDistribution !== undefined && typeof options.recoveryDistribution !== "boolean") throw new SafeError("INVALID_ARGUMENT");
+  if (options.recoveryDistribution === true && (options.searchRecurrence || options.invocationOverlap || options.readRevisits || options.failures || options.listSources || options.source === undefined)) throw new SafeError("INVALID_ARGUMENT");
   if (options.recovery !== undefined && typeof options.recovery !== "boolean") throw new SafeError("INVALID_ARGUMENT");
   if (options.recovery === true && (options.searchRecurrence || options.invocationOverlap || options.readRevisits || options.failures || options.listSources || options.source === undefined)) throw new SafeError("INVALID_ARGUMENT");
   if ((options.codexRoot?.length ?? 0) || (options.claudeRoot?.length ?? 0)) throw new SafeError("INVALID_ARGUMENT");
@@ -62,6 +65,7 @@ export async function runStats(options: StatsArguments): Promise<StatsResult> {
     const source = store.readSource(options.source!);
     if (source === null) throw new SafeError("SOURCE_NOT_FOUND");
     if (analyzeRecovery !== null) return Object.freeze({ mode: "selected_source_recovery", analysis: analyzeRecovery(source) });
+    if (options.recoveryDistribution === true) return Object.freeze({ mode: "selected_source_recovery_distribution", text: formatRecoveryDistribution((await import("../analysis/source-recovery.js")).analyzeSourceRecovery(source)) });
     if (analyzeSearchRecurrence !== null) return Object.freeze({ mode: "selected_source_search_recurrence", analysis: analyzeSearchRecurrence(source) });
     if (analyzeInvocationOverlap !== null) return Object.freeze({ mode: "selected_source_invocation_overlap", analysis: analyzeInvocationOverlap(source) });
     if (analyzeReadRevisits !== null) return Object.freeze({ mode: "selected_source_read_revisits", analysis: analyzeReadRevisits(source) });
@@ -165,6 +169,7 @@ function formatSelectedSource(s: SourceSummary): string[] {
 export function formatStatsResult(result: StatsResult, json: boolean): string {
   if (json) return JSON.stringify({ schema: "agentprof.cli/v1", ok: true, command: "stats", result }) + "\n";
   if (result.mode === "selected_source_recovery") return formatSourceRecovery(result.analysis);
+  if ((result as {mode:string}).mode === "selected_source_recovery_distribution") return (result as unknown as {text:string}).text;
   if (result.mode === "selected_source_search_recurrence") return formatSourceSearchRecurrence(result.analysis);
   if (result.mode === "selected_source_read_revisits") return formatSourceReadRevisits(result.analysis);
   if (result.mode === "selected_source_invocation_overlap") return formatSourceInvocationOverlap(result.analysis);
