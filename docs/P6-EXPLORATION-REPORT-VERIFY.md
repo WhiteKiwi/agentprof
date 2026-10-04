@@ -66,3 +66,39 @@ The first expanded suite ran 30 passing and two failing new cases. One missing-b
 Publish the locally qualified UTF-8 product/test/document delta using a branch-only mechanical transport when ordinary git network access is unavailable. Validate the decompressed patch SHA256, its exact six-path product/test/qualification allowlist and every resulting Git blob. Remove the staging payload, the publisher workflow and the temporary snapshot workflow from the final tree, then perform only a non-force push to `feat/exploration-unified-report`. A concurrent remote branch change must fail rather than be force-replaced. Keep the pre-code plan unchanged. No credentials, `.git`, dependency directories, environment files, generated private stores or raw logs are part of the patch.
 
 Exact published-head Foundation results and the actual tested synthetic-merge SHA are recorded in the PR after observation, not preclaimed here. Independent maintainer review and latest-main composition remain required before authorized merge. Do not close broad #6/#7 acceptance. The directory-membership and subsequent automatic deletion/move integration stay with issue #5's owner; native browser/usefulness/performance/release acceptance remain separate.
+
+## Maintainer latest-main qualification — 2026-10-04 KST
+
+Actual153 main e58bf63b is composed, with original report production unchanged.
+Parent and independent /root/exploration154_research reviewed all7 author paths
+and all463 inherited paths outside them. The genuine old unified comparison
+failed2 provider controls in actual selected126PASS/2FAIL/0SKIP. After scoped
+SPEC, independent findings and reviewed pre-code ea578b2, separately claimed
+/root/directory153_development changed only usage-timing-composition.test.ts.
+
+The strict comparator asserts exactly one correctly positioned new nav anchor,
+one exact native assessment/reason overview row, one native exploration section
+and the exact old/new pattern-detail notice. Removing only those declared
+changes leaves every old HTML byte unchanged. Only stored result.bytes or fresh
+result.report.bytes changes, equals its own actual HTML length, and is replaced
+for complete canonical JSON/status/stderr equality. All original non-unified
+outputs and genuine original6/current7-copy/replay/reuse/append/checkpoint/private
+bytes assertions remain. Each real unified output executes21 HTML,13 receipt and
+2 old-output inert-copy rejection guards, including unrelated content/fields,
+key-order/duplicate-key/status/stderr corruption. These are assertions within
+the same cases, not additional unique cases.
+
+Actual Node24.21.0/macOS arm64 typecheck/build PASS; normal-registry scripts-disabled
+installation/artifact verifier PASS140 files,138 compiled files byte-equal.
+The same six selected suites pass128PASS/0FAIL/0SKIP, all42 new plus86 retained.
+Adding explicit built/actualinstalled parity on all8 genuine provider reports
+was verified by the whole affected-file36PASS/0FAIL/0SKIP retry. Parent matched
+all36 identical case IDs and every other frozen input:128 unique selected
+passing cases, not164 and not a new full run. Both complete provider controls
+reach their later private-byte/replay/resume assertions. All three production
+blobs remain author596bd-identical. Final8 paths, including all OCR-excluded
+docs/tests, are independently reviewed; the test-only Medium finding is resolved.
+Earlier author failures, loopback/Linux/browser limitations and maintainer RED
+receipt remain preserved. Exact final-source full hosted CI/security and actual
+merge/tree/parents/main CI are subsequent gates; own152 closure follows them.
+Broad6/7/native/release acceptance is not completed by this slice.
