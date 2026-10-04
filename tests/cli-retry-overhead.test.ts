@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { assertScanHelpEnrollmentDelta } from "./scan-help-compatibility.js";
+import { assertTopHelpDirectoryDelta } from "./top-help-compatibility.js";
 import { temporaryDirectory } from "./helpers.js";
 import { bytes, call, meta, output, positive, result, stored, structured, turn } from "./retry-overhead-fixture.js";
 
@@ -49,7 +50,8 @@ describe.skipIf(!baseline)("authentic current immediate-predecessor compatibilit
   it("preserves all existing commands/modes and removes only two exact retry help rows", async () => {
     const x = await stored(), before = await bytes(x.data);
     for (const args of [["--version"], ["--help"], ["scan", "--help"], ["insights", "--help"], ["report", "--help"], ["open", "--help"]]) {
-      if (args[0] === "scan") assertScanHelpEnrollmentDelta(invoke(binary, x.data, args), invoke(baseline!, x.data, args));
+      if (args[0] === "--help") assertTopHelpDirectoryDelta(invoke(binary, x.data, args), invoke(baseline!, x.data, args));
+      else if (args[0] === "scan") assertScanHelpEnrollmentDelta(invoke(binary, x.data, args), invoke(baseline!, x.data, args));
       else expect(invoke(binary, x.data, args)).toEqual(invoke(baseline!, x.data, args));
     }
     for (const args of [["stats", "--list-sources"], ["stats", "--source", x.sourceId], ["insights", "--source", x.sourceId], ...["--failures", "--read-revisits", "--invocation-overlap", "--search-recurrence", "--recovery"].map(flag => ["stats", "--source", x.sourceId, flag])]) for (const format of [[], ["--json"]]) expect(invoke(binary, x.data, [...args, ...format])).toEqual(invoke(baseline!, x.data, [...args, ...format]));

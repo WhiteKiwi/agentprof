@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "provenance": {
+    "repository": "WhiteKiwi/agentprof",
+    "sourceCommit": "4890723842cdb9d22a19da3f05f90aa5d9278807",
+    "actualMainCommit": "d1b84f166eb33f11d5b7a22ca407dbf14226fd24",
+    "tree": "97d7bc1105ccdefe0bff75a26b69ab47d10e6dbb",
+    "command": [
+      "--help"
+    ],
+    "helpWidthColumns": 80,
+    "commanderVersion": "15.0.0",
+    "entrySha256": "2d48dfa2052410a14310d61e9f6e6f705d6e4627106f48cef80a32f48143a3e8",
+    "cliMainSha256": "3ebd63280f2a9686babf911fcb334b99aa1a7c80fcd7e73177b12c6261f35925",
+    "compiledManifestSha256": "664ec770127006bfef1e8230daad079370a86dd90163b0554092171d2cbb7aff",
+    "compiledManifestDigestEncoding": "UTF-8 compact JSON of relative-path/hash map, keys sorted, no trailing newline",
+    "compiledManifestEntries": 134,
+    "stdoutSha256": "6fb0d3740a4836abed7bf677c2e81870ba6ae45d43a25cd038930fdb60cd89f2",
+    "stdoutBytes": 1677,
+    "fixtureIs": "Inert exact genuine installed D1 top-help capture; not a recreated historical binary or a replacement for any named optional baseline."
+  },
+  "receipt": {
+    "status": 0,
+    "stdout": "Usage: agentprof [options] [command]\n\nLocal agent profiling. Development build; bounded scan and selected-source\nstats/insights. Selected-source offline reports are supported; global\naggregation is pending.\n\nOptions:\n  -V, --version              output the version number\n  --json                     emit structured results and errors\n  --data-dir <directory>     override local private data directory\n  --codex-root <directory>   replace Codex input roots (repeatable) (default:\n                             [])\n  --claude-root <directory>  replace Claude input roots (repeatable) (default:\n                             [])\n  -h, --help                 display help for command\n\nCommands:\n  scan [options]             Collect explicit --codex-root/--claude-root inputs\n                             only (at least one required)\n  stats [options]            Read one stored source prefix or list up to 64\n                             sources (read-only)\n  insights [options]         Read Slow Tool evidence from one stored source\n                             prefix (read-only)\n  patterns [options]         Inspect one stored source's observed validation\n                             cycles and evidence-gated patterns\n  history [options]          Reconcile explicit stored sources and show dated\n                             native-call intervals (read-only)\n  report [options]           Write a new offline HTML report from one stored\n                             source or explicit input file\n  open <file>                Request the system opener for one explicitly\n                             trusted local HTML file\n  help [command]             display help for command\n",
+    "stderr": ""
+  }
+}

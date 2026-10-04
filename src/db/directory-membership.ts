@@ -60,6 +60,38 @@ export function createDirectoryMembershipStore(database: DatabaseSync, context: 
     try { database.exec("BEGIN"); began = true; const value = pinned(rootId); database.exec("COMMIT"); began = false; return value; }
     catch (error) { if (began) try { database.exec("ROLLBACK"); } catch { /* Owned read only. */ } if (error instanceof SafeError && error.code === "INVALID_IDENTITY_KEY") throw error; throw new SafeError("DATABASE_ACCESS_FAILED"); }
   }
+  /** Authenticate one root inside an already-owned read or write snapshot. */
+  function readInTransaction(rootId: string): DirectoryMembership | null {
+    identity(rootId, "source", key);
+    if (!database.isTransaction) throw new SafeError("DATABASE_TRANSACTION_FAILED");
+    try { return pinned(rootId); }
+    catch (error) {
+      if (error instanceof SafeError && error.code === "INVALID_IDENTITY_KEY") throw error;
+      throw new SafeError("DATABASE_ACCESS_FAILED");
+    }
+  }
+  /** Removal-only maintenance; the caller owns commit/rollback and all source eligibility checks. */
+  function removeMembersInTransaction(rootId: string, expectedRevision: number, removedSourceIds: readonly string[]): DirectoryMembership {
+    const expected = integer(expectedRevision, 1);
+    const removed = new Set(rows(removedSourceIds, DIRECTORY_MEMBERSHIP_LIMITS.members).map(value => identity(value, "source", key)));
+    if (removed.size !== removedSourceIds.length) throw new SafeError("INVALID_RECORD");
+    const prior = readInTransaction(rootId);
+    if (!prior || prior.revision !== expected) throw new SafeError("DATABASE_TRANSACTION_FAILED");
+    const known = new Set(prior.members.map(member => member.sourceId));
+    if ([...removed].some(sourceId => !known.has(sourceId))) throw new SafeError("INVALID_RECORD");
+    if (removed.size === 0) return prior;
+    const members = Object.freeze(prior.members.filter(member => !removed.has(member.sourceId)));
+    const next: DirectoryMembership = Object.freeze({ ...prior, revision: integer(prior.revision + 1, 1), members });
+    const erase = database.prepare("DELETE FROM directory_membership_members WHERE root_id=? AND source_id=?");
+    for (const sourceId of removed) if (erase.run(rootId, sourceId).changes !== 1) throw new SafeError("DATABASE_TRANSACTION_FAILED");
+    const changed = database.prepare("UPDATE directory_membership_roots SET revision=?,member_count=?,manifest_bytes=?,seal=? WHERE root_id=? AND revision=?")
+      .run(next.revision, members.length, bytes(members), sealed(context, next), rootId, expected);
+    if (changed.changes !== 1) throw new SafeError("DATABASE_TRANSACTION_FAILED");
+    // Retain the physical root anchor and monotonically increasing revision even when empty.
+    const verified = readInTransaction(rootId);
+    if (!verified || verified.revision !== next.revision) throw new SafeError("DATABASE_ACCESS_FAILED");
+    return verified;
+  }
   /** Internal composition: authenticate every bounded root inside the caller's transaction. */
   function readAllForMutation(): readonly DirectoryMembership[] {
     if (!database.isTransaction) throw new SafeError("DATABASE_TRANSACTION_FAILED");
@@ -131,5 +163,5 @@ export function createDirectoryMembershipStore(database: DatabaseSync, context: 
       throw new SafeError("DATABASE_ACCESS_FAILED");
     }
   }
-  return Object.freeze({ read, capture, readAllForMutation });
+  return Object.freeze({ read, capture, readAllForMutation, readInTransaction, removeMembersInTransaction });
 }
