@@ -44,7 +44,7 @@ function rejectSidecars(path: string): void {
 function verifySchema(database: DatabaseSync, key: string): void {
   if (database.prepare("PRAGMA journal_mode").get()?.["journal_mode"] !== "delete") throw new SafeError("DATABASE_MODE_UNSUPPORTED");
   if (database.prepare("PRAGMA user_version").get()?.["user_version"] !== DATABASE_SCHEMA_VERSION) throw new SafeError("DATABASE_SCHEMA_INCOMPATIBLE");
-  const markers = database.prepare("SELECT CASE WHEN typeof(version)='integer' THEN version ELSE NULL END AS version FROM schema_migrations ORDER BY version LIMIT 8").all();
+  const markers = database.prepare("SELECT CASE WHEN typeof(version)='integer' THEN version ELSE NULL END AS version FROM schema_migrations ORDER BY version LIMIT 9").all();
   if (markers.length !== DATABASE_SCHEMA_VERSION || markers.some((r, i) => r["version"] !== i + 1)) throw new SafeError("DATABASE_SCHEMA_INCOMPATIBLE");
   const settings = database.prepare("SELECT substr(key,1,32) AS key, length(CAST(key AS BLOB)) AS n, CASE WHEN typeof(value)='integer' THEN value ELSE NULL END AS value FROM settings ORDER BY key LIMIT 3").all();
   if (settings.length !== 2 || settings[0]?.["key"] !== "key_version" || settings[1]?.["key"] !== "normalization_version"
@@ -54,7 +54,8 @@ function verifySchema(database: DatabaseSync, key: string): void {
   if (identities.length === 0) {
     if (database.prepare("SELECT 1 FROM source_event_headers LIMIT 1").get() !== undefined
       || database.prepare("SELECT 1 FROM directory_membership_roots LIMIT 1").get() !== undefined
-      || database.prepare("SELECT 1 FROM directory_membership_members LIMIT 1").get() !== undefined) throw new SafeError("INVALID_IDENTITY_KEY");
+      || database.prepare("SELECT 1 FROM directory_membership_members LIMIT 1").get() !== undefined
+      || database.prepare("SELECT 1 FROM directory_batch_resume LIMIT 1").get() !== undefined) throw new SafeError("INVALID_IDENTITY_KEY");
   } else {
     const row = identities[0]!;
     if (row["singleton"] !== 1 || row["n"] !== 32 || validateKeyId(row["key_id"]) !== key) throw new SafeError("INVALID_IDENTITY_KEY");

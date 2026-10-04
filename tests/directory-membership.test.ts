@@ -97,12 +97,12 @@ it("aborts and rolls back an interrupted replacement without harming caller tran
 
 it("migrates authentic schema6, preserves sources, refuses old read-only and rolls DDL conflicts back", async () => {
   const data = join(temporaryDirectory(), "data"), db = await openDatabase(data); handles.add(db); const a = add(db, 1);
-  db.exec("DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DELETE FROM schema_migrations WHERE version=7; PRAGMA user_version=6");
+  db.exec("DROP TABLE directory_batch_resume; DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DELETE FROM schema_migrations WHERE version>=7; PRAGMA user_version=6");
   const old = createSourceStore(db, keyId).readSource(a.sourceId); db.close(); handles.delete(db);
   writeFileSync(join(data, "identity-key.json"), JSON.stringify({ keyVersion: 1, keyId, secret: secret.toString("hex") }), { mode: 0o600 });
   const bytes = readFileSync(join(data, "agentprof.sqlite")); await expect(withReadOnlyStore(data, () => 1)).rejects.toMatchObject({ code: "DATABASE_SCHEMA_INCOMPATIBLE" }); expect(readFileSync(join(data, "agentprof.sqlite"))).toEqual(bytes);
-  const next = await openDatabase(data); handles.add(next); expect(createSourceStore(next, keyId).readSource(a.sourceId)).toEqual(old); migrate(next); expect(next.prepare("PRAGMA user_version").get()!.user_version).toBe(7);
-  next.exec("DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DELETE FROM schema_migrations WHERE version=7; PRAGMA user_version=6; CREATE TABLE directory_membership_members(sentinel)");
+  const next = await openDatabase(data); handles.add(next); expect(createSourceStore(next, keyId).readSource(a.sourceId)).toEqual(old); migrate(next); expect(next.prepare("PRAGMA user_version").get()!.user_version).toBe(8);
+  next.exec("DROP TABLE directory_batch_resume; DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DELETE FROM schema_migrations WHERE version>=7; PRAGMA user_version=6; CREATE TABLE directory_membership_members(sentinel)");
   const schema = next.prepare("SELECT * FROM sqlite_schema ORDER BY name").all(); expect(() => migrate(next)).toThrow(); expect(next.prepare("SELECT * FROM sqlite_schema ORDER BY name").all()).toEqual(schema); expect(next.prepare("PRAGMA user_version").get()!.user_version).toBe(6);
 });
 

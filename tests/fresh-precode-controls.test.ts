@@ -240,7 +240,7 @@ it.skipIf(!historicalSchema5)("fresh explicit Claude write migrates authentic sc
     expect(upgraded.scan).toMatchObject({ status: "partial", counts: { committed: 1, unchanged: 0, failed: 0 } });
     expect(upgraded.scan.sources[0]).toMatchObject({ sourceId: id, expectedRevision: 1, committedRevision: 2, capabilities: { parserVersion: 2 } });
     expect(upgraded.report).toMatchObject({ sourceId: id, revision: 2, published: true }); expect(freshReportExitCode(upgraded)).toBe(1); expect(ingest).toHaveBeenCalledTimes(2);
-    expect(historicalSchema(data)).toEqual({ version: 6, migrations: [1, 2, 3, 4, 5, 6], headers: [{ revision: 2, parser_version: 2 }] });
+    expect(historicalSchema(data)).toEqual({ version: 8, migrations: [1, 2, 3, 4, 5, 6, 7, 8], headers: [{ revision: 2, parser_version: 2 }] });
     const context = await loadOrCreateIdentityContext(data);
     const checkpoint = async () => { const db = await openDatabase(data); try { return createSourceStore(db, context.keyId).readSourceForIngestion(id, context).checkpoint; } finally { db.close(); } };
     expect(await checkpoint()).toMatchObject({ nextOrdinal: 2 });

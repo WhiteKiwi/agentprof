@@ -180,7 +180,7 @@ describe("relationship capture and unchanged source lifecycle", () => {
       const initial = await ingestSourceFile(store, context, { path, provider: "claude", expectedRevision: null, maxFileBytes: SCAN_LIMITS.fileBytes });
       const first = store.readSource(initial.sourceId)!;
       if (migrated) {
-        db.exec("DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DROP TABLE source_parser_checkpoints; DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DELETE FROM schema_migrations WHERE version>=5; PRAGMA user_version=4");
+        db.exec("DROP TABLE directory_batch_resume; DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DROP TABLE source_parser_checkpoints; DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DELETE FROM schema_migrations WHERE version>=5; PRAGMA user_version=4");
         db.close(); db = await openDatabase(directory); store = createSourceStore(db, keyId);
       } else {
         expect(store.replaceSourceSnapshot(snapshotInput(first), 1)).toEqual({ status: "committed", revision: 2 });

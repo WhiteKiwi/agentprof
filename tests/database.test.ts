@@ -10,7 +10,7 @@ it("imports SQLite, binds integers/null/text, commits/rolls back, migrates idemp
   const directory = join(temporaryDirectory(), "data");
   const db = await openDatabase(directory);
   try {
-    expect(db.prepare("PRAGMA user_version").get()?.["user_version"]).toBe(7);
+    expect(db.prepare("PRAGMA user_version").get()?.["user_version"]).toBe(8);
     expect(db.prepare("PRAGMA journal_mode").get()?.["journal_mode"]).toBe("delete");
     expect(db.prepare("PRAGMA busy_timeout").get()?.["timeout"]).toBe(1000);
     expect(db.prepare("PRAGMA foreign_keys").get()?.["foreign_keys"]).toBe(1);
@@ -74,19 +74,19 @@ it("rejects future schemas, unsafe DB paths, and corruption without echoing data
 it("migrates a real schema4 only once without replaying cache DDL and preserves generations", async () => {
   const db = await openDatabase(join(temporaryDirectory(), "v4"));
   try {
-    db.exec("DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DROP TABLE source_parser_checkpoints; DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DELETE FROM schema_migrations WHERE version>=5; PRAGMA user_version=4");
+    db.exec("DROP TABLE directory_batch_resume; DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DROP TABLE source_parser_checkpoints; DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DELETE FROM schema_migrations WHERE version>=5; PRAGMA user_version=4");
     const before = db.prepare("SELECT * FROM settings ORDER BY key").all();
     migrate(db); migrate(db);
-    expect(db.prepare("PRAGMA user_version").get()).toEqual({ user_version: 7 });
+    expect(db.prepare("PRAGMA user_version").get()).toEqual({ user_version: 8 });
     expect(db.prepare("SELECT * FROM settings ORDER BY key").all()).toEqual(before);
-    expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([1, 2, 3, 4, 5, 6, 7].map(version => ({ version })));
+    expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([1, 2, 3, 4, 5, 6, 7, 8].map(version => ({ version })));
     expect(db.prepare("SELECT * FROM source_relationship_headers").all()).toEqual([]);
   } finally { db.close(); }
 });
 it("rolls schema4 DDL conflicts back without touching cache/settings", async () => {
   const db = await openDatabase(join(temporaryDirectory(), "v4-conflict"));
   try {
-    db.exec("DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DROP TABLE source_parser_checkpoints; DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DELETE FROM schema_migrations WHERE version>=5; PRAGMA user_version=4; CREATE TABLE source_relationship_contributions(sentinel); INSERT INTO source_relationship_contributions VALUES(7)");
+    db.exec("DROP TABLE directory_batch_resume; DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DROP TABLE source_parser_checkpoints; DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DELETE FROM schema_migrations WHERE version>=5; PRAGMA user_version=4; CREATE TABLE source_relationship_contributions(sentinel); INSERT INTO source_relationship_contributions VALUES(7)");
     const before = db.prepare("SELECT name,sql FROM sqlite_schema ORDER BY name").all();
     expect(() => migrate(db)).toThrowError(expect.objectContaining({ code: "DATABASE_MIGRATION_FAILED" }));
     expect(db.prepare("PRAGMA user_version").get()).toEqual({ user_version: 4 });
