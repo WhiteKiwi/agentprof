@@ -497,3 +497,12 @@ Actual ordinary sealed mode replay establishes identical complete native events/
 PR151 adds the bounded source-prefix `exploration-thrashing` diagnostic defined by [METRICS.md](METRICS.md). Its `agentprof.source-exploration/v1` candidate severity is `INFO`, preserving the maintained `INFO`/`NOTICE`/`WARNING`/`HOTSPOT` vocabulary. Human explanatory text remains informational. A normal repository investigation or independent review can satisfy the fixed lookup thresholds, so neither a candidate nor its severity proves inefficiency, waste, avoidability or savings; `includedEventIds` stays empty. This corrects the unmerged candidate's `informational` enum rather than introducing a schema-specific exception.
 
 Verification must include a genuine ordinary Claude2/3/4 capture through built and scripts-disabled installed CLI JSON and human output, existing window/proof/privacy tests and the unchanged default Slow Tool contract. Keep original author qualification results distinct from the corrected latest-main composition. No parser/store/schema/report/fresh-workflow contract or broad issue5/6/7 acceptance changes.
+
+
+## Durable observed directory membership — 2026-10-04
+
+An explicit internal one-directory enrollment API records raw-free, authenticated historical membership across restart through the existing scanner. Complete, stable pre/post censuses and successful per-source receipts are required; omitted old members become `not_observed`, never unavailable or deleted. One run retains the existing 64-source discovery ceiling; durable history is bounded to 4,096 members and a 1 MiB canonical manifest, failing closed without eviction. This API is a prerequisite to directory lifecycle reconciliation, not a CLI or retirement feature. [Contract and reviewed plan](P4-DIRECTORY-MEMBERSHIP.md).
+
+### Genuine historical compatibility across schema7 — 2026-10-04
+
+Historical compatibility comparisons must preserve a genuine previous-version database in its original schema and compare its reader with the current reader on an explicitly migrated copy. Readers continue to refuse incompatible schemas without writes. Preserve complete source semantics, generation authentication, original human/JSON/report bytes and each side's private database/key bytes after the migration setup. A schema7 database is not an input supported by an older schema6 reader. This verification correction does not change product migrations, source contracts or compatibility policy.

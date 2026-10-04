@@ -26,7 +26,7 @@ function token(source: StoredSource): SourceCacheToken {
   return { ...h, revision: source.revision, cacheEvidence: source.cacheEvidence!, relationshipFingerprint: relationshipFingerprint(source.relationshipEvidence)! } as SourceCacheToken;
 }
 function rows(db: DatabaseSync) { return Object.fromEntries(["settings", "source_store_identity", "source_event_headers", "source_event_contributions", "source_metric_headers", "source_metric_contributions", "source_cache_evidence"].map(t => [t, db.prepare(`SELECT * FROM ${t}`).all()])); }
-function schemaThree(db: DatabaseSync) { db.exec("DROP TABLE source_parser_checkpoints; DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DROP TABLE source_cache_evidence; DELETE FROM schema_migrations WHERE version>=4; PRAGMA user_version=3"); }
+function schemaThree(db: DatabaseSync) { db.exec("DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DROP TABLE source_parser_checkpoints; DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DROP TABLE source_cache_evidence; DELETE FROM schema_migrations WHERE version>=4; PRAGMA user_version=3"); }
 
 describe("schema 4 proof lifecycle", () => {
   it("preserves schema3 generations/settings and absent historical proof, including peer-completed migration", async () => {
@@ -36,7 +36,7 @@ describe("schema 4 proof lifecycle", () => {
     db.exec = sql => { if (sql === "BEGIN IMMEDIATE" && !interleaved) { interleaved = true; migrate(peer); } exec(sql); };
     migrate(db); db.exec = exec; migrate(db);
     expect(interleaved).toBe(true); expect(rows(db)).toEqual(before); expect(store.readSource(v.sourceId)!.cacheEvidence).toBeNull();
-    expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([1, 2, 3, 4, 5, 6].map(version => ({ version })));
+    expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([1, 2, 3, 4, 5, 6, 7].map(version => ({ version })));
   });
   it.each([1, 2, 3])("rejects missing old schema marker %i and rolls back upgrade", marker => {
     const db = memory(); schemaThree(db); db.prepare("DELETE FROM schema_migrations WHERE version=?").run(marker);
@@ -123,10 +123,11 @@ describe("fresh synchronous unchanged confirmation", () => {
   });
 });
 
-it.each([3, 5, 6])("rejects malformed/extra markers and settings on schema %i without mutation", version => {
+it.each([3, 5, 6, 7])("rejects malformed/extra markers and settings on schema %i without mutation", version => {
   for (const corruption of ["missing", "extra", "text", "settings"]) {
     const db = memory(); if (version === 3) schemaThree(db);
-    if (version === 5) db.exec("DROP TABLE source_parser_checkpoints; DELETE FROM schema_migrations WHERE version=6; PRAGMA user_version=5");
+    if (version === 6) db.exec("DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DELETE FROM schema_migrations WHERE version=7; PRAGMA user_version=6");
+    if (version === 5) db.exec("DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DROP TABLE source_parser_checkpoints; DELETE FROM schema_migrations WHERE version>=6; PRAGMA user_version=5");
     if (corruption === "missing") db.exec("DELETE FROM schema_migrations WHERE version=2");
     else if (corruption === "extra") db.exec("INSERT INTO schema_migrations VALUES(99)");
     else if (corruption === "text") db.exec("ALTER TABLE schema_migrations RENAME TO old_markers; CREATE TABLE schema_migrations(version); INSERT INTO schema_migrations SELECT version FROM old_markers; INSERT INTO schema_migrations VALUES('private')");

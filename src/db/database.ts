@@ -6,7 +6,7 @@ import { types } from "node:util";
 import { SafeError } from "../privacy/diagnostics.js";
 import { ensurePrivateDirectory, fileCode, openPrivateFile } from "../privacy/paths.js";
 
-export const DATABASE_SCHEMA_VERSION = 6;
+export const DATABASE_SCHEMA_VERSION = 7;
 
 export function transaction<T>(database: DatabaseSync, operation: (() => T) & (T extends PromiseLike<unknown> ? never : unknown)): T {
   if (types.isAsyncFunction(operation)) throw new SafeError("DATABASE_TRANSACTION_FAILED");
@@ -46,7 +46,7 @@ export function migrate(database: DatabaseSync): void {
       throw new SafeError("DATABASE_MIGRATION_FAILED");
     }
     const recordedVersion = Math.max(1, current);
-    const markers = database.prepare("SELECT CASE WHEN typeof(version)='integer' THEN version ELSE NULL END AS version FROM schema_migrations ORDER BY version LIMIT 7").all();
+    const markers = database.prepare("SELECT CASE WHEN typeof(version)='integer' THEN version ELSE NULL END AS version FROM schema_migrations ORDER BY version LIMIT 8").all();
     if (markers.length !== recordedVersion || markers.some((row, i) => row["version"] !== i + 1)) throw new SafeError("DATABASE_MIGRATION_FAILED");
     if (current < DATABASE_SCHEMA_VERSION) {
       if (current < 2) database.exec(`
@@ -149,6 +149,28 @@ export function migrate(database: DatabaseSync): void {
         ) STRICT;
         INSERT INTO schema_migrations(version) VALUES (6);
         PRAGMA user_version = 6;
+      `);
+      if (current < 7) database.exec(`
+        CREATE TABLE directory_membership_roots (
+          root_id TEXT PRIMARY KEY CHECK(length(CAST(root_id AS BLOB)) <= 128),
+          provider TEXT NOT NULL CHECK(provider IN ('codex','claude')),
+          contract_version INTEGER NOT NULL CHECK(contract_version=1),
+          key_id TEXT NOT NULL REFERENCES source_store_identity(key_id),
+          root_fingerprint TEXT NOT NULL CHECK(length(CAST(root_fingerprint AS BLOB)) <= 128),
+          revision INTEGER NOT NULL CHECK(revision BETWEEN 1 AND 9007199254740991),
+          member_count INTEGER NOT NULL CHECK(member_count BETWEEN 0 AND 4096),
+          manifest_bytes INTEGER NOT NULL CHECK(manifest_bytes BETWEEN 2 AND 1048576),
+          seal TEXT NOT NULL CHECK(length(CAST(seal AS BLOB)) <= 128)
+        ) STRICT;
+        CREATE TABLE directory_membership_members (
+          root_id TEXT NOT NULL REFERENCES directory_membership_roots(root_id),
+          source_id TEXT NOT NULL CHECK(length(CAST(source_id AS BLOB)) <= 128),
+          source_revision INTEGER NOT NULL CHECK(source_revision BETWEEN 1 AND 9007199254740991),
+          observation TEXT NOT NULL CHECK(observation IN ('observed','not_observed')),
+          PRIMARY KEY(root_id,source_id)
+        ) STRICT;
+        INSERT INTO schema_migrations(version) VALUES (7);
+        PRAGMA user_version = 7;
       `);
     }
     database.exec("COMMIT");

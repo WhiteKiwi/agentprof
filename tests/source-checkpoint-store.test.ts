@@ -193,7 +193,8 @@ it.each(["not_lf", "wrong_boundary"])("matching whole-byte proof with %s authent
 
 function historicalSchema(db: DatabaseSync, version: number) {
   if (version === 0) return;
-  migrate(db); expect(db.prepare("PRAGMA user_version").get()?.user_version).toBe(6);
+  migrate(db); expect(db.prepare("PRAGMA user_version").get()?.user_version).toBe(7);
+  if (version < 7) db.exec("DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots");
   if (version < 6) db.exec("DROP TABLE source_parser_checkpoints");
   if (version < 5) db.exec("DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers");
   if (version < 4) db.exec("DROP TABLE source_cache_evidence");
@@ -202,13 +203,14 @@ function historicalSchema(db: DatabaseSync, version: number) {
   db.exec(`DELETE FROM schema_migrations WHERE version>${version}; PRAGMA user_version=${version}`);
 }
 describe("atomic schema6 checkpoint lifecycle", () => {
-  it.each([0, 1, 2, 3, 4, 5, 6])("migrates real schema%i once and preserves prior key/settings/source generation", version => {
+  it.each([0, 1, 2, 3, 4, 5, 6, 7])("migrates real schema%i once and preserves prior key/settings/source generation", version => {
     const db = own(new DatabaseSync(":memory:"));
     if (version === 0) historicalSchema(db, 0);
     else {
-      migrate(db); expect(db.prepare("PRAGMA user_version").get()?.user_version).toBe(6);
+      migrate(db); expect(db.prepare("PRAGMA user_version").get()?.user_version).toBe(7);
       if (version >= 2) createSourceStore(db, keyId).replaceSource({ sourceId: hmac("source", "claude", "/migration"), provider: "claude", parserVersion: 1, normalizationVersion: 1, keyVersion: 1, keyId, completedOffset: 0, observedSize: 0, boundaryFingerprint: null, events: [] }, null);
-      if (version < 6) db.exec("DROP TABLE source_parser_checkpoints");
+      if (version < 7) db.exec("DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots");
+  if (version < 6) db.exec("DROP TABLE source_parser_checkpoints");
       if (version < 5) db.exec("DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers");
       if (version < 4) db.exec("DROP TABLE source_cache_evidence");
       if (version < 3) db.exec("DROP TABLE source_metric_contributions; DROP TABLE source_metric_headers");
@@ -218,23 +220,23 @@ describe("atomic schema6 checkpoint lifecycle", () => {
     db.exec("CREATE TABLE unrelated(value TEXT); INSERT INTO unrelated VALUES('preserve')");
     const headers = version >= 2 ? db.prepare("SELECT * FROM source_event_headers").all() : [], keys = version >= 2 ? db.prepare("SELECT * FROM source_store_identity").all() : [];
     migrate(db); migrate(db);
-    expect(db.prepare("PRAGMA user_version").get()).toEqual({ user_version: 6 }); expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([1,2,3,4,5,6].map(version => ({ version })));
+    expect(db.prepare("PRAGMA user_version").get()).toEqual({ user_version: 7 }); expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([1,2,3,4,5,6,7].map(version => ({ version })));
     expect(db.prepare("SELECT * FROM source_event_headers").all()).toEqual(headers); expect(db.prepare("SELECT * FROM source_store_identity").all()).toEqual(keys); expect(db.prepare("SELECT * FROM source_parser_checkpoints").all()).toEqual([]); expect(db.prepare("SELECT value FROM unrelated").get()).toEqual({ value: "preserve" });
     expect(db.prepare("SELECT * FROM settings ORDER BY key").all()).toEqual([{key:"key_version",value:1},{key:"normalization_version",value:1}]);
   });
-  it("uses the version observed after a real peer has completed5-to6 under the write lock", () => {
+  it("uses the version observed after a real peer has completed5-to7 under the write lock", () => {
     const path = join(temporaryDirectory(), "peer.sqlite"), first = own(new DatabaseSync(path)), peer = own(new DatabaseSync(path)); historicalSchema(first, 5);
     const exec = first.exec.bind(first); let interleaved = false;
     first.exec = ((sql: string) => { if (sql === "BEGIN IMMEDIATE" && !interleaved) { interleaved = true; migrate(peer); } return exec(sql); }) as typeof first.exec;
     try { migrate(first); } finally { first.exec = exec; }
-    expect(interleaved).toBe(true); expect(first.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([1,2,3,4,5,6].map(version => ({ version })));
+    expect(interleaved).toBe(true); expect(first.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([1,2,3,4,5,6,7].map(version => ({ version })));
   });
   it.each(["conflict", "missing_marker", "extra_marker", "future"])("schema5 %s fails without any partial DDL/data change", kind => {
     const db = own(new DatabaseSync(":memory:")); historicalSchema(db, 5);
     if (kind === "conflict") db.exec("CREATE TABLE source_parser_checkpoints(sentinel); INSERT INTO source_parser_checkpoints VALUES(7)");
     if (kind === "missing_marker") db.exec("DELETE FROM schema_migrations WHERE version=3");
     if (kind === "extra_marker") db.exec("INSERT INTO schema_migrations VALUES(99)");
-    if (kind === "future") db.exec("PRAGMA user_version=7");
+    if (kind === "future") db.exec("PRAGMA user_version=8");
     const before = db.prepare("SELECT * FROM sqlite_schema ORDER BY name").all(), markers = db.prepare("SELECT * FROM schema_migrations ORDER BY version").all(), version = db.prepare("PRAGMA user_version").get();
     expect(() => migrate(db)).toThrow(); expect(db.prepare("SELECT * FROM sqlite_schema ORDER BY name").all()).toEqual(before); expect(db.prepare("SELECT * FROM schema_migrations ORDER BY version").all()).toEqual(markers); expect(db.prepare("PRAGMA user_version").get()).toEqual(version); expect(db.isTransaction).toBe(false);
   });
@@ -270,11 +272,11 @@ it("actual current parser-version mismatch replays under unchanged predecessor/C
 
 it("read-only schema5 is refused without writes and explicit write-open migrates absent checkpoint",async()=>{
   const f=await fixture(),expected=f.store.readSource(f.id);await writeFile(join(f.data,"identity-key.json"),JSON.stringify({keyVersion:1,keyId,secret:secret.toString("hex")}),{mode:0o600});
-  f.db.exec("DROP TABLE source_parser_checkpoints; DELETE FROM schema_migrations WHERE version=6; PRAGMA user_version=5");f.db.close();databases.delete(f.db);
+  f.db.exec("DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DROP TABLE source_parser_checkpoints; DELETE FROM schema_migrations WHERE version>=6; PRAGMA user_version=5");f.db.close();databases.delete(f.db);
   const {withReadOnlyStore}=await import("../src/db/read-only.js"),{readdir,stat}=await import("node:fs/promises");
   const state=async()=>{const entries=await readdir(f.data);return Promise.all(entries.sort().map(async name=>({name,bytes:await readFile(join(f.data,name)),mode:(await stat(join(f.data,name))).mode})));};
   const before=await state();await expect(withReadOnlyStore(f.data,()=>1)).rejects.toMatchObject({code:"DATABASE_SCHEMA_INCOMPATIBLE"});expect(await state()).toEqual(before);
-  const upgraded=own(await openDatabase(f.data));expect(upgraded.prepare("PRAGMA user_version").get()).toEqual({user_version:6});expect(upgraded.prepare("SELECT * FROM source_parser_checkpoints").all()).toEqual([]);upgraded.close();databases.delete(upgraded);
+  const upgraded=own(await openDatabase(f.data));expect(upgraded.prepare("PRAGMA user_version").get()).toEqual({user_version:7});expect(upgraded.prepare("SELECT * FROM source_parser_checkpoints").all()).toEqual([]);upgraded.close();databases.delete(upgraded);
   const after=await state();expect(await withReadOnlyStore(f.data,(db,key)=>createSourceStore(db,key).readSource(f.id))).toEqual(expected);expect(await state()).toEqual(after);
 });
 
