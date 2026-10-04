@@ -381,3 +381,34 @@ retained full receipt. Do not relabel the failed full as a clean pass or add a
 subset's repeated passes to the aggregate. No product/runtime byte changes; a
 new full run is unnecessary if only this test oracle changes and all other
 source/test inputs remain identical. Exact-source/main gates remain subsequent.
+
+### Maintainer final local qualification — 2026-10-04 KST
+
+The final extended Node24.21.0/macOS arm64 full run at147d was
+**4,609 PASS /1 FAIL /88 inherited conditional SKIP** (4,698 cases). The sole
+remaining failure was the current-schema6 oracle in the separately activated
+authentic-schema5 fresh write/resume control. After independent research, reviewed
+pre-code plan cb2c and separately claimed development, only that oracle became
+current7/markers1..7. The complete affected file is **13 PASS /0 FAIL /0 SKIP**,
+including genuine original5/refusal/private bytes, unchanged replay and exact
+resumed suffix offsets/ordinals. Parent verified all13 exact case identities and
+all other frozen source/test inputs: **4,610 unique passing cases /88 conditional
+unexecuted cases** after reconciliation. The13 repeated passes are not extra
+cases, and the failed full run is not described as a clean rerun.
+
+The earlier full4,566PASS/42FAIL/90conditionalSKIP, independent historical helper
+0PASS/1FAIL reproduction, and selected613PASS/0FAIL/0SKIP remain preserved above
+and privately with their logs. No product code changed in the maintainer repairs.
+All five production blobs still equal author afdc; all137 compiled files equal
+the actual scripts-disabled normal-registry global installation used by the
+extended controls. Strict typecheck/build PASS and the separate actual macOS
+artifact verifier PASS139files: npm-exec/global help/version, synthetic immutable
+stats/insights/failures and published:false. Original/migrated private DB/key
+names, modes and bytes remain guarded; no genuine old database was relabelled.
+
+The parent independently reviewed every original29 path, all five historical
+compatibility paths and the final one-line fresh oracle: final35 paths including
+OCR-excluded tests/docs. Three test-only compatibility gaps are resolved; no
+unresolved high/medium product finding remains. Exact published-head Foundation
+and security, actual merge tree/parents and actual-main CI are subsequent gates
+and are not represented by this local receipt. Issue5 remains a broad parent.
