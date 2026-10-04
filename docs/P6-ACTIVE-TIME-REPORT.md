@@ -38,3 +38,20 @@ Separate source-only research was completed after this specification draft. [Sou
 The new presentation predecessor is genuine PR154 `596bd084`; historical `AGENTPROF_ACTIVE_TIME_BASELINE_BINARY` keeps its older PR57 horizon and must not be redirected to this newer baseline. New tests use a separate predecessor input. The immutable base was materialized from 461 Git blobs and independently reproduces tree `21beeb624118d9e11569e0304cdd57a9b133146b`. This is source verification, not a test pass.
 
 Plan review: approved within the requested P6 report-connection scope. Production/test implementation still waits for the new issue claim/readback and separate developer registration. Full acceptance, independent review, exact-head CI and actual merge remain separate gates.
+
+## Focused implementation handoff — 2026-10-04 UTC
+
+After issue161's actual developer claim/readback and coordinator GO, the separate developer implemented only the three reviewed report paths and two new test files. No contract change was needed: the internal model retains the full unchanged analysis, validates all eight envelope fields, and the count-only section keeps native order, full population/overflow counts, shared aliases and native reasons before its twelve-partition display cap.
+
+[Focused verification](P6-ACTIVE-TIME-REPORT-VERIFY.md) records strict typecheck/build,158 passing cases with zero skips (including genuine PR154 and actual scripts-disabled installed controls), unchanged inherited tests and full-analysis/store/privacy boundaries. The retained first baseline environment failure and corrected new null-inventory assertion are documented separately. The candidate remains uncommitted for independent review and coordinator full/schema5/artifact/current-head qualification; publication/merge and broader P6 acceptance are not implied.
+
+## Current-main integration plan — 2026-10-04 UTC
+
+PR154 was actually merged as `61652839e7a1f91f02d0a9d8e6f6bf1411ab6b10` while the original candidate was being qualified. Its source head `db3d1fe449e2766a611589b5675cf135cf2931b9` incorporates the independently maintained schema7 directory foundation, related historical controls and qualification documents. The three report production paths used by this feature have no upstream semantic change. Original PR154 `596bd084` and its qualified candidate/installed witness remain preserved as the earlier comparison horizon.
+
+1. Materialize exact main616, tree `a108601271fa1a6634ac566f18db9ce7fd1b94fd`. **Verify:** all470 Git blobs and the recomputed complete tree match; preserve every incoming source/test/doc byte and its file mode.
+2. Compose only the eight already scoped feature paths onto that base. **Verify:** the five independently reviewed production/test files retain their exact frozen hashes, all other incoming main paths are byte-identical, and no schema/analyzer/test-oracle correction is authored by this integration.
+3. Build a genuine main616 predecessor and requalify the composed candidate. **Verify:** same103 new tests, old command/non-unified/exploration behavior, actual scripts-disabled installation, current-schema read-only safety, authentic schema5 full suite and existing artifact verifier. The new report-only predecessor variable uses this immediate schema7 baseline for this run; the original596 evidence and older historical variables retain their original horizons. Distinguish the two runs and do not add their counts.
+4. Publish one Draft against main, with the published plan and actual main616 as retained parents. **Verify:** fresh base/ref readback, eight-path delta, exact remote tree/source hashes and hosted final-head checks. PR154 is now a completed dependency; no main merge, release or broad P6 closure is included.
+
+This is a source-preserving composition plan, reviewed before integration. No production or test logic change is required; if one becomes necessary, update the contract and obtain a separately registered developer before editing it.

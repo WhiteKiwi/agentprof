@@ -24,3 +24,70 @@ This continuation uses the current ChatGPT and an isolated container. Separate c
 ## Execution evidence
 
 Not yet executed. Planned tests and documentation are not feature qualification.
+
+## Maintainer composition specification — 2026-10-04 KST
+
+Actual153 main e58bf63b3049a4641feee409e2abc1d9b2059c6d contributes the
+authenticated schema7 membership prerequisite and genuine old-schema compatibility
+controls. It does not change this report feature or authorize broad5/6/7 closure.
+The intentional unified exploration addition can change its dedicated section,
+its overview assessment row, its navigation entry and the exact pattern-detail
+notice sentence explaining the now-integrated diagnostic. All other unified
+HTML remains exact. In the retained JSON report controls only stored result.bytes
+or fresh result.report.bytes may change, and each must equal its own actual HTML
+UTF-8 length. Every other complete receipt field/order/newline, status/stderr and
+all non-unified HTML/receipts remain exact. The genuine historical report input must stay an original
+schema6 generation; only its current private copy is explicitly migrated to7.
+
+A conditional genuine-baseline test currently requires whole unified HTML to be
+identical to the older report. Independently investigate the exact additive
+differences before changing that oracle. A repair may permit only these declared
+new exploration additions while comparing all old content exactly, and must
+verify the new section's assessments/privacy/reference safeguards with the actual
+installed runtime. Do not remove arbitrary nodes/text or skip the historical
+control. Complete separate findings/reviewed implementation and concrete issue
+Verify, then register a separate developer before any code change.
+
+## Independent maintainer findings and reviewed correction plan
+
+Independent contributor /root/exploration154_research reviewed all7 original
+paths, OCR3 selected/4 excluded, and463 preserved incoming main blobs/modes.
+No Critical/High/Medium production finding. Medium test-only finding at
+usage-timing-composition.test.ts:208–213: whole old unified receipt/HTML equality
+fails on legitimate new HTML byte counts. Parent actual Mac selected run is
+**126 PASS /2 FAIL /0 SKIP** (128 cases); all42 new and84 retained cases pass.
+Typecheck/build, normal-registry scripts-disabled installation138 compiled files
+byte-equal and artifact140 PASS. The two failed provider controls stopped before
+later report/replay assertions; those later assertions are not preclaimed passed.
+
+The parent reviewed the completed independent findings against the scoped
+specification. Separately registered development may change only
+`tests/usage-timing-composition.test.ts`; no production or other test file.
+
+1. Add a strict unified compatibility comparator. **Verify:** old has no new
+   component; candidate has exactly one precise nav anchor between Slow/Intervals,
+   exactly one native assessment/reason row last in the uniquely located overview
+   table, exactly one non-nested exploration section between Slow/Timeline, and
+   exactly the declared old/new pattern-detail notice literal pair. Assert native
+   assessment/threshold/null/privacy content. Substitute only these four changes
+   and compare every remaining UTF-8 HTML byte to the untouched old HTML.
+2. Preserve complete publication receipts. **Verify:** old/current stored bytes
+   or fresh report.bytes equals its own actual HTML Buffer length; each original
+   stdout equals complete JSON.stringify(object) plus exactly one newline. Change
+   only that one candidate bytes field to the old verified value for full
+   canonical stdout/status/stderr equality. No omitted subtrees/partial match or
+   generic DOM/regex cleanup. Non-unified and built/actualinstalled remain full
+   HTML and full stdout/stderr/exit equality.
+3. Retain every actual historical/schema7-copy comparison and later generation
+   control. **Verify:** both complete provider cases reach all reports and exact
+   replay/reuse/append/checkpoint/original/copied names/modes/bytes assertions.
+   Use inert copies of actual outputs to reject missing/duplicate/wrong-location
+   components, wrong native row/notice, unrelated HTML, wrong/absent bytes and
+   any unrelated receipt/key-order/stdout/stderr/status mutation. These guard
+   assertions belong inside the actual provider controls, not extra unique cases.
+4. Qualify and hand off. **Verify:** rerun the whole affected file plus all42 new
+   and retained unified suites under the identical genuine baseline/installed
+   environment; typecheck and unchanged138 compiled files/production blobs.
+   Preserve RED126/2 receipt; exact composed-source hosted CI supplies full
+   regression. Root owns publication/actual-main gates, then own152 completion;
+   all contributor reservations return. No broad6/7/native/release completion.

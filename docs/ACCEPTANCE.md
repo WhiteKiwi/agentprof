@@ -438,3 +438,36 @@ Both actual validated 4,096-event stress tests retain all cohorts/IDs and unchan
 ### Duration breakdown PR63 parent qualification before publication
 
 The [independent parent receipt](P5-SOURCE-TIME-BREAKDOWN.md#parent-qualification-before-publication--2026-10-03) records direct actual Node 24.21.0 typecheck/build, 2,806 PASS / 83 existing optional SKIP / 0 FAIL of 2,889 and all 68 new cases PASS with genuine PR61, real installed duration witnesses and the actual immutable schema5 seed. Artifact 73 and both ten-store original built/installed control sets PASS, preserving complete original JSON, all counters/statistics and database/key names/modes/bytes. Two 4,096-event stresses retain complete memberships and 1,976,339/2,218,003 JSON bytes with bounded human detail of 4,878 bytes / 46 lines and 2,863 bytes / 28 lines and exact omissions. Exact published-source/security/expected-head merge/qualified main/manual narrow62 gates remain pending; broad P5/provider/product acceptance is separate.
+
+
+## Directory enrollment planned acceptance — 2026-10-04
+
+[The scoped contract](P4-DIRECTORY-MEMBERSHIP.md#acceptance-and-verification-plan) defines schema6→7 preservation, authenticated historical membership, 4,096/4,097 and 1MiB bounds, real-provider synthetic scanner integration, incomplete/changed census refusal, CAS/concurrency/restart, privacy and installed/aggregate checks. These are planned and NOT RUN at this pre-code record. Earlier source6 and exploration receipts are not qualification of this new slice.
+
+### Directory enrollment executed qualification — 2026-10-04 UTC
+
+The [scoped execution record](P4-DIRECTORY-MEMBERSHIP.md#executed-local-qualification--2026-10-04-utc)
+qualifies the reviewed main9a composition on Linux/Node24.19: strict typecheck/build,
+4,473 PASS/0 FAIL/138 inherited skips across150 files, all50 new cases, real
+scripts-disabled installed enrollment for both providers, and the unchanged
+137-file artifact verifier. Independent review checked all30 delta paths and425
+unchanged upstream blobs. Actual sequential process CAS and before/after-commit
+SIGKILL recovery are distinct from overlapping-writer or filesystem-crash claims.
+The record preserves initial fixture/harness/cache failures and separately
+verified exact5614 schema5 rerun; neither supplementary runs nor skipped cases
+inflate the aggregate. Draft/exact-head CI and all broader P4 gates remain separate.
+
+
+Final publication narrows the reviewed directory-enrollment delta to29 paths by
+omitting the planned FINDINGS appendix and retaining that main blob unchanged.
+The scoped contract keeps source-derived findings; all tested/reviewed source and
+test hashes are unchanged. This docs-only narrowing does not add a verification
+run or convert any skipped case to passed.
+
+The subsequent PR151/main-d1 composition retains exact upstream exploration
+source/help and the unchanged enrollment production. Full qualification with the
+exact5614 historical seed passed4,560 tests/0 failures/138 inherited skips across
+154 files; strict typecheck/build and the139-file artifact verifier passed.
+All50 new enrollment and87 upstream exploration tests are included in that total.
+The [composition receipt](P4-DIRECTORY-MEMBERSHIP.md#main151-composed-execution-receipt)
+preserves original-main history and separates hosted final-head checks.

@@ -8,7 +8,7 @@ function directoryBytes(path: string) {
   return { mode: statSync(path).mode, files: readdirSync(path).sort().map(name => ({ name, mode: statSync(join(path, name)).mode, bytes: readFileSync(join(path, name)) })) };
 }
 function historicalRows(db: DatabaseSync) {
-  const names = db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT IN ('schema_migrations','source_parser_checkpoints') ORDER BY name").all().map(row => row['name'] as string);
+  const names = db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT IN ('schema_migrations','source_parser_checkpoints','directory_membership_roots','directory_membership_members') ORDER BY name").all().map(row => row['name'] as string);
   for (const name of names) ok(/^[a-z_]+$/.test(name));
   return Object.fromEntries(names.map(name => [name, db.prepare(`SELECT * FROM ${name} ORDER BY rowid`).all()]));
 }
@@ -34,10 +34,12 @@ export async function migrateHistoricalSchema5Copy(original: string, copied: str
   // Migration is an explicit authorized test write to the copied fixture only.
   const migrated = await openDatabase(copied);
   try {
-    strictEqual(migrated.prepare('PRAGMA user_version').get()?.['user_version'], 6);
-    deepStrictEqual(migrated.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(row => row['version']), [1, 2, 3, 4, 5, 6]);
+    strictEqual(migrated.prepare('PRAGMA user_version').get()?.['user_version'], 7);
+    deepStrictEqual(migrated.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(row => row['version']), [1, 2, 3, 4, 5, 6, 7]);
     deepStrictEqual(historicalRows(migrated), rows);
     deepStrictEqual(migrated.prepare('SELECT * FROM source_parser_checkpoints').all(), []);
+    deepStrictEqual(migrated.prepare('SELECT * FROM directory_membership_roots').all(), []);
+    deepStrictEqual(migrated.prepare('SELECT * FROM directory_membership_members').all(), []);
   } finally { migrated.close(); }
   deepStrictEqual(directoryBytes(original), originalBytes);
 }

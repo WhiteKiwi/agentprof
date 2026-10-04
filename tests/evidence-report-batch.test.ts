@@ -1,15 +1,17 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { buildSourceEvidenceView } from "../src/analysis/source-evidence-views.js";
 import { analyzeSourceFailures } from "../src/analysis/source-failures.js";
 import { summarizeSource } from "../src/analysis/source-summary.js";
 import { EVIDENCE_STATS_OPTIONS, formatEvidenceStatsResult } from "../src/cli/evidence-stats.js";
 import { formatStatsResult, runStats } from "../src/cli/stats.js";
 import { displayCases } from "./display-batch-cases.js";
-import { event, source, stored, id } from "./recovery-fixture.js";
+import { event, source, stored, id, keyId, positive, secret } from "./recovery-fixture.js";
 import { binary, bytes, input, invoke, persisted, usage } from "./tokens-support.js";
 import { temporaryDirectory } from "./helpers.js";
+import { migrateHistoricalSchema6Copy } from "./schema6-compatibility.js";
 
 const legacy = [
   ["listSources", "list-sources"], ["failures", "failures"], ["readRevisits", "read-revisits"],
@@ -124,11 +126,34 @@ describe("new human context preserves complete native authority", () => {
 });
 
 describe.skipIf(!baseline)("genuine immediate main compatibility", () => {
+  let root: string | undefined;
+  let compatibility: Awaited<ReturnType<typeof migrateHistoricalSchema6Copy>> | undefined;
+  let sourceId: string;
+  beforeAll(async () => {
+    // These read-only cases share one frozen pair; ordinary temporaryDirectory
+    // fixtures are removed after each case and cannot own this group's lifetime.
+    root = realpathSync(mkdtempSync(join(tmpdir(), "agentprof-schema6-evidence-")));
+    const original = join(root, "original"), copied = join(root, "migrated-copy"), raw = join(root, "input");
+    mkdirSync(original, { mode: 0o700 }); mkdirSync(raw);
+    writeFileSync(join(original, "identity-key.json"), JSON.stringify({ keyVersion: 1, keyId, secret: secret.toString("hex") }) + "\n", { mode: 0o600 });
+    writeFileSync(join(raw, "synthetic.jsonl"), positive.map(record => JSON.stringify(record) + "\n").join(""));
+    const scan = invoke(baseline!, original, ["scan", "--codex-root", raw, "--json"]);
+    expect([0, 1]).toContain(scan.status); expect(scan.stderr).toBe("");
+    expect(JSON.parse(scan.stdout).result.counts.committed).toBe(1);
+    const catalogue = invoke(baseline!, original, ["stats", "--list-sources", "--json"]);
+    expect(catalogue.status).toBe(0); expect(catalogue.stderr).toBe("");
+    const items = JSON.parse(catalogue.stdout).result.catalogue.items;
+    expect(items).toHaveLength(1); sourceId = items[0].sourceId;
+    rmSync(raw, { recursive: true });
+    compatibility = await migrateHistoricalSchema6Copy(baseline!, original, copied);
+  }, 30000);
+  afterEach(() => compatibility?.assertUnchanged());
+  afterAll(() => { if (root) rmSync(root, { recursive: true, force: true }); });
   it.each(legacy)("matches previous %s human and JSON bytes", async (prop, flag) => {
-    const x = await stored(), before = await bytes(x.data);
+    const x = { data: compatibility!.copied, sourceId }, before = await bytes(x.data);
     const selection = prop === "listSources" ? ["stats", `--${flag}`] : ["stats", "--source", x.sourceId, `--${flag}`];
     for (const format of [[], ["--json"]]) expect(invoke(binary, x.data, [...selection, ...format]))
-      .toEqual(invoke(baseline!, x.data, [...selection, ...format]));
+      .toEqual(invoke(baseline!, compatibility!.original, [...selection, ...format]));
     expect(await bytes(x.data)).toEqual(before);
   });
 });
