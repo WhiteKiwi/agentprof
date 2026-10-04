@@ -1,0 +1,40 @@
+name: Fresh evidence development snapshot
+on:
+  push:
+    branches: [feat/fresh-evidence-workflows]
+    paths: [.github/workflows/fresh-evidence-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+        with:
+          mise_toml: |
+            [tools]
+            node = "24.21.0"
+            pnpm = "10.34.6"
+      - name: Prepare scripts-disabled dependencies and tracked source only
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile --ignore-scripts
+          mkdir -p "$RUNNER_TEMP/fresh-bundle/repo" "$RUNNER_TEMP/fresh-bundle/runtime"
+          git archive HEAD | tar -x -C "$RUNNER_TEMP/fresh-bundle/repo"
+          cp -a node_modules "$RUNNER_TEMP/fresh-bundle/repo/node_modules"
+          cp "$(command -v node)" "$RUNNER_TEMP/fresh-bundle/runtime/node"
+          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/fresh-bundle/SOURCE_COMMIT"
+          git ls-tree -r HEAD > "$RUNNER_TEMP/fresh-bundle/SOURCE_TREE"
+          tar -czf "$RUNNER_TEMP/fresh-evidence-snapshot.tgz" -C "$RUNNER_TEMP/fresh-bundle" repo runtime SOURCE_COMMIT SOURCE_TREE
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: fresh-evidence-snapshot
+          path: ${{ runner.temp }}/fresh-evidence-snapshot.tgz
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
