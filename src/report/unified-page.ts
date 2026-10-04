@@ -1,6 +1,7 @@
 import { SafeError } from "../privacy/diagnostics.js";
 import { UNIFIED_LIMITS as L } from "./unified-model.js";
 import type { UnifiedSourceReport } from "./unified-model.js";
+import { renderExplorationSection } from "./exploration-section.js";
 import { renderPatternSections } from "./pattern-page.js";
 import { evidenceAlias, evidenceAliases, evidenceBar, evidenceLink, evidencePage, evidenceTable, htmlText, numericText, omissions } from "./evidence-page.js";
 
@@ -23,7 +24,8 @@ function countTable(id: string, caption: string, values: Readonly<Record<string,
 export function renderUnifiedSourceReport(m: UnifiedSourceReport): string {
   if (m.schema !== "agentprof.unified-source-report/v1" || m.eventIds.length > 4096 || m.sessionIds.length > 12288
     || m.timeline.length > L.timeline) throw new SafeError("INVALID_ARGUMENT");
-  for (const part of [m.summary, m.slow, m.commands, m.failures, m.recovery, m.retry, m.reads, m.searches, m.patterns]) {
+  if (m.exploration.parserVersion !== m.parserVersion) throw new SafeError("INVALID_RECORD");
+  for (const part of [m.summary, m.slow, m.commands, m.failures, m.recovery, m.retry, m.reads, m.searches, m.patterns, m.exploration]) {
     if (part.sourceId !== m.sourceId || part.provider !== m.provider || part.revision !== m.revision
       || part.completedOffset !== m.completedOffset || part.observedSize !== m.observedSize) throw new SafeError("INVALID_RECORD");
   }
@@ -31,14 +33,14 @@ export function renderUnifiedSourceReport(m: UnifiedSourceReport): string {
   const session = (id: string) => evidenceAlias(sessionAliases, id);
   const sections = [["unified-summary", "Overview"], ["unified-commands", "Time and commands"], ["unified-tokens", "Tokens"],
     ["unified-failures", "Failures"], ["unified-retry", "Retry and recovery"], ["unified-reads", "Read and search"],
-    ["unified-slow", "Slow Tool"], ["unified-timeline", "Intervals"], ["rules", "Patterns and validation"]] as const;
+    ["unified-slow", "Slow Tool"], ["unified-exploration", "Exploration"], ["unified-timeline", "Intervals"], ["rules", "Patterns and validation"]] as const;
   const body = [`<nav aria-label="Unified report sections">${sections.map(([id, label]) => evidenceLink(id, label)).join(" ")}</nav>`,
     `<section class="panel" id="unified-summary"><h2>One stored source generation</h2><dl><dt>Source</dt><dd>source-1 · ${text(m.provider)}</dd><dt>Revision / parser</dt><dd>${m.revision} / ${m.parserVersion}</dd><dt>Stored byte prefix / observed size</dt><dd>[0, ${m.completedOffset}) / ${m.observedSize}</dd><dt>Availability</dt><dd>${text(m.summary.availability)}</dd></dl><p>All sections were computed from the same pinned stored generation. Source freshness and cross-source reconciliation are not checked. Scope is the stored prefix, not complete account history.</p>`,
     `<div class="timeline-metrics"><article><p class="metric">${m.summary.inventory.events}</p><p>Stored events</p></article><article><p class="metric">${m.failures.eligibility.admittedTerminalCalls}</p><p>Admitted native terminal calls</p></article><article><p class="metric">${number(m.summary.usageEligibility?.observedResponses ?? null)}</p><p>Eligible final response-usage observations</p></article></div>`,
     countTable("unified-inventory", "Stored inventory — not eligible statistical populations", { events: m.summary.inventory.events, turns: m.summary.inventory.turns, usage: m.summary.inventory.usage, observations: m.summary.inventory.observations, diagnostics: m.summary.inventory.diagnostics }),
     evidenceTable("unified-assessments", "Separate domain assessments; unavailable is not zero", ["Domain", "Assessment", "Suppression / reason"], [
       ["Summary", m.summary.suppressionReason === null ? "observed_eligible_subset" : "suppressed", m.summary.suppressionReason ?? "none"],
-      ...([["Native failure", m.failures], ["Slow Tool", m.slow], ["Recovery", m.recovery], ["Retry overhead", m.retry], ["Read revisits", m.reads], ["Search recurrence", m.searches], ["Patterns", m.patterns]] as const).map(([label, a]) => [label, a.assessment, a.suppressionReason ?? "none"]),
+      ...([["Native failure", m.failures], ["Slow Tool", m.slow], ["Recovery", m.recovery], ["Retry overhead", m.retry], ["Read revisits", m.reads], ["Search recurrence", m.searches], ["Patterns", m.patterns], ["Exploration", m.exploration]] as const).map(([label, a]) => [label, a.assessment, a.suppressionReason ?? "none"]),
     ]), `</section><section id="unified-commands"><h2>Time and command measurements</h2><p>Recorded durations and positioned interval unions have different scopes. Neither implies model/network latency, critical path, avoidable time or a global elapsed-time total. Command shares use the full native partition denominator before any display cap.</p>`,
     countTable("unified-duration-coverage", "Recorded-duration admission and exclusions", { included: m.summary.durationEligibility.included, terminalCandidates: m.summary.durationEligibility.terminalCandidates, ...m.summary.durationEligibility.exclusions })];
   const durations = m.summary.durations ?? [], shownDurations = durations.slice(0, L.rows);
@@ -112,11 +114,12 @@ export function renderUnifiedSourceReport(m: UnifiedSourceReport): string {
   slow.forEach((c, i) => body.push(`<article class="card"><h3>slow-${i + 1} · ${text(session(c.sessionId))} · ${text(c.group.category)}</h3><p>Rule=${text(c.ruleId)} / ${text(c.ruleVersion)}; pattern=${text(c.confidence.pattern)}; avoidability=${text(c.confidence.avoidableWork)}; root cause=${text(c.confidence.rootCause)}; effect=${text(c.confidence.effect)}; scope=${text(c.durationScope)} / ${text(c.timingEvidence)}.</p>`,
     evidenceTable(`unified-slow-${i}`, "Original candidate duration and full native denominator", ["Measurement", "Value"], [["Safe pattern", c.group.commandPattern ?? c.group.toolName], ["Candidate N / denominator N", pair(c.n, c.denominatorN)], ["Candidate ms / denominator ms", pair(c.sumMs, c.denominatorSumMs)], ["Share (0–1)", c.observedEligibleNativeToolDurationShare], ["p50 / p95 ms", pair(c.p50Ms, c.p95Ms)], ["Low-sample p95", String(c.lowSampleP95)]]),
     evidenceBar(c.sumMs, c.denominatorSumMs), safeguards(c.necessaryWorkCounterexample, c.investigativeAction, c.matchedExperiment, c.qualityGuardrail), reasons(c.limitations), `</article>`));
-  body.push(`</section><section id="unified-timeline"><h2>Observed invocation intervals</h2><p>Earliest positioned events admitted by the pattern-time authority. Different sessions/scopes/evidence are not added or causally ordered. Tied timestamps do not establish causality, critical path or savings.</p>`,
+  body.push(`</section>`, renderExplorationSection(m.exploration, { sessionAliases, eventAliases }));
+  body.push(`<section id="unified-timeline"><h2>Observed invocation intervals</h2><p>Earliest positioned events admitted by the pattern-time authority. Different sessions/scopes/evidence are not added or causally ordered. Tied timestamps do not establish causality, critical path or savings.</p>`,
     m.timelineSuppressed ? `<p class="notice">Interval analysis suppressed; no measured zero timeline.</p>` : "",
     omissions("Earliest admitted intervals", m.timeline.length, m.positionedEventN),
     evidenceTable("unified-intervals", "Bounded interval table — UTC; not an inferred execution trace", ["Event alias", "Session", "Category", "Status", "Start UTC", "End UTC", "Scope / evidence"], m.timeline.map(e => [evidenceAlias(eventAliases, e.id), session(e.sessionId), e.category, e.status, e.startAt, e.endAt, `${e.intervalScope} / ${e.intervalTimingEvidence}`])),
-    `</section><section class="notice"><h2>Pattern and validation detail</h2><p>The following four-rule section keeps its full original evidence qualifications. Slow Tool is shown above; exploration-thrashing assessment remains outside this layout. Read/search recurrence is not a substitute for that diagnostic. All session/event aliases keep the same meaning throughout this report.</p></section>`,
+    `</section><section class="notice"><h2>Pattern and validation detail</h2><p>The following four-rule section keeps its full original evidence qualifications. Slow Tool and informational exploration are shown separately above; neither adds events to Detected Waste. Read/search recurrence is not a substitute for that diagnostic. All session/event aliases keep the same meaning throughout this report.</p></section>`,
     renderPatternSections(m.patterns, { sessionAliases, eventAliases, embedded: true }));
   const limits = ["Single pinned source generation; no implicit source discovery or current-file freshness claim.",
     "Display limits are not new statistical populations. Complete evidence is available from the corresponding stats, insights and patterns --json commands.",
