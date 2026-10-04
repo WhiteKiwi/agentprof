@@ -1,4 +1,5 @@
 import { types } from "node:util";
+import type { DirectoryRetirementResult } from "../db/directory-retirement.js";
 import { captureMode } from "../parsers/capture.js";
 import type { CaptureMode } from "../parsers/capture.js";
 import type { DirectoryMember, DirectoryMembership } from "../db/directory-membership.js";
@@ -10,6 +11,7 @@ import type { ScanArguments } from "./scan.js";
 
 export type DirectoryScanArguments = ScanArguments & Readonly<{
   enrollDirectory: boolean;
+  retireMissing?: boolean;
   reconcile?: boolean;
   json?: boolean;
 }>;
@@ -27,6 +29,7 @@ export type DirectoryScanResult = Readonly<{
   provider: "codex" | "claude";
   enrollment: DirectoryEnrollmentResult | null;
   snapshot: DirectorySnapshot | null;
+  retirement?: DirectoryRetirementResult;
 }>;
 const invalid = (): never => { throw new SafeError("INVALID_ARGUMENT"); };
 
@@ -44,16 +47,16 @@ function pathArray(value: unknown): string[] {
   return result;
 }
 
-export function validateDirectoryScanArguments(value: DirectoryScanArguments): Readonly<{ dataDir: string; root: InputRoot; capture: CaptureMode }> {
+export function validateDirectoryScanArguments(value: DirectoryScanArguments): Readonly<{ dataDir: string; root: InputRoot; capture: CaptureMode; retireMissing: boolean }> {
   if (value === null || typeof value !== "object" || types.isProxy(value)
     || ![Object.prototype, null].includes(Object.getPrototypeOf(value))) return invalid();
   const fields = Object.getOwnPropertyDescriptors(value);
-  const allowed = ["dataDir", "codexRoot", "claudeRoot", "usageTiming", "patternEvidence", "enrollDirectory", "reconcile", "json"];
+  const allowed = ["dataDir", "codexRoot", "claudeRoot", "usageTiming", "patternEvidence", "enrollDirectory", "retireMissing", "reconcile", "json"];
   for (const name of Reflect.ownKeys(fields)) {
     if (typeof name !== "string" || !allowed.includes(name)) return invalid();
     const field = fields[name]!;
     if (!("value" in field) || !field.enumerable) return invalid();
-    if (["usageTiming", "patternEvidence", "enrollDirectory", "reconcile", "json"].includes(name) && typeof field.value !== "boolean") return invalid();
+    if (["usageTiming", "patternEvidence", "enrollDirectory", "retireMissing", "reconcile", "json"].includes(name) && typeof field.value !== "boolean") return invalid();
     if (name === "dataDir" && typeof field.value !== "string") return invalid();
   }
   if (fields["enrollDirectory"]?.value !== true || fields["reconcile"]?.value === true) return invalid();
@@ -67,7 +70,7 @@ export function validateDirectoryScanArguments(value: DirectoryScanArguments): R
     ...(fields["dataDir"] === undefined ? {} : { dataDir: fields["dataDir"]!.value as string }),
     ...capture,
   });
-  return Object.freeze({ dataDir: selected.dataDir, root: Object.freeze(selected.roots[0]!), capture });
+  return Object.freeze({ dataDir: selected.dataDir, root: Object.freeze(selected.roots[0]!), capture, retireMissing: fields["retireMissing"]?.value === true });
 }
 
 const result = (
@@ -97,7 +100,7 @@ export function projectDirectoryEnrollment(enrollment: DirectoryEnrollmentResult
 
 /** Explicit mutation boundary; regular scan and file reconciliation never call this. */
 export async function runDirectoryScan(options: DirectoryScanArguments, signal?: AbortSignal): Promise<DirectoryScanResult> {
-  const { dataDir, root, capture } = validateDirectoryScanArguments(options);
+  const { dataDir, root, capture, retireMissing } = validateDirectoryScanArguments(options);
   if (signal !== undefined && (types.isProxy(signal) || !(signal instanceof AbortSignal))) return invalid();
   const controller = new AbortController(), interrupt = () => controller.abort();
   process.on("SIGINT", interrupt);
@@ -133,10 +136,18 @@ export async function runDirectoryScan(options: DirectoryScanArguments, signal?:
       const { createDirectoryMembershipStore } = await import("../db/directory-membership.js");
       if (controller.signal.aborted) return aborted();
       const enrollment = await enrollDirectory(database, context, root, { signal: controller.signal, ...capture });
+      const retirement = retireMissing
+        ? await (await import("../scanner/directory-reconciliation.js")).reconcileDirectoryAbsence(database, context, root, enrollment, controller.signal)
+        : undefined;
       // No await between reading the current authenticated snapshot and comparison.
       const membership = enrollment.membership.status === "committed" || enrollment.membership.status === "unchanged"
         ? createDirectoryMembershipStore(database, context).read(enrollment.rootId) : null;
-      return projectDirectoryEnrollment(enrollment, membership);
+      const projected = projectDirectoryEnrollment(enrollment, membership);
+      if (retirement === undefined) return projected;
+      const usable = projected.status === "completed" || projected.status === "partial";
+      return Object.freeze({ ...projected, retirement,
+        status: usable && retirement.status !== "completed" ? retirement.status : projected.status,
+        reason: usable && retirement.status !== "completed" ? retirement.reason : projected.reason });
     } finally {
       try { database.close(); } catch { throw new SafeError("DATABASE_ACCESS_FAILED"); }
     }
@@ -173,6 +184,15 @@ export function formatDirectoryScan(value: DirectoryScanResult, json: boolean): 
       `Member detail: shown=${shown.length}/${total}; omitted=${total - shown.length}`);
     for (const member of shown) lines.push(`${member.sourceId}: ${member.observation}; last observed source revision=${member.sourceRevision}`);
   } else lines.push("Member detail: unavailable; no different revision was substituted.");
+  if (value.retirement !== undefined) {
+    const r = value.retirement, c = r.counts, shown = r.entries.slice(0, 12);
+    lines.push(`Retirement: ${r.status}; reason=${r.reason ?? "none"}; checked roots=${r.checkedRoots ?? "unavailable"}`);
+    if (c) lines.push(`Missing=${c.missing}; marked unavailable=${c.markedUnavailable}; already unavailable=${c.alreadyUnavailable}; retained=${c.retained}`,
+      `Retirement detail: shown=${shown.length}/${r.entries.length}; omitted=${r.entries.length - shown.length}`);
+    else lines.push("Retirement counts: unavailable; no partial batch was reported as successful.");
+    for (const entry of shown) lines.push(`${entry.sourceId}: ${entry.status}; last observed=${entry.lastObservedRevision}; current=${entry.revisionAfter ?? "unavailable"}; reason=${entry.reason ?? "none"}; blocking roots=${entry.blockingRoots}`);
+    lines.push("Opt-in retirement retains event/metric/relationship history and invalidates obsolete cache/checkpoints. Other-root observations veto retirement until explicitly rescanned. Filesystem and database are not an atomic snapshot.");
+  }
   lines.push("Limits: not_observed means absent from the completed census, not proven deletion or relocation. Membership capture does not retire sources; earlier scanner commits may remain on failure. No automatic pruning or move inference.");
   const output = lines.join("\n") + "\n";
   if (Buffer.byteLength(output) > 32 * 1024) throw new SafeError("REPORT_LIMIT");
