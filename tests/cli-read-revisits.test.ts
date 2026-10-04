@@ -222,7 +222,11 @@ describe.skipIf(!baselineBinary)("frozen baseline exact old-command parity", () 
   });
   it("preserves unchanged help/version bytes; report and top-level help intentionally changed", () => {
     const data = join(temporaryDirectory(), "absent");
-    for (const args of [["--version"], ["scan", "--help"], ["insights", "--help"]]) expect(invoke(binary, data, args)).toEqual(invoke(baselineBinary!, data, args));
+    for (const args of [["--version"], ["scan", "--help"], ["insights", "--help"]]) {
+      const current = invoke(binary, data, args);
+      if (args[0] === "insights") current.stdout = current.stdout.replace(/^  --exploration  show informational native exploration patterns\n/m, "").replace(/\n--exploration selects bounded Claude parser2\/3\/4 observations; informational only, with unknown\/blocked states and no waste or savings claim\.\n$/, "");
+      expect(current).toEqual(invoke(baselineBinary!, data, args));
+    }
     const pendingOpenHelp = `Usage: agentprof open [options] <file>
 
 Open a generated report (not implemented yet)
