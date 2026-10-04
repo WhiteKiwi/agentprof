@@ -12,25 +12,19 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: d14cce6647ebb8456af6f768405ad5d211e37074
+          ref: afdc9fbd129c352f55e3f8f32e28d9e8ecaf453d
           persist-credentials: false
       - name: Archive immutable tracked inputs only
         run: |
           set -eu
-          test "$(git rev-parse HEAD)" = d14cce6647ebb8456af6f768405ad5d211e37074
-          git archive --format=tar.gz --output="$RUNNER_TEMP/directory-base.tgz" HEAD
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with:
-          ref: 5614a3107b53022f29ea32d44ba83f533fd58b92
-          path: old-schema
-          persist-credentials: false
-      - name: Archive historical schema seed
-        run: git -C old-schema archive --format=tar.gz --output="$RUNNER_TEMP/schema5.tgz" HEAD
+          test "$(git rev-parse HEAD)" = afdc9fbd129c352f55e3f8f32e28d9e8ecaf453d
+          git archive --format=tar.gz --output="$RUNNER_TEMP/directory-current.tgz" HEAD
+          git rev-parse 'HEAD^{tree}' > "$RUNNER_TEMP/tree.txt"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: directory-cli-sources
+          name: directory-cli-current-sources
           path: |
-            ${{ runner.temp }}/directory-base.tgz
-            ${{ runner.temp }}/schema5.tgz
+            ${{ runner.temp }}/directory-current.tgz
+            ${{ runner.temp }}/tree.txt
           retention-days: 1
           if-no-files-found: error
