@@ -8,6 +8,7 @@ import { analyzeSourceRecovery } from "../analysis/source-recovery.js";
 import { analyzeSourceRetryOverhead } from "../analysis/source-retry-overhead.js";
 import { analyzeSourceReadRevisits } from "../analysis/source-read-revisits.js";
 import { analyzeSourceSearchRecurrence } from "../analysis/source-search-recurrence.js";
+import { analyzeSourceExploration } from "../analysis/source-exploration.js";
 import { analyzeSourcePatterns } from "../analysis/source-patterns.js";
 import { buildSourceCommandBreakdown } from "./command-breakdown.js";
 
@@ -23,8 +24,9 @@ export function buildUnifiedSourceReport(source: StoredSource) {
   const commands = buildSourceCommandBreakdown(source, slow), failures = analyzeSourceFailures(source);
   const recovery = analyzeSourceRecovery(source), retry = analyzeSourceRetryOverhead(source);
   const reads = analyzeSourceReadRevisits(source), searches = analyzeSourceSearchRecurrence(source);
-  const patterns = analyzeSourcePatterns(source);
-  for (const part of [summary, slow, commands, failures, recovery, retry, reads, searches, patterns]) {
+  const patterns = analyzeSourcePatterns(source), exploration = analyzeSourceExploration(source);
+  if (exploration.parserVersion !== source.parserVersion) throw new SafeError("INVALID_RECORD");
+  for (const part of [summary, slow, commands, failures, recovery, retry, reads, searches, patterns, exploration]) {
     for (const field of ["sourceId", "provider", "revision", "completedOffset", "observedSize"] as const) {
       if (part[field] !== source[field]) throw new SafeError("INVALID_RECORD");
     }
@@ -48,7 +50,7 @@ export function buildUnifiedSourceReport(source: StoredSource) {
     sourceId: source.sourceId, provider: source.provider, revision: source.revision,
     parserVersion: source.parserVersion, completedOffset: source.completedOffset, observedSize: source.observedSize,
     sessionIds: Object.freeze([...sessions].sort(compare)), eventIds: Object.freeze([...events.keys()].sort(compare)),
-    summary, slow, commands, failures, recovery, retry, reads, searches, patterns,
+    summary, slow, commands, failures, recovery, retry, reads, searches, patterns, exploration,
     timeline, positionedEventN: positioned.size, timelineSuppressed: patterns.timePartitions === null });
 }
 export type UnifiedSourceReport = ReturnType<typeof buildUnifiedSourceReport>;
