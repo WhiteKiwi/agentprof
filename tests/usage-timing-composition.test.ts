@@ -13,6 +13,7 @@ import { reconcileHistorySources } from "../src/analysis/history-reconcile.js";
 import { parseHistoryQuery, HistoryQueryError } from "../src/analysis/history-query.js";
 import { bytes, codexMeta, context, disk, encode, record, window } from "./usage-timing-fixture.js";
 import type { Provider } from "./usage-timing-fixture.js";
+import { migrateHistoricalSchema6Copy, routeDataDirectory } from "./schema6-compatibility.js";
 
 const providers = ["codex", "claude"] as const;
 const current = resolve("dist/agentprof.cjs");
@@ -171,10 +172,13 @@ it.each(["missing", "contradictory"] as const)("Codex2 keeps %s native terminal 
 
 /** These controls need authentic external artifacts; core semantic regressions above always run in CI. */
 it.runIf(Boolean(baseline)).each(providers)("%s genuine current-main sealed generation keeps default bytes and real replay semantics", async provider => {
-  const x = await fixture(provider), originalArgs = scanArgs(x, [x.path, x.copy]);
-  const first = invoke(baseline!, originalArgs);
+  const original = await fixture(provider), historicalArgs = scanArgs(original, [original.path, original.copy]);
+  const first = invoke(baseline!, historicalArgs);
   expect(first.status, first.stderr).toBe(provider === "codex" ? 0 : 1);
   expect(JSON.parse(first.stdout).result.counts.committed).toBe(2);
+  const compatibility = await migrateHistoricalSchema6Copy(baseline!, original.data, join(original.root, "migrated-copy"));
+  const x = { ...original, data: compatibility.copied, options: { ...original.options, dataDir: compatibility.copied } };
+  const originalArgs = routeDataDirectory(historicalArgs, x.data);
   const legacy = await readSource(x.data, x.sourceId);
   expect(legacy.parserVersion).toBe(provider === "codex" ? 1 : 2);
   expect(legacy.evidence!.observations.every(o => !Object.hasOwn(o, "usageObservedAt"))).toBe(true);
@@ -182,7 +186,7 @@ it.runIf(Boolean(baseline)).each(providers)("%s genuine current-main sealed gene
   try { expect(createSourceStore(db, legacy.keyId).readSourceForIngestion(x.sourceId, context).checkpoint).not.toBeNull(); }
   finally { db.close(); }
   const before = await bytes(x.data);
-  expect(invoke(current, originalArgs)).toEqual(invoke(baseline!, originalArgs));
+  expect(invoke(current, originalArgs)).toEqual(invoke(baseline!, historicalArgs));
   const help = invoke(baseline!, ["stats", "--help"]);
   expect(help.status).toBe(0); expect(invoke(current, ["stats", "--help"])).toEqual(help);
   const flags = [...help.stdout.matchAll(/^\s{2}--([a-z-]+)\s{2,}/gm)].map(m => m[1]!).filter(f => f !== "list-sources");
@@ -190,26 +194,28 @@ it.runIf(Boolean(baseline)).each(providers)("%s genuine current-main sealed gene
   expect(selections).toHaveLength(46);
   for (const flag of selections) for (const json of [false, true]) {
     const args = ["stats", "--data-dir", x.data, "--source", x.sourceId, ...(flag === null ? [] : [`--${flag}`]), ...(json ? ["--json"] : [])];
-    const old = invoke(baseline!, args); expect(old.status, old.stderr).toBe(0); expect(invoke(current, args)).toEqual(old);
+    const old = invoke(baseline!, routeDataDirectory(args, original.data)); expect(old.status, old.stderr).toBe(0); expect(invoke(current, args)).toEqual(old);
   }
   for (const json of [false, true]) {
     const args = ["stats", "--data-dir", x.data, "--list-sources", ...(json ? ["--json"] : [])];
-    expect(invoke(current, args)).toEqual(invoke(baseline!, args));
+    expect(invoke(current, args)).toEqual(invoke(baseline!, routeDataDirectory(args, original.data)));
   }
   for (const command of ["insights", "patterns"]) for (const json of [false, true]) {
     const args = [command, "--data-dir", x.data, "--source", x.sourceId, ...(json ? ["--json"] : [])];
-    const old = invoke(baseline!, args); expect(old.status, old.stderr).toBe(0); expect(invoke(current, args)).toEqual(old);
+    const old = invoke(baseline!, routeDataDirectory(args, original.data)); expect(old.status, old.stderr).toBe(0); expect(invoke(current, args)).toEqual(old);
   }
-  for (const json of [false, true]) expect(invoke(current, [...historyArgs(x), ...(json ? ["--json"] : [])])).toEqual(invoke(baseline!, [...historyArgs(x), ...(json ? ["--json"] : [])]));
+  for (const json of [false, true]) expect(invoke(current, [...historyArgs(x), ...(json ? ["--json"] : [])])).toEqual(invoke(baseline!, routeDataDirectory([...historyArgs(x), ...(json ? ["--json"] : [])], original.data)));
   for (const fresh of [false, true]) for (const unified of [false, true]) {
     const output = join(x.root, `preserved-${fresh}-${unified}.html`);
     const args = ["report", "--data-dir", x.data, ...(fresh ? ["--provider", provider, "--input", x.path] : ["--source", x.sourceId]), ...(unified ? ["--unified"] : []), "--output", output, "--json"];
-    const old = invoke(baseline!, args); expect([0, 1]).toContain(old.status);
+    const old = invoke(baseline!, routeDataDirectory(args, original.data)); expect([0, 1]).toContain(old.status);
     const html = await readFile(output); await unlink(output);
     expect(invoke(current, args)).toEqual(old); expect(await readFile(output)).toEqual(html);
   }
   expect(await bytes(x.data)).toEqual(before);
+  compatibility.assertUnchanged();
   expect(JSON.parse(invoke(current, scanArgs(x, [x.path], true)).stdout).result.sources[0].committedRevision).toBe(2);
+  compatibility.assertOriginalUnchanged();
   const timed = await readSource(x.data, x.sourceId);
   expect(timed.events).toEqual(legacy.events); expect(timed.evidence!.turns).toEqual(legacy.evidence!.turns); expect(timed.evidence!.usage).toEqual(legacy.evidence!.usage);
   expect(timed.evidence!.observations.map(({ usageObservedAt: _, ...o }) => o)).toEqual(legacy.evidence!.observations);
@@ -218,11 +224,14 @@ it.runIf(Boolean(baseline)).each(providers)("%s genuine current-main sealed gene
   if (provider === "codex") expect(analyzeSourceActiveTime(timed).partitions).toEqual(analyzeSourceActiveTime(legacy).partitions);
   const unchanged = await bytes(x.data);
   expect(JSON.parse(invoke(current, scanArgs(x, [x.path], true)).stdout).result.counts.unchanged).toBe(1); expect(await bytes(x.data)).toEqual(unchanged);
+  compatibility.assertOriginalUnchanged();
   await appendFile(x.path, encode([record(provider, "FICTITIOUS_APPEND_RESPONSE", "2026-10-03T15:00:00.000Z", 20)]));
   expect(JSON.parse(invoke(current, scanArgs(x, [x.path], true)).stdout).result.sources[0].committedRevision).toBe(3);
+  compatibility.assertOriginalUnchanged();
   expect((await readSource(x.data, x.sourceId)).evidence!.observations.filter(o => o.representation === "usage").map(o => o.usageObservedAt)).toEqual(["2026-10-03T14:59:59.000Z", "2026-10-03T15:00:00.000Z"]);
   expect(JSON.parse(invoke(current, scanArgs(x)).stdout).result.sources[0].committedRevision).toBe(4);
   expect((await readSource(x.data, x.sourceId)).evidence!.observations.every(o => !Object.hasOwn(o, "usageObservedAt"))).toBe(true);
+  compatibility.assertOriginalUnchanged();
 }, 60000);
 
 it.runIf(Boolean(installed))("actual installed artifact preserves both providers' mixed native copies and Codex Active Time", async () => {

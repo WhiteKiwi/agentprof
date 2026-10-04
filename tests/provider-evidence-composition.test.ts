@@ -14,6 +14,7 @@ import { parseHistoryQuery, HistoryQueryError } from "../src/analysis/history-qu
 import { bytes, codexMeta, context, disk, encode, keyId, record, window } from "./usage-timing-fixture.js";
 import type { Provider } from "./usage-timing-fixture.js";
 import { claudePair, codexRows, errorText, filePath, patchRoot, readRoot } from "./provider-evidence-fixture.js";
+import { migrateHistoricalSchema6Copy, routeDataDirectory } from "./schema6-compatibility.js";
 
 const providers = ["codex", "claude"] as const;
 type Mode = "legacy" | "timing" | "patterns";
@@ -203,14 +204,19 @@ it.each(["codex error", "claude error", "claude Read", "claude patch"] as const)
 
 /** External cases require actual preceding-main/installed artifacts; no replacement binary is manufactured. */
 for (const provider of providers) it.runIf(Boolean(baseline)).each(["legacy", "timing"] as const)(`${provider} genuine preceding-main %s sealed generation preserves bytes before enriched replay`, async mode => {
-  const x = await fixture(provider), args = scanArgs(x, [x.path, x.copy], mode), first = invoke(baseline!, args);
+  const original = await fixture(provider), historicalArgs = scanArgs(original, [original.path, original.copy], mode), first = invoke(baseline!, historicalArgs);
   expect([0, 1]).toContain(first.status); expect(JSON.parse(first.stdout).result.counts.committed).toBe(2);
+  const compatibility = await migrateHistoricalSchema6Copy(baseline!, original.data, join(original.root, "migrated-copy"));
+  const x = { ...original, data: compatibility.copied, options: { ...original.options, dataDir: compatibility.copied } };
+  const args = routeDataDirectory(historicalArgs, x.data);
   const old = await readSource(x.data, x.sourceId), authenticated = await checkpoint(x.data, x.sourceId), before = await bytes(x.data);
   expect(old.parserVersion).toBe(version(provider, mode)); expect(authenticated.checkpoint).not.toBeNull();
-  expect(invoke(current, args)).toEqual(invoke(baseline!, args)); expect(await bytes(x.data)).toEqual(before);
+  expect(invoke(current, args)).toEqual(invoke(baseline!, historicalArgs)); expect(await bytes(x.data)).toEqual(before);
   expect(await checkpoint(x.data, x.sourceId)).toEqual(authenticated);
+  compatibility.assertUnchanged();
   const enriched = invoke(current, scanArgs(x, [x.path], "patterns")); expect([0, 1]).toContain(enriched.status);
   expect(JSON.parse(enriched.stdout).result.sources[0].committedRevision).toBe(2);
+  compatibility.assertOriginalUnchanged();
   const rich = await readSource(x.data, x.sourceId), sealed = await checkpoint(x.data, x.sourceId);
   expect(rich.parserVersion).toBe(version(provider, "patterns")); expect(sealed.checkpoint).not.toBeNull();
   expect(JSON.parse(JSON.parse(sealed.checkpoint!.checkpoint).payload)).toMatchObject({ parserVersion: rich.parserVersion, patternEvidencePolicyVersion: 1 });
@@ -221,23 +227,29 @@ for (const provider of providers) it.runIf(Boolean(baseline)).each(["legacy", "t
   const unchanged = await bytes(x.data);
   expect(JSON.parse(invoke(current, scanArgs(x, [x.path], "patterns")).stdout).result.counts.unchanged).toBe(1);
   expect(await bytes(x.data)).toEqual(unchanged); expect(await checkpoint(x.data, x.sourceId)).toEqual(sealed);
+  compatibility.assertOriginalUnchanged();
   await appendFile(x.path, encode([record(provider, "FICTITIOUS_APPEND_RESPONSE", "2026-10-03T15:00:00.000Z", 20)]));
   expect(JSON.parse(invoke(current, scanArgs(x, [x.path], "patterns")).stdout).result.sources[0].committedRevision).toBe(3);
+  compatibility.assertOriginalUnchanged();
   expect((await readSource(x.data, x.sourceId)).evidence!.observations.filter(o => o.representation === "usage").map(o => o.usageObservedAt)).toEqual(["2026-10-03T14:59:59.000Z", "2026-10-03T15:00:00.000Z"]);
   expect(JSON.parse(invoke(current, scanArgs(x, [x.path], mode)).stdout).result.sources[0].committedRevision).toBe(4);
   const restored = await readSource(x.data, x.sourceId);
   expect(restored.parserVersion).toBe(old.parserVersion); expect(restored.events).toEqual(old.events); expect(restored.evidence!.turns).toEqual(old.evidence!.turns);
   if (mode === "legacy") expect(restored.evidence!.observations.every(o => !Object.hasOwn(o, "usageObservedAt"))).toBe(true);
+  compatibility.assertOriginalUnchanged();
 }, 60000);
 
 it.runIf(Boolean(baseline)).each(providers)("%s genuine preceding-main corrupted generation rejects richer replay without repair", async provider => {
-  const x = await fixture(provider); expect(JSON.parse(invoke(baseline!, scanArgs(x)).stdout).result.counts.committed).toBe(1);
+  const original = await fixture(provider); expect(JSON.parse(invoke(baseline!, scanArgs(original)).stdout).result.counts.committed).toBe(1);
+  const compatibility = await migrateHistoricalSchema6Copy(baseline!, original.data, join(original.root, "migrated-copy"));
+  const x = { ...original, data: compatibility.copied, options: { ...original.options, dataDir: compatibility.copied } };
   const db = await openDatabase(x.data);
   try { db.prepare("UPDATE source_parser_checkpoints SET generation_seal=? WHERE source_id=?").run(context.fingerprint("source", ["FICTITIOUS_CORRUPTED_SEAL"]), x.sourceId); }
   finally { db.close(); }
   const before = await bytes(x.data), failed = invoke(current, scanArgs(x, [x.path], "patterns"));
   expect(failed.status).toBe(1); expect(JSON.parse(failed.stdout).result).toMatchObject({ stopReason: "storage_failure", counts: { committed: 0, failed: 1 }, sources: [{ status: "failed", committedRevision: null }] });
   expect(await bytes(x.data)).toEqual(before);
+  compatibility.assertOriginalUnchanged();
 });
 
 it.runIf(Boolean(installed))("actual installed artifact preserves enriched copies, native Active Time and raw-deleted consumers", async () => {

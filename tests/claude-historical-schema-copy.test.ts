@@ -52,7 +52,7 @@ it.skipIf(!baseline)('rejects authentic schema5 read-only, then explicitly migra
   expect(files(old)).toEqual(frozen);
   const migrated=new DatabaseSync(join(copy,'agentprof.sqlite'),{readOnly:true});
   try {
-    expect(migrated.prepare('PRAGMA user_version').get()).toEqual({user_version:6});
+    expect(migrated.prepare('PRAGMA user_version').get()).toEqual({user_version:7});
     expect(migrated.prepare('SELECT * FROM source_event_headers').all()).toEqual(oldHeader);
     expect(migrated.prepare('SELECT * FROM source_event_contributions').all()).toEqual(oldEvents);
     expect(migrated.prepare('SELECT * FROM source_parser_checkpoints').all()).toEqual([]);
