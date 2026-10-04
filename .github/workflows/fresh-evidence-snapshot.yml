@@ -19,22 +19,31 @@ jobs:
             [tools]
             node = "24.21.0"
             pnpm = "10.34.6"
-      - name: Prepare scripts-disabled dependencies and tracked source only
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 5614a3107b53022f29ea32d44ba83f533fd58b92
+          path: .ci/pre-resume
+          persist-credentials: false
+      - name: Package resolved runtime and immutable historical seed only
         shell: bash
         run: |
           set -euo pipefail
-          pnpm install --frozen-lockfile --ignore-scripts
-          mkdir -p "$RUNNER_TEMP/fresh-bundle/repo" "$RUNNER_TEMP/fresh-bundle/runtime"
-          git archive HEAD | tar -x -C "$RUNNER_TEMP/fresh-bundle/repo"
-          cp -a node_modules "$RUNNER_TEMP/fresh-bundle/repo/node_modules"
-          cp "$(command -v node)" "$RUNNER_TEMP/fresh-bundle/runtime/node"
-          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/fresh-bundle/SOURCE_COMMIT"
-          git ls-tree -r HEAD > "$RUNNER_TEMP/fresh-bundle/SOURCE_TREE"
-          tar -czf "$RUNNER_TEMP/fresh-evidence-snapshot.tgz" -C "$RUNNER_TEMP/fresh-bundle" repo runtime SOURCE_COMMIT SOURCE_TREE
+          test "$(git -C .ci/pre-resume rev-parse HEAD)" = 5614a3107b53022f29ea32d44ba83f533fd58b92
+          npm --prefix .ci/pre-resume ci --ignore-scripts --no-audit --no-fund
+          npm --prefix .ci/pre-resume run build
+          out="$RUNNER_TEMP/fresh-toolchain"
+          mkdir -p "$out/runtime" "$out/legacy"
+          prefix="$(dirname "$(dirname "$(node -p 'process.execPath')")")"
+          cp -a "$prefix/bin" "$prefix/lib" "$out/runtime/"
+          cp -a .ci/pre-resume/dist "$out/legacy/"
+          "$out/runtime/bin/node" -p 'JSON.stringify(process.versions)' > "$out/NODE_VERSIONS.json"
+          test "$("$out/runtime/bin/node" -p 'process.versions.node')" = 24.21.0
+          printf '%s\n' 5614a3107b53022f29ea32d44ba83f533fd58b92 > "$out/LEGACY_COMMIT"
+          tar -czf "$RUNNER_TEMP/fresh-toolchain.tgz" -C "$out" runtime legacy NODE_VERSIONS.json LEGACY_COMMIT
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: fresh-evidence-snapshot
-          path: ${{ runner.temp }}/fresh-evidence-snapshot.tgz
+          name: fresh-evidence-toolchain
+          path: ${{ runner.temp }}/fresh-toolchain.tgz
           retention-days: 1
           compression-level: 0
           if-no-files-found: error
