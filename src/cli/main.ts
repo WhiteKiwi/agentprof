@@ -188,10 +188,15 @@ export async function run(argv: string[]): Promise<void> {
   const insights = program.command("insights").description("Read Slow Tool evidence from one stored source prefix (read-only)")
     .option("--source <id>", "select one full source ID from stats --list-sources or scan JSON", validateSourceSelection)
     .addHelpText("after", "\nExactly one --source is required. Existing private DELETE-mode store only; no scan or migration.\nNo --last, source listing, global totals, freshness check or cross-source reconciliation.\nSuppressed/partial evidence and necessary-work/quality safeguards remain visible; no savings claim.");
+  insights.option("--exploration", "show informational native exploration patterns");
+  insights.addHelpText("after", "\n--exploration selects bounded Claude parser2/3/4 observations; informational only, with unknown/blocked states and no waste or savings claim.");
+  let explorationFlags = 0;
+  insights.on("option:exploration", () => { if (++explorationFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   let insightSelections = 0;
   insights.on("option:source", () => { if (++insightSelections > 1) throw new SafeError("INVALID_ARGUMENT"); });
   insights.action(async () => {
     const options = { ...program.opts(), ...insights.opts() } as InsightsArguments & { json?: boolean };
+    if (options.exploration === true && (insights.args.length !== 0 || reportDataFlags > 1 || reportJsonFlags > 1)) throw new SafeError("INVALID_ARGUMENT");
     const result = await runInsights(options);
     process.stdout.write(formatInsightsResult(result, options.json === true));
     process.exitCode = 0;
