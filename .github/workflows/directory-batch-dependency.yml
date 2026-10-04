@@ -1,0 +1,29 @@
+name: Directory batch dependency transport
+on:
+  push:
+    branches: [feat/directory-batch-enrollment]
+    paths: [.github/workflows/directory-batch-dependency.yml]
+permissions:
+  contents: read
+jobs:
+  dependency:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Fetch existing pinned public dependency only
+        run: |
+          set -eu
+          cd "$RUNNER_TEMP"
+          npm pack commander@15.0.0 --ignore-scripts --no-audit --no-fund
+          python3 - <<'PY'
+          import base64, hashlib, pathlib
+          p = pathlib.Path('commander-15.0.0.tgz')
+          expected = 'z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg=='
+          assert base64.b64encode(hashlib.sha512(p.read_bytes()).digest()).decode() == expected
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: directory-batch-commander
+          path: ${{ runner.temp }}/commander-15.0.0.tgz
+          retention-days: 1
+          if-no-files-found: error
