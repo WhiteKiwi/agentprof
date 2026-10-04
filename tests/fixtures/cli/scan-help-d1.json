@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "provenance": {
+    "repository": "WhiteKiwi/agentprof",
+    "sourceCommit": "4890723842cdb9d22a19da3f05f90aa5d9278807",
+    "actualMainCommit": "d1b84f166eb33f11d5b7a22ca407dbf14226fd24",
+    "tree": "97d7bc1105ccdefe0bff75a26b69ab47d10e6dbb",
+    "command": [
+      "scan",
+      "--help"
+    ],
+    "helpWidthColumns": 80,
+    "commanderVersion": "15.0.0",
+    "entrySha256": "2d48dfa2052410a14310d61e9f6e6f705d6e4627106f48cef80a32f48143a3e8",
+    "cliMainSha256": "3ebd63280f2a9686babf911fcb334b99aa1a7c80fcd7e73177b12c6261f35925",
+    "compiledManifestSha256": "664ec770127006bfef1e8230daad079370a86dd90163b0554092171d2cbb7aff",
+    "compiledManifestDigestEncoding": "UTF-8 compact JSON of relative-path/hash map, keys sorted, no trailing newline",
+    "compiledManifestEntries": 134,
+    "stdoutSha256": "db2d8022616f7065dec0964f1028cb22509335afd2b73ff955150ff9b91d72e2",
+    "stdoutBytes": 941,
+    "fixtureIs": "Inert exact genuine installed D1 help capture; not a recreated historical binary or a replacement for any named optional baseline."
+  },
+  "receipt": {
+    "status": 0,
+    "stdout": "Usage: agentprof scan [options]\n\nCollect explicit --codex-root/--claude-root inputs only (at least one required)\n\nOptions:\n  --usage-timing      opt into versioned record timestamps for history --tokens\n  --pattern-evidence  capture exact observed errors and supported structured\n                      file evidence; includes usage timing\n  --reconcile         collect explicit .jsonl files and retain proven missing\n                      sources as unavailable\n  -h, --help          display help for command\n\nBounded scan: at most 16 roots, 64 sources, 256 directories, 4096 nodes and yielded entries,\n16 MiB/32768 records per source, 256 diagnostic samples. No aggregation or parser resume.\n--reconcile requires explicit .jsonl file roots, not directories. Only proven missing leaves are retired; stored evidence remains.\nMissing/unreadable parents and symlinks are not deletion evidence. No automatic directory pruning or inferred moves.\n",
+    "stderr": ""
+  }
+}

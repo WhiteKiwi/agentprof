@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { assertScanHelpEnrollmentDelta } from "./scan-help-compatibility.js";
 import { formatStatsResult, runStats, validateStatsArguments } from "../src/cli/stats.js";
 import * as stores from "../src/db/source-store.js";
 import * as summary from "../src/analysis/source-summary.js";
@@ -50,7 +51,10 @@ const baseline = process.env["AGENTPROF_TIME_BREAKDOWN_BASELINE_BINARY"];
 describe.skipIf(!baseline)("authentic immediate PR61 predecessor", () => {
   it("preserves full previous commands/modes and removes only two exact new stats-help rows", async () => {
     const x = await scanned(), before = await bytes(x.data);
-    for (const args of [["--version"], ["--help"], ["scan", "--help"], ["insights", "--help"], ["report", "--help"], ["open", "--help"]]) expect(invoke(binary, x.data, args)).toEqual(invoke(baseline!, x.data, args));
+    for (const args of [["--version"], ["--help"], ["scan", "--help"], ["insights", "--help"], ["report", "--help"], ["open", "--help"]]) {
+      if (args[0] === "scan") assertScanHelpEnrollmentDelta(invoke(binary, x.data, args), invoke(baseline!, x.data, args));
+      else expect(invoke(binary, x.data, args)).toEqual(invoke(baseline!, x.data, args));
+    }
     for (const args of [["stats", "--list-sources"], ["stats", "--source", x.sourceId], ["insights", "--source", x.sourceId], ...flags.map(flag => ["stats", "--source", x.sourceId, flag])]) for (const format of [[], ["--json"]]) expect(invoke(binary, x.data, [...args, ...format])).toEqual(invoke(baseline!, x.data, [...args, ...format]));
     const old = invoke(baseline!, x.data, ["stats", "--help"]), current = invoke(binary, x.data, ["stats", "--help"]), option = "  --time-breakdown      show recorded tool/command/category durations\n", note = "--time-breakdown requires --source and excludes other stats modes; recorded duration sums may overlap and are not elapsed/busy time or savings.\n";
     expect(current.status).toBe(0); expect(current.stderr).toBe(""); expect(current.stdout.split(option)).toHaveLength(2); expect(current.stdout.split(note)).toHaveLength(2); expect(old.stdout).not.toContain("--time-breakdown"); expect(current.stdout.replace(option, "").replace(note, "")).toBe(old.stdout); expect(await bytes(x.data)).toEqual(before);

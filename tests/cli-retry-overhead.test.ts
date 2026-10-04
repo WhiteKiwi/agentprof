@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSyn
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { assertScanHelpEnrollmentDelta } from "./scan-help-compatibility.js";
 import { temporaryDirectory } from "./helpers.js";
 import { bytes, call, meta, output, positive, result, stored, structured, turn } from "./retry-overhead-fixture.js";
 
@@ -47,7 +48,10 @@ const baseline = process.env["AGENTPROF_RETRY_OVERHEAD_BASELINE_BINARY"], instal
 describe.skipIf(!baseline)("authentic current immediate-predecessor compatibility", () => {
   it("preserves all existing commands/modes and removes only two exact retry help rows", async () => {
     const x = await stored(), before = await bytes(x.data);
-    for (const args of [["--version"], ["--help"], ["scan", "--help"], ["insights", "--help"], ["report", "--help"], ["open", "--help"]]) expect(invoke(binary, x.data, args)).toEqual(invoke(baseline!, x.data, args));
+    for (const args of [["--version"], ["--help"], ["scan", "--help"], ["insights", "--help"], ["report", "--help"], ["open", "--help"]]) {
+      if (args[0] === "scan") assertScanHelpEnrollmentDelta(invoke(binary, x.data, args), invoke(baseline!, x.data, args));
+      else expect(invoke(binary, x.data, args)).toEqual(invoke(baseline!, x.data, args));
+    }
     for (const args of [["stats", "--list-sources"], ["stats", "--source", x.sourceId], ["insights", "--source", x.sourceId], ...["--failures", "--read-revisits", "--invocation-overlap", "--search-recurrence", "--recovery"].map(flag => ["stats", "--source", x.sourceId, flag])]) for (const format of [[], ["--json"]]) expect(invoke(binary, x.data, [...args, ...format])).toEqual(invoke(baseline!, x.data, [...args, ...format]));
     const oldHelp = invoke(baseline!, x.data, ["stats", "--help"]), current = invoke(binary, x.data, ["stats", "--help"]);
     const option = "  --retry-overhead      show observed failed-attempt retry overhead\n", note = "--retry-overhead requires --source and excludes other stats modes; failed-attempt intervals only; no waste or savings claim.\n";
