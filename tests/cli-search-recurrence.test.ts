@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe,expect,it } from "vitest";
 import { assertScanHelpEnrollmentDelta } from "./scan-help-compatibility.js";
+import { assertTopHelpDirectoryDelta } from "./top-help-compatibility.js";
 import { temporaryDirectory } from "./helpers.js";
 import { validateStatsArguments } from "../src/cli/stats.js";
 const binary=fileURLToPath(new URL("../dist/agentprof.cjs",import.meta.url));
@@ -90,7 +91,8 @@ A helper acknowledgement does not verify browser rendering. Timeout may mean the
   const newReportRow="  report [options]           Write a new offline HTML report from one stored\n                             source or explicit input file\n";
   expect(oldTop.stdout.split(oldReportRow)).toHaveLength(2);expect(oldTop.stdout.split(newReportRow)).toHaveLength(1);
   expect(currentTop.stdout.split(newReportRow)).toHaveLength(2);expect(currentTop.stdout.split(oldReportRow)).toHaveLength(1);
-  expect(currentTop.stdout.replace(trustedOpenRow,pendingOpenRow).replace(newReportRow,oldReportRow)).toBe(oldTop.stdout);
+  const normalizedTop = {status:currentTop.status,stdout:currentTop.stdout.replace(trustedOpenRow,pendingOpenRow).replace(newReportRow,oldReportRow),stderr:currentTop.stderr};
+  assertTopHelpDirectoryDelta(normalizedTop,oldTop);
   const old=invoke(baseline!,data,["stats","--help"]),current=invoke(binary,data,["stats","--help"]);expect(current.status).toBe(old.status);expect(current.stderr).toBe(old.stderr);
   const option="  --search-recurrence   show completed Claude native search recurrence\n";
   const note="--search-recurrence requires --source and excludes --failures/--read-revisits/--invocation-overlap; Claude parser2 Grep/Glob only; exact request recurrence, not equal results or waste.\n";
