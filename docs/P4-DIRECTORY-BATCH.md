@@ -20,3 +20,7 @@ Base: PR163 d0931a53600d2127d551597627b2bee821f26dc3. Rebind/maintenance/retirem
 4. Run focused tests, typecheck/build, available full regression and installed/artifact checks; publish a Draft. Verify actual result counts, keep failures/skips/NOT RUN distinctions, exact remote source equality and hosted CI state. Dependency integration/independent review and actual merge remain separate. No main merge/release or parent #5 closure.
 
 All new implementation/tests are NOT RUN at this planning revision. Temporary immutable source transport, if used, will be removed before the final Draft diff.
+
+## Pre-code scope amendment
+
+The retirement proof parser also has a separate 64-ID ceiling. Include `src/db/directory-retirement.ts` only for a separately named batch entrypoint sharing the existing authenticated transaction with a 4,096-ID validation ceiling. Preserve the ordinary 64-ID entrypoint and transaction behavior. Verify both limits and cross-root vetoes with more than64 observed members. This amendment precedes production changes and is recorded on issue165.

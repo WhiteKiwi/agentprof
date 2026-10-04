@@ -9,12 +9,13 @@ import { choice, fields } from "../db/source-validation.js";
 import { createDirectoryMembershipStore } from "../db/directory-membership.js";
 import type { DirectoryCaptureResult } from "../db/directory-membership.js";
 import { createSourceStore } from "../db/source-store.js";
-import { CensusFailure, censusDirectory, openDirectoryLease, sameCensus } from "./directory-census.js";
+import { CensusFailure, censusDirectory, censusDirectoryBatched, openDirectoryLease, sameCensus } from "./directory-census.js";
 import { scanSources } from "./scan-run.js";
+import { scanDirectoryPages } from "./directory-batches.js";
 import type { ScanResult } from "./scan-run.js";
 import { validSourcePath } from "./source-prefix.js";
 
-export type DirectoryEnrollmentOptions = Readonly<{ signal?: AbortSignal; usageTiming?: boolean; patternEvidence?: boolean }>;
+export type DirectoryEnrollmentOptions = Readonly<{ signal?: AbortSignal; usageTiming?: boolean; patternEvidence?: boolean; batchDirectory?: boolean }>;
 export type DirectoryEnrollmentResult = Readonly<{ mode: "directory_enrollment"; rootId: string; provider: "codex" | "claude"; scan: ScanResult | null; membership: DirectoryCaptureResult | Readonly<{ status: "ineligible" | "aborted"; reason: string }>; membershipCaptureChangesSourceAvailability: false; directoryReconciled: false }>;
 /** Internal opt-in API. Complete membership observations are not retirement authority. */
 export async function enrollDirectory(database: DatabaseSync, context: IdentityContext, root: InputRoot, options: DirectoryEnrollmentOptions = {}): Promise<DirectoryEnrollmentResult> {
@@ -23,8 +24,11 @@ export async function enrollDirectory(database: DatabaseSync, context: IdentityC
   validSourcePath(input["path"] as string);
   const path = resolve(input["path"] as string);
   const names = Object.keys(Object.getOwnPropertyDescriptors(options));
-  if (names.some(n => !["signal", "usageTiming", "patternEvidence"].includes(n))) throw new SafeError("INVALID_ARGUMENT");
+  if (names.some(n => !["signal", "usageTiming", "patternEvidence", "batchDirectory"].includes(n))) throw new SafeError("INVALID_ARGUMENT");
   const v = fields(options, names), signal = v["signal"] as AbortSignal | undefined;
+  if (names.includes("batchDirectory") && typeof v["batchDirectory"] !== "boolean") throw new SafeError("INVALID_ARGUMENT");
+  const batchDirectory = v["batchDirectory"] === true;
+  const census = batchDirectory ? censusDirectoryBatched : censusDirectory;
   if (signal !== undefined && !(signal instanceof AbortSignal)) throw new SafeError("INVALID_ARGUMENT");
   const mode = captureMode({ ...(v["usageTiming"] === undefined ? {} : { usageTiming: v["usageTiming"] as boolean }), ...(v["patternEvidence"] === undefined ? {} : { patternEvidence: v["patternEvidence"] as boolean }) });
   if (database.isTransaction) throw new SafeError("DATABASE_TRANSACTION_FAILED");
@@ -38,12 +42,16 @@ export async function enrollDirectory(database: DatabaseSync, context: IdentityC
     lease = await openDirectoryLease(path);
     const p = lease.identity, rootFingerprint = context.fingerprint("content", ["directory_physical_root_v1", p.dev, p.ino, p.mode, p.uid]);
     if (prior && (prior.provider !== provider || prior.rootFingerprint !== rootFingerprint)) return finish({ status: "ineligible", reason: "root_changed" });
-    const before = await censusDirectory(path, signal);
+    const before = await census(path, signal);
     await lease.verify();
-    scan = await scanSources(createSourceStore(database, context.keyId), context, [{ provider, path }], { ...(signal === undefined ? {} : { signal }), ...(mode.usageTiming ? mode : {}) });
+    const sources = createSourceStore(database, context.keyId);
+    const scanOptions = { ...(signal === undefined ? {} : { signal }), ...(mode.usageTiming ? mode : {}) };
+    scan = batchDirectory
+      ? await scanDirectoryPages(sources, context, provider, before.paths, scanOptions)
+      : await scanSources(sources, context, [{ provider, path }], scanOptions);
     if (signal?.aborted || scan.status === "aborted") return finish({ status: "aborted", reason: "aborted" });
     if (scan.stopReason !== null || scan.discoveryTruncated) return finish({ status: "ineligible", reason: "scan_incomplete" });
-    const after = await censusDirectory(path, signal);
+    const after = await census(path, signal);
     await lease.verify();
     if (!sameCensus(before, after)) return finish({ status: "ineligible", reason: "census_changed" });
     const selected = new Set(before.paths.map(file => context.fingerprint("source", [provider, file])));
@@ -57,7 +65,8 @@ export async function enrollDirectory(database: DatabaseSync, context: IdentityC
     // Fail before capture if closing the last owned handle fails.
     await lease.close(); lease = undefined;
     // No asynchronous gap after the completed filesystem checks/close and synchronous CAS.
-    const membership = memberships.capture({ rootId, provider, rootFingerprint, observed }, prior?.revision ?? null, signal);
+    const capture = batchDirectory ? memberships.captureCompleteBatch : memberships.capture;
+    const membership = capture({ rootId, provider, rootFingerprint, observed }, prior?.revision ?? null, signal);
     return finish(membership);
   } catch (error) {
     if (error instanceof CensusFailure) return finish({ status: error.reason === "aborted" ? "aborted" : "ineligible", reason: error.reason });

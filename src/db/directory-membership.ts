@@ -133,10 +133,17 @@ export function createDirectoryMembershipStore(database: DatabaseSync, context: 
     }
   }
   function capture(input: DirectoryCapture, expectedRevision: number | null, signal?: AbortSignal): DirectoryCaptureResult {
+    return captureBounded(input, expectedRevision, DIRECTORY_MEMBERSHIP_LIMITS.observed, signal);
+  }
+  /** Internal complete-census coordinator only; never a partial page commit. */
+  function captureCompleteBatch(input: DirectoryCapture, expectedRevision: number | null, signal?: AbortSignal): DirectoryCaptureResult {
+    return captureBounded(input, expectedRevision, DIRECTORY_MEMBERSHIP_LIMITS.members, signal);
+  }
+  function captureBounded(input: DirectoryCapture, expectedRevision: number | null, maximum: number, signal?: AbortSignal): DirectoryCaptureResult {
     const v = plain(input, ["rootId", "provider", "rootFingerprint", "observed"]);
     const rootId = identity(v["rootId"], "source", key), provider = choice(v["provider"], ["codex", "claude"] as const), rootFingerprint = identity(v["rootFingerprint"], "content", key);
     const seen = new Set<string>();
-    const observed = rows(v["observed"], DIRECTORY_MEMBERSHIP_LIMITS.observed).map(row => {
+    const observed = rows(v["observed"], maximum).map(row => {
       const x = plain(row, ["sourceId", "sourceRevision"]), sourceId = identity(x["sourceId"], "source", key);
       if (seen.has(sourceId)) throw new SafeError("INVALID_RECORD"); seen.add(sourceId);
       return Object.freeze({ sourceId, sourceRevision: integer(x["sourceRevision"], 1), observation: "observed" as const });
@@ -179,5 +186,5 @@ export function createDirectoryMembershipStore(database: DatabaseSync, context: 
       throw new SafeError("DATABASE_ACCESS_FAILED");
     }
   }
-  return Object.freeze({ read, capture, readAllForMutation, readInTransaction, removeMembersInTransaction, rebindEmptyRootInTransaction });
+  return Object.freeze({ read, capture, captureCompleteBatch, readAllForMutation, readInTransaction, removeMembersInTransaction, rebindEmptyRootInTransaction });
 }
