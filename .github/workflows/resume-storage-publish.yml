@@ -1,0 +1,60 @@
+name: Publish verified resume storage source
+on:
+  push:
+    branches: [chore/resume-storage-source-snapshot]
+    paths: [.github/workflows/resume-storage-publish.yml]
+permissions:
+  contents: write
+concurrency:
+  group: resume-storage-source-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          path: transport
+          persist-credentials: false
+      - name: Verify and decode scoped patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,hashlib,lzma,os,pathlib
+          p=pathlib.Path('transport/.github')
+          encoded=''.join((p/f'resume-storage-part-{i}.b64').read_text().strip() for i in range(3))
+          assert len(encoded)==21672
+          compressed=base64.b64decode(encoded,validate=True)
+          assert hashlib.sha256(compressed).hexdigest()=='e60bfa07c1e7e3b0e460385a28c9c2f075ad7da3c9e7353d6b9f5269f9145e69'
+          patch=lzma.decompress(compressed)
+          assert len(patch)==89066
+          assert hashlib.sha256(patch).hexdigest()=='0a32cd8877e0ad9756090e1ae840d105da37eaf224603a7030fb93b0ccc7ed10'
+          pathlib.Path(os.environ['RUNNER_TEMP'],'resume-storage.patch').write_bytes(patch)
+          print('Verified exact local source patch SHA256 and length')
+          PY
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: f49e69795b23790ac6dd9637502ee588665d8477
+          path: product
+      - name: Guard, apply and non-force publish only the tested product tree
+        working-directory: product
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = f49e69795b23790ac6dd9637502ee588665d8477
+          test "$(git rev-parse 'HEAD^{tree}')" = 4d6c00953a5fa8699690b913e2146f92046fa8e0
+          test "$(git ls-remote origin refs/heads/feat/directory-batch-resume | cut -f1)" = f49e69795b23790ac6dd9637502ee588665d8477
+          git apply --check --index --unidiff-zero "$RUNNER_TEMP/resume-storage.patch"
+          git apply --index --unidiff-zero "$RUNNER_TEMP/resume-storage.patch"
+          test "$(git diff --cached --name-only | wc -l)" -eq 27
+          git diff --cached --check
+          test "$(git write-tree)" = fb0c16618334bee155c91f47859b30e3adcf3737
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: add authenticated directory resume storage and schema8 migration'
+          test "$(git rev-parse 'HEAD^{tree}')" = fb0c16618334bee155c91f47859b30e3adcf3737
+          test "$(git ls-remote origin refs/heads/feat/directory-batch-resume | cut -f1)" = f49e69795b23790ac6dd9637502ee588665d8477
+          git push origin HEAD:refs/heads/feat/directory-batch-resume
+          git rev-parse HEAD 'HEAD^{tree}'
