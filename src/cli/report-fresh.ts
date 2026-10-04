@@ -4,14 +4,16 @@ import { SafeError, safeErrorEnvelope } from "../privacy/diagnostics.js";
 import { assertNoSymlink, fileCode, resolveDataDirectory } from "../privacy/paths.js";
 import type { Provider } from "../privacy/paths.js";
 import type { ScanResult } from "../scanner/scan-run.js";
-import { collectScan, formatScanResult, validateCliPath } from "./scan.js";
+import { formatScanResult, validateCliPath } from "./scan.js";
+import { collectFreshScan, freshCapture } from "./fresh-capture.js";
+import type { CaptureMode, ParserCaptureOptions } from "../parsers/capture.js";
 import { runReport, formatReportResult } from "./report.js";
 import type { ReportArguments, ReportResult } from "./report.js";
 import { runReportAndOpen, formatReportAndOpenResult, reportAndOpenExitCode } from "./report-open.js";
 import type { ReportAndOpenResult } from "./report-open.js";
 import { validateReportPath } from "../report/write-output.js";
 
-export type FreshReportArguments = ReportArguments & Readonly<{ provider?: string; input?: string; open?: boolean }>;
+export type FreshReportArguments = ReportArguments & ParserCaptureOptions & Readonly<{ provider?: string; input?: string; open?: boolean }>;
 type Generation = Readonly<{ sourceId: string; revision: number }>;
 type ReportOutcome = ReportResult | ReportAndOpenResult
   | Readonly<{ status: "skipped"; reason: "scan_ineligible" | "aborted" }>
@@ -35,7 +37,8 @@ export function selectFreshReportGeneration(scan: ScanResult, provider: Provider
 }
 
 /** All selection/path validation and stable-path preflight precede bootstrap. */
-async function prepare(options: FreshReportArguments): Promise<{ provider: Provider; input: string; dataDir: string; output: string }> {
+async function prepare(options: FreshReportArguments): Promise<{ provider: Provider; input: string; dataDir: string; output: string; capture: CaptureMode }> {
+  const capture = freshCapture(options);
   if (options.unified !== undefined && typeof options.unified !== "boolean") throw new SafeError("INVALID_ARGUMENT");
   if (options.unified === true && (
     options.codexRoot !== undefined && (!Array.isArray(options.codexRoot) || options.codexRoot.length !== 0)
@@ -63,7 +66,7 @@ async function prepare(options: FreshReportArguments): Promise<{ provider: Provi
     if (error instanceof SafeError) throw error;
     throw new SafeError(fileCode(error) === "ENOENT" ? "INPUT_ROOT_MISSING" : "INPUT_ACCESS_FAILED");
   }
-  return { provider: options.provider, input, dataDir, output: options.output };
+  return { provider: options.provider, input, dataDir, output: options.output, capture };
 }
 
 export async function runFreshReport(options: FreshReportArguments): Promise<FreshReportResult> {
@@ -72,7 +75,7 @@ export async function runFreshReport(options: FreshReportArguments): Promise<Fre
   const interrupt = () => controller.abort();
   process.on("SIGINT", interrupt);
   try {
-    const scan = await collectScan(prepared.dataDir, [{ provider: prepared.provider, path: prepared.input }], controller.signal);
+    const scan = await collectFreshScan(prepared.dataDir, [{ provider: prepared.provider, path: prepared.input }], controller.signal, prepared.capture);
     let report: ReportOutcome;
     const generation = selectFreshReportGeneration(scan, prepared.provider);
     if (controller.signal.aborted || scan.status === "aborted") report = Object.freeze({ status: "skipped", reason: "aborted" });

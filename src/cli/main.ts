@@ -201,13 +201,15 @@ export async function run(argv: string[]): Promise<void> {
   const report = program.command("report").description("Write a new offline HTML report from one stored source or explicit input file")
     .option("--provider <provider>", "explicit input provider: claude or codex")
     .option("--input <file>", "one explicit regular uncompressed .jsonl file")
+    .option("--usage-timing", "fresh input only: capture versioned usage record timestamps")
+    .option("--pattern-evidence", "fresh input only: capture supported error/file evidence; includes usage timing")
     .allowExcessArguments(false)
     .option("--source <id>", "select one full source ID", validateSourceSelection)
     .option("--output <file>", "new output HTML file; existing files are never overwritten")
     .option("--open", "request the system opener after verified HTML publication")
     .option("--unified", "combine existing measurements and evidence-gated diagnostics in one source report")
     .addHelpText("after", "\nChoose --source or exactly --provider claude|codex --input FILE.jsonl; --output is required.\nStored --source reads the existing store; explicit input scans once then reports its exact generation.\nNo roots or --last. Partial evidence may report with exit 1; failed selection never opens old data.\nBounded source-prefix observations only; no global totals, freshness check or savings claim.\n--open requires local .html/.htm output and completed publication with a verified target.\nNative opening may create OS/browser history; helper acceptance does not verify browser rendering.\nTimeout may mean the file is already open; no automatic retry.");
-  for (const name of ["source", "output", "open", "provider", "input", "unified"]) {
+  for (const name of ["source", "output", "open", "provider", "input", "unified", "usage-timing", "pattern-evidence"]) {
     let count = 0;
     report.on(`option:${name}`, () => { if (++count > 1) throw new SafeError("INVALID_ARGUMENT"); });
   }
@@ -221,6 +223,7 @@ export async function run(argv: string[]): Promise<void> {
       process.exitCode = freshReportExitCode(result);
       return;
     }
+    if (options.usageTiming !== undefined || options.patternEvidence !== undefined) throw new SafeError("INVALID_ARGUMENT");
     if (options.open === true) {
       const result = await runReportAndOpen(options);
       process.stdout.write(formatReportAndOpenResult(result, options.json === true));

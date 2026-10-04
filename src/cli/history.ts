@@ -93,8 +93,10 @@ export function registerHistoryCommand(program: Command): void {
   program.on("option:json", () => { jsonFlags++; });
   const command = program.command("history").description("Reconcile explicit stored sources and show dated native-call intervals (read-only)")
     .option("--source <id>", "select a source (repeatable, at most 16)", (v: string, previous: string[]) => [...previous, validateSourceSelection(v)], [])
-    .option("--tokens", "show daily final/provisional response-token evidence; stored sources only")
+    .option("--tokens", "show daily final/provisional response-token evidence")
     .option("--provider <provider>", "fresh input provider: codex or claude; requires --input and --output")
+    .option("--usage-timing", "fresh input only: capture versioned usage record timestamps")
+    .option("--pattern-evidence", "fresh input only: capture supported error/file evidence; includes usage timing")
     .option("--input <file>", "collect one explicit regular .jsonl file before export; excludes --source/roots")
     .option("--from <utc>", "inclusive UTC timestamp, required")
     .option("--to <utc>", "exclusive UTC timestamp, required; at most 366 days")
@@ -102,14 +104,22 @@ export function registerHistoryCommand(program: Command): void {
     .option("--session <id>", "filter daily rows by one exact session identity", sessionSelection)
     .option("--output <file>", "write a new offline .html/.htm report; stdout becomes a publication receipt")
     .allowExcessArguments(false)
-    .addHelpText("after", "\nStored mode: explicit sources only; no scan/list/migration. Conflicting copies are withheld, not resolved by recency.\nFresh --provider/--input mode requires --output; it collects only that file and pins the scan-receipt revision.\nPartial evidence keeps exit1; failed/stale/aborted collection never falls back to old data.\nCompletion counts and clipped interval time have different boundary populations.\nNative-call mode has no daily tokens or global busy-time total. --tokens is a separate stored-source query; collect timestamps with scan --usage-timing. Unknown time has no invented day; provisional values are not final usage.");
-  for (const flag of ["from", "to", "offset", "session", "output", "provider", "input", "tokens"]) {
+    .addHelpText("after", "\nStored mode: explicit sources only; no scan/list/migration. Conflicting copies are withheld, not resolved by recency.\nFresh --provider/--input mode requires --output; it collects only that file and pins the scan-receipt revision.\nPartial evidence keeps exit1; failed/stale/aborted collection never falls back to old data.\nCompletion counts and clipped interval time have different boundary populations.\nNative-call mode has no daily tokens or global busy-time total. --tokens uses stored sources or explicit fresh input with --usage-timing/--pattern-evidence; no implicit parser opt-in. Unknown time has no invented day; provisional values are not final usage.");
+  for (const flag of ["from", "to", "offset", "session", "output", "provider", "input", "tokens", "usage-timing", "pattern-evidence"]) {
     let n = 0;
     command.on(`option:${flag}`, () => { if (++n > 1) throw new SafeError("INVALID_ARGUMENT"); });
   }
   command.action(async () => {
     if (dataFlags > 1 || jsonFlags > 1) throw new SafeError("INVALID_ARGUMENT");
-    const options: HistoryArguments & { output?: string; provider?: string; input?: string; tokens?: boolean } = { ...program.opts(), ...command.opts() };
+    const options: HistoryArguments & { output?: string; provider?: string; input?: string; tokens?: boolean; usageTiming?: boolean; patternEvidence?: boolean } = { ...program.opts(), ...command.opts() };
+    if (options.provider !== undefined || options.input !== undefined) {
+      const { runFreshAnalysis, formatFreshAnalysis, freshAnalysisExitCode } = await import("./fresh-analysis.js");
+      const result = await runFreshAnalysis("history", options);
+      process.stdout.write(formatFreshAnalysis(result, options.json === true));
+      process.exitCode = freshAnalysisExitCode(result);
+      return;
+    }
+    if (options.usageTiming !== undefined || options.patternEvidence !== undefined) throw new SafeError("INVALID_ARGUMENT");
     if (options.tokens === true) {
       const { runUsageHistory, formatUsageHistory, exportUsageHistory, formatUsagePublication } = await import("./usage-history.js");
       if (options.output !== undefined) {
@@ -120,13 +130,6 @@ export function registerHistoryCommand(program: Command): void {
         process.stdout.write(formatUsageHistory(await runUsageHistory(options), options.json === true));
         process.exitCode = 0;
       }
-      return;
-    }
-    if (options.provider !== undefined || options.input !== undefined) {
-      const { runFreshAnalysis, formatFreshAnalysis, freshAnalysisExitCode } = await import("./fresh-analysis.js");
-      const result = await runFreshAnalysis("history", options);
-      process.stdout.write(formatFreshAnalysis(result, options.json === true));
-      process.exitCode = freshAnalysisExitCode(result);
       return;
     }
     if (options.output !== undefined) {
