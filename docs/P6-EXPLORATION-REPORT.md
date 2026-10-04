@@ -24,3 +24,23 @@ This continuation uses the current ChatGPT and an isolated container. Separate c
 ## Execution evidence
 
 Not yet executed. Planned tests and documentation are not feature qualification.
+
+## Maintainer composition specification — 2026-10-04 KST
+
+Actual153 main e58bf63b3049a4641feee409e2abc1d9b2059c6d contributes the
+authenticated schema7 membership prerequisite and genuine old-schema compatibility
+controls. It does not change this report feature or authorize broad5/6/7 closure.
+The intentional unified exploration addition can change its dedicated section,
+its overview assessment row and its navigation entry. Every inherited unified
+section, unrelated HTML, exact CLI JSON/human/exit and all non-unified report
+bytes remain preserved. The genuine historical report input must stay an original
+schema6 generation; only its current private copy is explicitly migrated to7.
+
+A conditional genuine-baseline test currently requires whole unified HTML to be
+identical to the older report. Independently investigate the exact additive
+differences before changing that oracle. A repair may permit only these declared
+new exploration additions while comparing all old content exactly, and must
+verify the new section's assessments/privacy/reference safeguards with the actual
+installed runtime. Do not remove arbitrary nodes/text or skip the historical
+control. Complete separate findings/reviewed implementation and concrete issue
+Verify, then register a separate developer before any code change.
