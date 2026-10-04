@@ -55,3 +55,17 @@ PR154 was actually merged as `61652839e7a1f91f02d0a9d8e6f6bf1411ab6b10` while th
 4. Publish one Draft against main, with the published plan and actual main616 as retained parents. **Verify:** fresh base/ref readback, eight-path delta, exact remote tree/source hashes and hosted final-head checks. PR154 is now a completed dependency; no main merge, release or broad P6 closure is included.
 
 This is a source-preserving composition plan, reviewed before integration. No production or test logic change is required; if one becomes necessary, update the contract and obtain a separately registered developer before editing it.
+
++
++## Maintainer compatibility specification — 2026-10-04, before test correction
++
++Original PR164 production3/feature103 are exact on actual163/main645a1e3ea596e906104a59cefd8f9b201c9d4a78. Node24.21 source/build/normal-registry installed145compiled/147artifact pass. One14-file selected batch719cases yields717PASS/2FAIL/0SKIP; both actual genuine-current-main sealed-generation report cases fail at the retained navigation comparator. All103 new controls pass, including the explicit genuine report predecessor and actual-installed cases. The original failure receipts stay preserved; no unavailable native freeze was run or aliased.
++
++The old complete unified HTML/status/stdout/stderr contract may change only by the three declared Active Time additions, overlaid on the already-qualified four Exploration additions: one exact navigation link between Overview and Time-and-commands, one independently verified Active Time assessment row between Summary and Native-failure in the overview table, and one complete independently verified section immediately after the overview and before commands. The genuine historical page must contain none of these new markers. Missing, duplicate, misplaced, nested, corrupt or unrelated content cannot pass by stripping arbitrary regions.
++
++Verify the complete native Active Time assessment/context/population/exclusions/arithmetic/partition rows and full-count versus12-detail omissions from the separately retained native analyzer/source contract. Preserve supported Codex and unsupported Claude distinctions, observed interval union versus span, unknown/null/zero/overflow, capability/parser/source revision and complete eight-field context, privacy/aliasing/bounds, explanatory limitations and non-CPU/task/productivity/waste semantics. Do not derive expected values by calling the new renderer alone.
++
++Preserve all36 existing test identities and every old rejection vector, the four Exploration location/content/native assertions, canonical JSON/envelope ordering and own-publication byte field proof, complete scan/statistics/non-unified receipts, genuine schema6 versus explicit current private7 handling and actual installed controls. Add meaningful corruption/missing/duplicate/placement/native semantics/privacy/bounds/future-change controls while maintaining their non-noop meaning. No production/native analyzer/schema/dependency/test-skip change or new JSON exception is authorized.
++
++Separate contributor FINDINGS from the frozen actual two-provider failures and exact source boundaries precede root-reviewed IMPLEMENTATION/issue Verify, then separate developer claim/readback/GO. Until that handoff, all test/product edits are NOT RUN. Browser/native-view/keyboard/viewport/print/zoom/reader and broad6/7 acceptance remain separate from this strict byte/test-only correction.
++
