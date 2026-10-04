@@ -783,3 +783,7 @@ The independent PR151 review found one medium compatibility defect: the new cand
 ## P4 durable directory enrollment — reviewed plan 2026-10-04
 
 Implement the [independently reviewed contract](P4-DIRECTORY-MEMBERSHIP.md), approved before code. Add atomic schema7 and read-only marker/orphan validation; a bounded authenticated membership store; complete stable one-root census; and a real scanner coordinator. Preserve all existing source/scanner/CLI semantics and other ownership. The contract defines concrete Verify for schema/privacy/tamper, real scan capture, incomplete census, original-generation CAS/restart, full regression and installed qualification. Reuse issue5 for this prerequisite; no broad completion or source retirement.
+
+### Schema7 genuine-baseline verification correction — 2026-10-04
+
+Independent follow-up research found42 optional historical controls assumed both binaries could read the same database after the schema7 addition. Preserve the actual old binary and its schema6 database; explicitly migrate a separate copy for the current binary. The [scoped correction plan](P4-DIRECTORY-MEMBERSHIP.md#maintainer-historical-control-correction-plan--2026-10-04) reserves a test-only helper and three suites, retains all original output/source/checkpoint/private-byte assertions and adds both incompatible-reader non-write guards. A separately registered developer implements only after this plan and issue5 Verify readback. No production behavior or historical artifact changes.

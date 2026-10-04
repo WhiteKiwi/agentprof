@@ -287,3 +287,44 @@ new-main exploration help comparators remain untouched. Full execution log
 SHA256: `96ee887568699bddfe1446d98bef525b53b5e46ce47404b9636284d26a4afc7d`.
 This qualifies the source composition locally; final feature-head CI is recorded
 in PR153/issue5 after it actually completes.
+
+## Maintainer historical-control correction plan — 2026-10-04
+
+Independent review of all29 source paths found no production blocker. Mac arm64,
+Node24.21 qualification of published `afdc9fbd` passed typecheck/build, all50 new
+tests, actual installed enrollment, artifact139 and genuine installed-main-d1
+schema6→7 migration of both providers with all10 old tables and complete stored
+sources unchanged. The one-worker full run with authentic schema5 and additional
+retained genuine baselines was **4566 PASS /42 FAIL /90 conditional SKIP**. The42
+failures are36 evidence-report-batch comparisons using a schema6 reader on a new7
+fixture, and2 timing/4 provider composition cases using current read-only on an
+old6 fixture before explicit migration. Keep that failed run; it is not a pass.
+
+The independent research contributor reviewed the failing suites and the real
+schema/read-only/fixture contracts after the SPEC correction. Scope is exactly
+`tests/schema6-compatibility.ts`, `tests/evidence-report-batch.test.ts`,
+`tests/usage-timing-composition.test.ts`, `tests/provider-evidence-composition.test.ts`
+and additive SPEC/FINDINGS/IMPLEMENTATION/this qualification record. The five
+enrollment production blobs, old binaries and genuine schema5 seed stay unchanged.
+
+1. Freeze a genuine baseline-produced schema6 original and explicitly migrate a
+   fresh copy for the current reader. **Verify:** inspect schema6 and exact markers,
+   preserve every original directory/key/database name/mode/byte and every row in
+   the10 old tables, demand current7 markers and empty new membership tables, and
+   retain complete source/checkpoint semantics. Do not relabel or drop tables from
+   a current database to manufacture a historical input.
+2. Repair only the42 existing optional comparisons through that test-only helper.
+   **Verify:** current reader refuses original6 and old reader refuses copied7
+   without writes; old commands use original6 and current commands use copy7.
+   Seed the evidence-view comparisons through the real old scanner with the same
+   existing synthetic positive fixture/key. Retain complete human/JSON/help/report
+   HTML, source IDs, original generation/replay/corruption and both private-byte
+   guarantees; no case is skipped, removed or changed to expect a product error.
+3. Review and qualify the frozen correction before publication. **Verify:** separate
+   developer claim/readback/GO precedes code; original29 plus all added test/doc
+   paths reviewed; affected suites and new50 run, then one final supported full
+   suite with all genuine baseline/installed obligations, strict typecheck/build
+   and scripts-disabled packed/global install with identical compiled bytes and
+   artifact139. Preserve original FAIL/SKIP counts. Exact final-head source/security
+   and actual-merge tree/parents/main-CI gates remain pending until verified. This
+   bounded prerequisite never closes broad issue5.

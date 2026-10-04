@@ -502,3 +502,7 @@ Verification must include a genuine ordinary Claude2/3/4 capture through built a
 ## Durable observed directory membership — 2026-10-04
 
 An explicit internal one-directory enrollment API records raw-free, authenticated historical membership across restart through the existing scanner. Complete, stable pre/post censuses and successful per-source receipts are required; omitted old members become `not_observed`, never unavailable or deleted. One run retains the existing 64-source discovery ceiling; durable history is bounded to 4,096 members and a 1 MiB canonical manifest, failing closed without eviction. This API is a prerequisite to directory lifecycle reconciliation, not a CLI or retirement feature. [Contract and reviewed plan](P4-DIRECTORY-MEMBERSHIP.md).
+
+### Genuine historical compatibility across schema7 — 2026-10-04
+
+Historical compatibility comparisons must preserve a genuine previous-version database in its original schema and compare its reader with the current reader on an explicitly migrated copy. Readers continue to refuse incompatible schemas without writes. Preserve complete source semantics, generation authentication, original human/JSON/report bytes and each side's private database/key bytes after the migration setup. A schema7 database is not an input supported by an older schema6 reader. This verification correction does not change product migrations, source contracts or compatibility policy.
