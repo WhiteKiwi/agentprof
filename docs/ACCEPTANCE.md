@@ -463,3 +463,11 @@ omitting the planned FINDINGS appendix and retaining that main blob unchanged.
 The scoped contract keeps source-derived findings; all tested/reviewed source and
 test hashes are unchanged. This docs-only narrowing does not add a verification
 run or convert any skipped case to passed.
+
+The subsequent PR151/main-d1 composition retains exact upstream exploration
+source/help and the unchanged enrollment production. Full qualification with the
+exact5614 historical seed passed4,560 tests/0 failures/138 inherited skips across
+154 files; strict typecheck/build and the139-file artifact verifier passed.
+All50 new enrollment and87 upstream exploration tests are included in that total.
+The [composition receipt](P4-DIRECTORY-MEMBERSHIP.md#main151-composed-execution-receipt)
+preserves original-main history and separates hosted final-head checks.

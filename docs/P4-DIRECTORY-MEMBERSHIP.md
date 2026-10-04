@@ -248,3 +248,42 @@ existing main9a blob unchanged. Source findings remain in this scoped contract.
 The original30-path independent review and complete tests remain applicable to
 identical source/test bytes; the publication narrowing changes documentation only.
 No private workspace or runtime identifiers are added to this public contract.
+
+## Main151 composition plan — 2026-10-04 UTC
+
+Draft PR153 was published at `d14cce6647ebb8456af6f768405ad5d211e37074` after
+local qualification. During publication, exploration PR151 merged as
+`d1b84f166eb33f11d5b7a22ca407dbf14226fd24`; the shared append-only planning
+documents now conflict, so Foundation cannot run on the initial head.
+
+Preserve every new-main source/doc/test blob, including the exploration INFO
+correction and additive insights help. Reapply only this PR's schema refusal
+arrays in the two shared tests, preserving its newly merged help comparators.
+Append our already-reviewed SPEC/IMPLEMENTATION sections after complete new-main
+prefixes. All five directory production files remain byte-identical to the
+qualified source. FINDINGS is inherited unchanged from new main and is not part
+of this PR's write delta.
+
+Verify the complete435 unowned new-main blobs, own production hash equality,
+focused/full/installed gates with the exact5614 seed, and a non-force feature
+merge commit retaining both initial feature and new-main parents. Actual merge
+of the Draft into main is not authorized or performed by this step. Earlier9a
+qualification remains historical; it is not relabeled as this composition.
+
+### Main151 composed execution receipt
+
+The d1 composition passed strict typecheck/build and the full suite on the same
+Linux/Node24.19 one-worker512MiB setup: **4,560 PASS /0 FAIL /138 inherited SKIP**,
+154 files (152 PASS/2 SKIP),431.12 seconds. This full run used the exact54-file
+verified5614 seed. All50 new enrollment tests and the merged87 exploration tests
+are included in that total. Actual installed enrollment remains unconditional.
+The unchanged artifact verifier passed **139 files**, scripts-disabled
+npm-exec/global installation and prior read-only commands, with `published:false`.
+
+All five owned production files remain identical to the reviewed/qualified
+initial feature. All435 unowned new-main blobs match exactly. The only shared
+test composition is the previously reviewed unsupported-schema array change;
+new-main exploration help comparators remain untouched. Full execution log
+SHA256: `96ee887568699bddfe1446d98bef525b53b5e46ce47404b9636284d26a4afc7d`.
+This qualifies the source composition locally; final feature-head CI is recorded
+in PR153/issue5 after it actually completes.

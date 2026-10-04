@@ -36,18 +36,28 @@ export async function run(argv: string[]): Promise<void> {
   program.on("option:data-dir", () => { reportDataFlags++; });
   program.on("option:json", () => { reportJsonFlags++; });
 
-  let usageTimingFlags = 0, patternEvidenceFlags = 0, reconcileFlags = 0;
+  let usageTimingFlags = 0, patternEvidenceFlags = 0, reconcileFlags = 0, enrollDirectoryFlags = 0;
   const scan = program.command("scan").option("--usage-timing", "opt into versioned record timestamps for history --tokens")
     .option("--pattern-evidence", "capture exact observed errors and supported structured file evidence; includes usage timing")
     .on("option:pattern-evidence", () => { if (++patternEvidenceFlags > 1) throw new SafeError("INVALID_ARGUMENT"); })
     .on("option:usage-timing", () => { if (++usageTimingFlags > 1) throw new SafeError("INVALID_ARGUMENT"); })
     .option("--reconcile", "collect explicit .jsonl files and retain proven missing sources as unavailable")
     .on("option:reconcile", () => { if (++reconcileFlags > 1) throw new SafeError("INVALID_ARGUMENT"); })
+    .option("--enroll-directory", "scan exactly one explicit directory and retain authenticated membership observations")
+    .on("option:enroll-directory", () => { if (++enrollDirectoryFlags > 1) throw new SafeError("INVALID_ARGUMENT"); })
     .description("Collect explicit --codex-root/--claude-root inputs only (at least one required)")
-    .addHelpText("after", "\nBounded scan: at most 16 roots, 64 sources, 256 directories, 4096 nodes and yielded entries,\n16 MiB/32768 records per source, 256 diagnostic samples. No aggregation or parser resume.\n--reconcile requires explicit .jsonl file roots, not directories. Only proven missing leaves are retired; stored evidence remains.\nMissing/unreadable parents and symlinks are not deletion evidence. No automatic directory pruning or inferred moves.")
+    .addHelpText("after", "\nBounded scan: at most 16 roots, 64 sources, 256 directories, 4096 nodes and yielded entries,\n16 MiB/32768 records per source, 256 diagnostic samples. No aggregation or parser resume.\n--reconcile requires explicit .jsonl file roots, not directories. Only proven missing leaves are retired; stored evidence remains.\nMissing/unreadable parents and symlinks are not deletion evidence. No automatic directory pruning or inferred moves.\n--enroll-directory requires exactly one explicit provider directory and excludes --reconcile.\nMembership not_observed is not deletion evidence; the original source data remains.")
     .action(async () => {
-      const options = { ...program.opts(), ...scan.opts() } as ScanArguments & { json?: boolean; reconcile?: boolean };
+      const options = { ...program.opts(), ...scan.opts() } as ScanArguments & { json?: boolean; reconcile?: boolean; enrollDirectory?: boolean };
       if (options.usageTiming && (reportDataFlags > 1 || reportJsonFlags > 1)) throw new SafeError("INVALID_ARGUMENT");
+      if (options.enrollDirectory === true) {
+        if (reportDataFlags > 1 || reportJsonFlags > 1 || scan.args.length !== 0) throw new SafeError("INVALID_ARGUMENT");
+        const { runDirectoryScan, formatDirectoryScan, directoryScanExitCode } = await import("./directory-scan.js");
+        const result = await runDirectoryScan({ ...options, enrollDirectory: true });
+        process.stdout.write(formatDirectoryScan(result, options.json === true));
+        process.exitCode = directoryScanExitCode(result);
+        return;
+      }
       if (options.reconcile === true) {
         if (reportDataFlags > 1 || reportJsonFlags > 1 || scan.args.length !== 0) throw new SafeError("INVALID_ARGUMENT");
         const { runReconcileScan, formatReconcileScan, reconcileScanExitCode } = await import("./reconcile-scan.js");
@@ -188,10 +198,15 @@ export async function run(argv: string[]): Promise<void> {
   const insights = program.command("insights").description("Read Slow Tool evidence from one stored source prefix (read-only)")
     .option("--source <id>", "select one full source ID from stats --list-sources or scan JSON", validateSourceSelection)
     .addHelpText("after", "\nExactly one --source is required. Existing private DELETE-mode store only; no scan or migration.\nNo --last, source listing, global totals, freshness check or cross-source reconciliation.\nSuppressed/partial evidence and necessary-work/quality safeguards remain visible; no savings claim.");
+  insights.option("--exploration", "show informational native exploration patterns");
+  insights.addHelpText("after", "\n--exploration selects bounded Claude parser2/3/4 observations; informational only, with unknown/blocked states and no waste or savings claim.");
+  let explorationFlags = 0;
+  insights.on("option:exploration", () => { if (++explorationFlags > 1) throw new SafeError("INVALID_ARGUMENT"); });
   let insightSelections = 0;
   insights.on("option:source", () => { if (++insightSelections > 1) throw new SafeError("INVALID_ARGUMENT"); });
   insights.action(async () => {
     const options = { ...program.opts(), ...insights.opts() } as InsightsArguments & { json?: boolean };
+    if (options.exploration === true && (insights.args.length !== 0 || reportDataFlags > 1 || reportJsonFlags > 1)) throw new SafeError("INVALID_ARGUMENT");
     const result = await runInsights(options);
     process.stdout.write(formatInsightsResult(result, options.json === true));
     process.exitCode = 0;

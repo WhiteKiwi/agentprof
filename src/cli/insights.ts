@@ -1,3 +1,5 @@
+import { formatSourceExploration } from "./exploration.js";
+import type { SourceExplorationAnalysis } from "../analysis/source-exploration.js";
 import { SafeError } from "../privacy/diagnostics.js";
 import { resolveDataDirectory } from "../privacy/paths.js";
 import { identity } from "../db/source-validation.js";
@@ -5,9 +7,12 @@ import type { SourceSlowToolAnalysis, SourceSlowToolCandidate } from "../analysi
 import { validateCliPath } from "./scan.js";
 import { validateSourceSelection } from "./stats.js";
 
-export type InsightsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; source?: string }>;
-export type InsightsResult = Readonly<{ mode: "selected_source"; analysis: SourceSlowToolAnalysis }>;
+export type InsightsArguments = Readonly<{ dataDir?: string; codexRoot?: readonly string[]; claudeRoot?: readonly string[]; source?: string; exploration?: boolean }>;
+export type InsightsResult = Readonly<{ mode: "selected_source"; analysis: SourceSlowToolAnalysis } | { mode: "selected_source_exploration"; analysis: SourceExplorationAnalysis }>;
 export function validateInsightsArguments(options: InsightsArguments): string {
+  const field = Object.getOwnPropertyDescriptor(options, "exploration");
+  if (field !== undefined && (!("value" in field) || typeof field.value !== "boolean")) throw new SafeError("INVALID_ARGUMENT");
+  if (options.exploration === true && (options.codexRoot !== undefined && !Array.isArray(options.codexRoot) || options.claudeRoot !== undefined && !Array.isArray(options.claudeRoot))) throw new SafeError("INVALID_ARGUMENT");
   if ((options.codexRoot?.length ?? 0) || (options.claudeRoot?.length ?? 0)) throw new SafeError("INVALID_ARGUMENT");
   if (options.source === undefined) throw new SafeError("INSIGHTS_SELECTION_REQUIRED");
   validateSourceSelection(options.source);
@@ -18,12 +23,14 @@ export async function runInsights(options: InsightsArguments): Promise<InsightsR
   const directory = validateInsightsArguments(options);
   const { withReadOnlyStore } = await import("../db/read-only.js");
   const { createSourceStore } = await import("../db/source-store.js");
-  const { analyzeSourceSlowTool } = await import("../analysis/source-slow-tool.js");
+  const exploration = options.exploration === true ? (await import("../analysis/source-exploration.js")).analyzeSourceExploration : null;
+  const slow = exploration === null ? (await import("../analysis/source-slow-tool.js")).analyzeSourceSlowTool : null;
   return withReadOnlyStore(directory, (db, key) => {
     try { identity(options.source, "source", key); } catch { throw new SafeError("INVALID_IDENTITY_KEY"); }
     const source = createSourceStore(db, key).readSource(options.source!);
     if (source === null) throw new SafeError("SOURCE_NOT_FOUND");
-    return Object.freeze({ mode: "selected_source", analysis: analyzeSourceSlowTool(source) });
+    if (exploration !== null) return Object.freeze({ mode: "selected_source_exploration", analysis: exploration(source) });
+    return Object.freeze({ mode: "selected_source", analysis: slow!(source) });
   });
 }
 function value(n: number | null): string { return n === null ? "unknown" : String(n); }
@@ -115,6 +122,12 @@ function formatHuman(a: SourceSlowToolAnalysis): string {
   return lines.join("\n") + "\n";
 }
 export function formatInsightsResult(result: InsightsResult, json: boolean): string {
+  if (result.mode === "selected_source_exploration") {
+    if (!json) return formatSourceExploration(result.analysis);
+    const text = JSON.stringify({ schema: "agentprof.cli/v1", ok: true, command: "insights", result }) + "\n";
+    if (Buffer.byteLength(text) > 8 * 1024 * 1024) throw new SafeError("INVALID_ARGUMENT");
+    return text;
+  }
   if (json) return JSON.stringify({ schema: "agentprof.cli/v1", ok: true, command: "insights", result }) + "\n";
   return formatHuman(result.analysis);
 }
