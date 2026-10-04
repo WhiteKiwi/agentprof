@@ -365,3 +365,19 @@ The earlier Mac full4566PASS/42FAIL/90conditionalSKIP and separate schema5
 failure remain distinct evidence; this selected pass does not rewrite either.
 Parent final full/packed artifact review, exact-head source/security, actual
 merge/main-CI qualification and contributor release remain subsequent gates.
+
+### Final schema5 current-version fixture correction plan
+
+The parent's extended final147d Mac run was **4609 PASS /1 FAIL /88 conditional
+SKIP**. Supplying the exact schema5 binary also activates the fresh precode Claude
+write/resume control. Its `tests/fresh-precode-controls.test.ts:243` still expects
+current6/markers1..6 after the explicit write migrated correctly to7. Preserve
+the genuine original5/parser1/bytes and every source ID/revision/parser2/checkpoint,
+unchanged replay, exact suffix offset/ordinal and private-output assertion.
+Separately research/review/claim before changing only that current expectation
+to7/markers1..7. **Verify:** rerun the whole affected file with the same actual
+baseline/installed environment and reconcile identical case IDs against the
+retained full receipt. Do not relabel the failed full as a clean pass or add a
+subset's repeated passes to the aggregate. No product/runtime byte changes; a
+new full run is unnecessary if only this test oracle changes and all other
+source/test inputs remain identical. Exact-source/main gates remain subsequent.
