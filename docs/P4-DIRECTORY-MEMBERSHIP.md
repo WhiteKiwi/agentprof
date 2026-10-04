@@ -307,6 +307,15 @@ schema/read-only/fixture contracts after the SPEC correction. Scope is exactly
 and additive SPEC/FINDINGS/IMPLEMENTATION/this qualification record. The five
 enrollment production blobs, old binaries and genuine schema5 seed stay unchanged.
 
+Follow-up source research additionally found that the existing
+`tests/claude-historical-schema-copy.ts` preservation projection includes newly
+added membership tables after migration, although genuine schema5 had neither.
+Reserve that already-owned helper too: exclude only the two new tables from the
+historical-row comparison and independently demand each is empty after migration.
+**Verify:** activate `claude-historical-schema-copy.test.ts` with the exact genuine
+5614 schema5 binary; retain every old table/marker/parser1/source/key/private-byte
+and incompatible-reader assertion. This is not a synthetic historical relabel.
+
 1. Freeze a genuine baseline-produced schema6 original and explicitly migrate a
    fresh copy for the current reader. **Verify:** inspect schema6 and exact markers,
    preserve every original directory/key/database name/mode/byte and every row in
