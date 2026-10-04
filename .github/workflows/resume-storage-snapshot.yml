@@ -1,0 +1,28 @@
+name: Resume storage prerequisite snapshot
+on:
+  push:
+    branches: [chore/resume-storage-source-snapshot]
+    paths: [.github/workflows/resume-storage-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 17fa6b3f511e705294fd84206504efad0ba9f978
+          persist-credentials: false
+      - run: |
+          set -eu
+          test "$(git rev-parse HEAD)" = 17fa6b3f511e705294fd84206504efad0ba9f978
+          mkdir snapshot
+          git archive --format=tar.gz HEAD > snapshot/resume-storage-base.tgz
+          git rev-parse 'HEAD^{tree}' > snapshot/tree.txt
+          git ls-tree -r HEAD > snapshot/manifest.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: resume-storage-base
+          path: snapshot/
+          retention-days: 1
