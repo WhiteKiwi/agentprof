@@ -337,3 +337,31 @@ and incompatible-reader assertion. This is not a synthetic historical relabel.
    artifact139. Preserve original FAIL/SKIP counts. Exact final-head source/security
    and actual-merge tree/parents/main-CI gates remain pending until verified. This
    bounded prerequisite never closes broad issue5.
+
+### Separate developer correction execution — 2026-10-04 KST
+
+The separate development contributor began after reviewed plan
+`c1a0926a6e548dbbb174ba9f50e791f30bfdfaac` and issue5's saved claim/readback.
+The correction changes only the three historical-comparison suites, their new
+test-only schema6 helper, and the existing schema5 copy helper. Genuine old CLI
+artifacts produce original schema6; the exact5614 artifact produces original5.
+No source reseeding, schema relabel, historical-table dropping or product edit
+is used. Original schema6 and its current7 copy retain all10 inherited tables,
+complete stored sources and authenticated checkpoint/predecessor generations.
+Both incompatible readers refuse without writes. The36 evidence comparisons
+share one frozen pair and verify both directories' names, modes and bytes after
+each case. Current timing/enrichment/append/restoration/corruption operates only
+on the migrated copy, with repeated original-byte checks. The genuine schema5
+projection still compares every old row and separately demands both new
+membership tables remain empty.
+
+On macOS arm64/Node24.21, strict typecheck/build passed. One-worker512MiB with
+child umask022 ran eight selected test files: **613 PASS /0 FAIL /0 SKIP**, in
+61.556 seconds. This includes all50 new directory cases, all42 previously failing
+historical comparisons, the exact genuine-schema5 case and the retained actual
+installed consumers; these are subsets, not additional totals. All production
+compiled bytes and modes match the existing real scripts-disabled PR153 install.
+The earlier Mac full4566PASS/42FAIL/90conditionalSKIP and separate schema5
+failure remain distinct evidence; this selected pass does not rewrite either.
+Parent final full/packed artifact review, exact-head source/security, actual
+merge/main-CI qualification and contributor release remain subsequent gates.
