@@ -13,6 +13,9 @@ const notes = noteOne + noteTwo;
 const retirementOption = "  --retire-missing    with --enroll-directory, guard and mark absent members\n"
   + "                      unavailable without deleting history\n";
 const retirementFooter = "--retire-missing requires --enroll-directory; complete census, current revisions and all-root guards precede retirement. History is retained; no move identity is inferred.\n";
+const batchOption = "  --batch-directory   with --enroll-directory, collect up to 4096 files in\n"
+  + "                      bounded pages\n";
+const batchFooter = "--batch-directory requires --enroll-directory: up to 4096 files, 256 directories, 16384 entries; 16-file pages and one final complete membership capture.\n";
 
 function assertReceipt(value: unknown, name: string): asserts value is ScanHelpReceipt {
   assert.ok(value !== null && typeof value === "object", `${name} must be an ordinary receipt`);
@@ -40,8 +43,8 @@ function assertOnce(stdout: string, literal: string): void {
   assert.equal(stdout.split(literal).length, 2, "Expected one exact help component");
 }
 
-/** Accept only the declared enrollment (307 bytes) and retirement (308 bytes) additions. */
-export function assertScanHelpEnrollmentDelta(current: unknown, historical: unknown): void {
+/** Original strict enrollment307/retirement308/full-receipt layer. */
+function assertEnrollmentAndRetirementDelta(current: unknown, historical: unknown): void {
   assertReceipt(current, "current");
   assertReceipt(historical, "historical");
   for (const marker of ["--retire-missing", "unavailable without deleting history", "all-root guards precede retirement", "no move identity is inferred"]) {
@@ -77,4 +80,29 @@ export function assertScanHelpEnrollmentDelta(current: unknown, historical: unkn
   assert.equal(Buffer.byteLength(enrollmentCurrent.stdout, "utf8") - Buffer.byteLength(historical.stdout, "utf8"), 307);
   const stdout = enrollmentCurrent.stdout.replace(option, "").slice(0, -notes.length);
   assert.deepEqual({ status: enrollmentCurrent.status, stdout, stderr: enrollmentCurrent.stderr }, historical);
+}
+
+/** Admit the mandatory exact batch265 layer before the unchanged legacy615 layer. */
+export function assertScanHelpEnrollmentDelta(current: unknown, historical: unknown): void {
+  assertReceipt(current, "current");
+  assertReceipt(historical, "historical");
+  for (const marker of ["--batch-directory", "with --enroll-directory, collect up to 4096 files in", "bounded pages",
+    "up to 4096 files, 256 directories, 16384 entries", "16-file pages", "one final complete membership capture"]) {
+    assert.ok(!historical.stdout.includes(marker), "Historical help already contains a batch addition");
+  }
+  assertOnce(current.stdout, batchOption);
+  assertOnce(current.stdout, batchFooter);
+  assertOnce(current.stdout, option + retirementOption + batchOption + help);
+  assertOnce(current.stdout, warning + notes + retirementFooter + batchFooter);
+  assert.ok(current.stdout.endsWith(warning + notes + retirementFooter + batchFooter), "Batch footer must follow the unchanged warning, enrollment notes and retirement footer as the final line");
+  const lines = batchOption.split("\n").slice(0, -1);
+  assert.equal(lines.length, 2); assert.ok(lines.every(line => line.length <= 80));
+  assert.equal(lines[0]!.indexOf("with --enroll-directory"), 22);
+  assert.equal(lines[1]!.indexOf("bounded pages"), 22);
+  assert.equal(Buffer.byteLength(batchOption, "utf8"), 111);
+  assert.equal(Buffer.byteLength(batchFooter, "utf8"), 154);
+  assert.equal((batchOption + batchFooter).split("\n").length - 1, 3);
+  const legacyCurrent = { status: current.status, stdout: current.stdout.replace(batchOption, "").slice(0, -batchFooter.length), stderr: current.stderr };
+  assert.equal(Buffer.byteLength(current.stdout, "utf8") - Buffer.byteLength(legacyCurrent.stdout, "utf8"), 265);
+  assertEnrollmentAndRetirementDelta(legacyCurrent, historical);
 }

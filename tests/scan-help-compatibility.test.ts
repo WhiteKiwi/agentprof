@@ -54,6 +54,29 @@ const retirementFirst = "  --retire-missing    with --enroll-directory, guard an
 const retirementContinuation = "                      unavailable without deleting history\n";
 const retirementOption = retirementFirst + retirementContinuation;
 const retirementFooter = "--retire-missing requires --enroll-directory; complete census, current revisions and all-root guards precede retirement. History is retained; no move identity is inferred.\n";
+const batchOption = "  --batch-directory   with --enroll-directory, collect up to 4096 files in\n"
+  + "                      bounded pages\n";
+const batchFooter = "--batch-directory requires --enroll-directory: up to 4096 files, 256 directories, 16384 entries; 16-file pages and one final complete membership capture.\n";
+const oldProjectionMutations: Record<string, (stdout: string) => string> = {
+  "option after help": s => s.replace(option + retirementOption + help, retirementOption + help + option),
+  "option separated from help": s => s.replace(option + retirementOption + help, option + "\n" + retirementOption + help),
+  "retirement after help": s => s.replace(retirementOption + help, help + retirementOption),
+  "gap after retirement": s => s.replace(retirementOption + help, retirementOption + "\n" + help),
+  "missing both retirement components": s => s.replace(retirementOption, "").slice(0, -retirementFooter.length),
+  "missing retirement footer": s => s.slice(0, -retirementFooter.length),
+  "retirement footer without final LF": s => s.slice(0, -1),
+  "duplicate retirement footer": s => s + retirementFooter,
+  "text after retirement footer": s => s + "Undeclared output.\n",
+};
+function assertBatchPreservedProjection(name: string, original: string, mutated: string): void {
+  const originalMutation = oldProjectionMutations[name];
+  if (!originalMutation) return;
+  for (const component of [batchOption, batchFooter]) expect(mutated.split(component).length - 1).toBe(1);
+  expect(mutated.endsWith(batchFooter)).toBe(true);
+  const strip = (stdout: string) => stdout.replace(batchOption, "").slice(0, -batchFooter.length);
+  expect(strip(mutated)).not.toBe(strip(original));
+  expect(strip(mutated)).toBe(originalMutation(strip(original)));
+}
 let current: ScanHelpReceipt;
 let absent: string;
 let frozenCurrent: string;
@@ -117,9 +140,9 @@ const stdoutMutations: [string, (stdout: string) => string][] = [
   ["stray carriage return", s => s.replace(optionFirst, optionFirst.slice(0, -1) + "\r\n")],
   ["missing final LF", s => s.slice(0, -1)],
   ["extra final LF", s => s + "\n"],
-  ["option after help", s => s.replace(option + retirementOption + help, retirementOption + help + option)],
+  ["option after help", s => s.replace(option + retirementOption + batchOption + help, retirementOption + batchOption + help + option)],
   ["option before Options", s => s.replace(option, "").replace("Options:\n", option + "Options:\n")],
-  ["option separated from help", s => s.replace(option + retirementOption + help, option + "\n" + retirementOption + help)],
+  ["option separated from help", s => s.replace(option + retirementOption + batchOption + help, option + "\n" + retirementOption + batchOption + help)],
   ["reordered notes", s => s.replace(notes, noteTwo + noteOne)],
   ["notes before unchanged warning", s => s.replace(warning + notes, notes + warning)],
   ["text after final notes", s => s + "Additional output.\n"],
@@ -137,19 +160,20 @@ const stdoutMutations: [string, (stdout: string) => string][] = [
 it.each(stdoutMutations)("rejects current help drift: %s", (_name, change) => {
   const stdout = change(current.stdout);
   expect(stdout).not.toBe(current.stdout);
+  assertBatchPreservedProjection(_name, current.stdout, stdout);
   expect(() => assertScanHelpEnrollmentDelta({ ...current, stdout }, fixture.receipt)).toThrow();
 });
 
 const retirementMutations: [string, (stdout: string) => string][] = [
-  ["missing both retirement components", s => s.replace(retirementOption, "").slice(0, -retirementFooter.length)],
+  ["missing both retirement components", s => s.replace(retirementOption, "").replace(retirementFooter, "")],
   ["missing retirement option", s => s.replace(retirementOption, "")],
   ["missing retirement flag row", s => s.replace(retirementFirst, "")],
   ["missing retirement continuation", s => s.replace(retirementContinuation, "")],
-  ["missing retirement footer", s => s.slice(0, -retirementFooter.length)],
+  ["missing retirement footer", s => s.replace(retirementFooter, "")],
   ["duplicate retirement option", s => s.replace(retirementOption, retirementOption + retirementOption)],
   ["duplicate retirement flag row", s => s.replace(retirementFirst, retirementFirst + retirementFirst)],
   ["duplicate retirement continuation", s => s.replace(retirementContinuation, retirementContinuation + retirementContinuation)],
-  ["duplicate retirement footer", s => s + retirementFooter],
+  ["duplicate retirement footer", s => s.replace(retirementFooter, retirementFooter + retirementFooter)],
   ["retirement flag typo", s => s.replace(retirementFirst, retirementFirst.replace("--retire-missing", "--retire-missings"))],
   ["retirement description typo", s => s.replace("guard and mark absent members", "guard and delete absent members")],
   ["retirement continuation typo", s => s.replace("unavailable without deleting history", "unavailable while deleting history")],
@@ -166,12 +190,12 @@ const retirementMutations: [string, (stdout: string) => string][] = [
   ["inserted retirement row", s => s.replace(retirementFirst, retirementFirst + "                      undeclared retirement instruction\n")],
   ["retirement CRLF", s => s.replace(retirementOption, retirementOption.replaceAll("\n", "\r\n"))],
   ["retirement embedded carriage return", s => s.replace("guard and mark", "guard\rand mark")],
-  ["retirement footer without final LF", s => s.slice(0, -1)],
+  ["retirement footer without final LF", s => s.replace(retirementFooter, retirementFooter.slice(0, -1))],
   ["retirement before enrollment", s => s.replace(option + retirementOption, retirementOption + option)],
-  ["retirement after help", s => s.replace(retirementOption + help, help + retirementOption)],
+  ["retirement after help", s => s.replace(retirementOption + batchOption + help, batchOption + help + retirementOption)],
   ["retirement inside enrollment", s => s.replace(option + retirementOption, optionFirst + retirementOption + optionContinuation)],
   ["gap before retirement", s => s.replace(option + retirementOption, option + "\n" + retirementOption)],
-  ["gap after retirement", s => s.replace(retirementOption + help, retirementOption + "\n" + help)],
+  ["gap after retirement", s => s.replace(retirementOption + batchOption + help, retirementOption + "\n" + batchOption + help)],
   ["retirement before Options", s => s.replace(retirementOption, "").replace("Options:\n", retirementOption + "Options:\n")],
   ["retirement footer before first note", s => s.replace(notes + retirementFooter, retirementFooter + notes)],
   ["retirement footer before second note", s => s.replace(notes + retirementFooter, noteOne + retirementFooter + noteTwo)],
@@ -179,7 +203,7 @@ const retirementMutations: [string, (stdout: string) => string][] = [
   ["retirement footer before heading", s => s.replace(retirementFooter, "").replace("Usage:", retirementFooter + "Usage:")],
   ["reordered retirement suffix", s => s.replace(notes + retirementFooter, noteTwo + noteOne + retirementFooter)],
   ["separated retirement footer", s => s.replace(notes + retirementFooter, notes + "\n" + retirementFooter)],
-  ["text after retirement footer", s => s + "Undeclared output.\n"],
+  ["text after retirement footer", s => s.replace(retirementFooter, retirementFooter + "Undeclared output.\n")],
   ["unrelated provider root description", s => s.replace("explicit --codex-root/--claude-root inputs only", "implicit provider roots")],
   ["unrelated original reconcile footer", s => s.replace("Only proven missing leaves are retired", "All missing leaves are retired")],
   ["unrelated extra option beside retirement", s => s.replace(retirementOption, retirementOption + "  --retire-all        undeclared policy\n")],
@@ -191,6 +215,7 @@ const retirementMutations: [string, (stdout: string) => string][] = [
 it.each(retirementMutations)("rejects retirement help drift: %s", (_name, change) => {
   const stdout = change(current.stdout);
   expect(stdout).not.toBe(current.stdout);
+  assertBatchPreservedProjection(_name, current.stdout, stdout);
   expect(() => assertScanHelpEnrollmentDelta({ ...current, stdout }, fixture.receipt)).toThrow();
 });
 

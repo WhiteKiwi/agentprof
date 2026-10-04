@@ -7,6 +7,8 @@ import { SafeError } from "../privacy/diagnostics.js";
 import { assertNoSymlink } from "../privacy/paths.js";
 import { SCAN_LIMITS } from "./scan-run.js";
 
+export const DIRECTORY_BATCH_LIMITS = Object.freeze({ sources: 4096, directories: 256, entries: 16384, page: 16 });
+
 export type DirectoryIdentity = Readonly<{ dev: number; ino: number; mode: number; uid: number }>;
 export type DirectoryCensus = Readonly<{ paths: readonly string[]; directories: ReadonlyMap<string, DirectoryIdentity> }>;
 export type CensusReason = "limit" | "unsafe_entry" | "access_failed" | "changed" | "aborted";
@@ -38,14 +40,23 @@ export async function openDirectoryLease(path: string): Promise<Readonly<{ ident
 }
 
 /** Paths/physical identities are transient local data, never a user-facing receipt. */
-export async function censusDirectory(path: string, signal?: AbortSignal): Promise<DirectoryCensus> {
+export function censusDirectory(path: string, signal?: AbortSignal): Promise<DirectoryCensus> {
+  return collectDirectory(path, SCAN_LIMITS, signal);
+}
+
+/** A separate finite census; never changes ordinary scan/enrollment limits. */
+export function censusDirectoryBatched(path: string, signal?: AbortSignal): Promise<DirectoryCensus> {
+  return collectDirectory(path, DIRECTORY_BATCH_LIMITS, signal);
+}
+
+async function collectDirectory(path: string, limits: Readonly<{ sources: number; directories: number; entries: number }>, signal?: AbortSignal): Promise<DirectoryCensus> {
   const paths: string[] = [], directories = new Map<string, DirectoryIdentity>(), stack = [path];
   let entries = 1;
   try {
     while (stack.length) {
       check(signal);
       const current = stack.pop()!;
-      if (directories.size >= SCAN_LIMITS.directories) throw new CensusFailure("limit");
+      if (directories.size >= limits.directories) throw new CensusFailure("limit");
       const lease = await openDirectoryLease(current);
       try {
         check(signal);
@@ -53,13 +64,13 @@ export async function censusDirectory(path: string, signal?: AbortSignal): Promi
         const directory = await opendir(current);
         for await (const entry of directory) {
           check(signal);
-          if (++entries > SCAN_LIMITS.entries) throw new CensusFailure("limit");
+          if (++entries > limits.entries) throw new CensusFailure("limit");
           const child = join(current, entry.name), stat = await lstat(child);
           if (stat.isSymbolicLink()) throw new CensusFailure("unsafe_entry");
           if (stat.isDirectory()) stack.push(child);
           else if (!stat.isFile()) throw new CensusFailure("unsafe_entry");
           else if (/\.jsonl\.(gz|zst|zip|bz2|xz)$/i.test(child)) throw new CensusFailure("unsafe_entry");
-          else if (child.endsWith(".jsonl")) { if (paths.length >= SCAN_LIMITS.sources) throw new CensusFailure("limit"); paths.push(child); }
+          else if (child.endsWith(".jsonl")) { if (paths.length >= limits.sources) throw new CensusFailure("limit"); paths.push(child); }
         }
         await lease.verify(); check(signal);
       } finally { await lease.close(); }

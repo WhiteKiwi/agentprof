@@ -3,7 +3,7 @@ import { types } from "node:util";
 import type { IdentityContext } from "../normalize/identity.js";
 import { SafeError } from "../privacy/diagnostics.js";
 import { array, choice, fields, identity, integer } from "./source-validation.js";
-import { createDirectoryMembershipStore, DirectoryCatalogueLimit } from "./directory-membership.js";
+import { createDirectoryMembershipStore, DirectoryCatalogueLimit, DIRECTORY_MEMBERSHIP_LIMITS } from "./directory-membership.js";
 import { createSourceStore } from "./source-store.js";
 
 export type DirectoryAbsenceProof = Readonly<{
@@ -31,11 +31,11 @@ export function unavailableDirectoryRetirement(status: DirectoryRetirementResult
     membershipRevision: null, checkedRoots: null, entries: Object.freeze([]), counts: null,
     retainedPayloads: true, inferredMoves: false });
 }
-function proof(value: DirectoryAbsenceProof, key: string): DirectoryAbsenceProof {
+function proof(value: DirectoryAbsenceProof, key: string, maximum: number): DirectoryAbsenceProof {
   if (types.isProxy(value)) throw new SafeError("INVALID_ARGUMENT");
   const v = fields(value, ["rootId", "provider", "rootFingerprint", "membershipRevision", "observedSourceIds"]);
   if (types.isProxy(v["observedSourceIds"])) throw new SafeError("INVALID_ARGUMENT");
-  const ids = array(v["observedSourceIds"], 64).map(id => identity(id, "source", key));
+  const ids = array(v["observedSourceIds"], maximum).map(id => identity(id, "source", key));
   if (new Set(ids).size !== ids.length) throw new SafeError("INVALID_ARGUMENT");
   return Object.freeze({ rootId: identity(v["rootId"], "source", key), provider: choice(v["provider"], ["codex", "claude"] as const),
     rootFingerprint: identity(v["rootFingerprint"], "content", key), membershipRevision: integer(v["membershipRevision"], 1),
@@ -44,7 +44,16 @@ function proof(value: DirectoryAbsenceProof, key: string): DirectoryAbsenceProof
 /** Internal coordinator input: a completed filesystem census, never a CLI-supplied proof. */
 export function retireDirectoryAbsences(database: DatabaseSync, context: IdentityContext,
   input: DirectoryAbsenceProof, signal?: AbortSignal): DirectoryRetirementResult {
-  const expected = proof(input, context.keyId);
+  return retireBounded(database, context, input, DIRECTORY_MEMBERSHIP_LIMITS.observed, signal);
+}
+/** Internal expanded complete-census coordinator; same authenticated all-root transaction. */
+export function retireDirectoryBatchAbsences(database: DatabaseSync, context: IdentityContext,
+  input: DirectoryAbsenceProof, signal?: AbortSignal): DirectoryRetirementResult {
+  return retireBounded(database, context, input, DIRECTORY_MEMBERSHIP_LIMITS.members, signal);
+}
+function retireBounded(database: DatabaseSync, context: IdentityContext,
+  input: DirectoryAbsenceProof, maximum: number, signal?: AbortSignal): DirectoryRetirementResult {
+  const expected = proof(input, context.keyId, maximum);
   if (signal !== undefined && (types.isProxy(signal) || !(signal instanceof AbortSignal))) throw new SafeError("INVALID_ARGUMENT");
   if (database.isTransaction) throw new SafeError("DATABASE_TRANSACTION_FAILED");
   if (signal?.aborted) return unavailableDirectoryRetirement("aborted", "aborted");
