@@ -1,0 +1,30 @@
+name: Membership maintenance dependency snapshot
+on:
+  push:
+    branches: [feat/directory-membership-maintenance]
+    paths: [.github/workflows/membership-maintenance-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: f58a6b43478fefcd8261ab617c023e61f9e5ea80
+          persist-credentials: false
+      - name: Export tracked prerequisite only
+        run: |
+          set -eu
+          test "$(git rev-parse HEAD)" = f58a6b43478fefcd8261ab617c023e61f9e5ea80
+          git archive --format=tar.gz --output="$RUNNER_TEMP/maintenance-base.tgz" HEAD
+          git rev-parse 'HEAD^{tree}' > "$RUNNER_TEMP/maintenance-tree.txt"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: membership-maintenance-base
+          path: |
+            ${{ runner.temp }}/maintenance-base.tgz
+            ${{ runner.temp }}/maintenance-tree.txt
+          retention-days: 1
+          if-no-files-found: error
