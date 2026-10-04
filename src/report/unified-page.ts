@@ -1,6 +1,7 @@
 import { SafeError } from "../privacy/diagnostics.js";
 import { UNIFIED_LIMITS as L } from "./unified-model.js";
 import type { UnifiedSourceReport } from "./unified-model.js";
+import { renderActiveTimeSection } from "./active-time-section.js";
 import { renderExplorationSection } from "./exploration-section.js";
 import { renderPatternSections } from "./pattern-page.js";
 import { evidenceAlias, evidenceAliases, evidenceBar, evidenceLink, evidencePage, evidenceTable, htmlText, numericText, omissions } from "./evidence-page.js";
@@ -24,14 +25,17 @@ function countTable(id: string, caption: string, values: Readonly<Record<string,
 export function renderUnifiedSourceReport(m: UnifiedSourceReport): string {
   if (m.schema !== "agentprof.unified-source-report/v1" || m.eventIds.length > 4096 || m.sessionIds.length > 12288
     || m.timeline.length > L.timeline) throw new SafeError("INVALID_ARGUMENT");
+  for (const field of ["parserVersion", "normalizationVersion", "keyVersion"] as const) {
+    if (m.activeTime[field] !== m[field]) throw new SafeError("INVALID_RECORD");
+  }
   if (m.exploration.parserVersion !== m.parserVersion) throw new SafeError("INVALID_RECORD");
-  for (const part of [m.summary, m.slow, m.commands, m.failures, m.recovery, m.retry, m.reads, m.searches, m.patterns, m.exploration]) {
+  for (const part of [m.summary, m.slow, m.commands, m.failures, m.recovery, m.retry, m.reads, m.searches, m.patterns, m.exploration, m.activeTime]) {
     if (part.sourceId !== m.sourceId || part.provider !== m.provider || part.revision !== m.revision
       || part.completedOffset !== m.completedOffset || part.observedSize !== m.observedSize) throw new SafeError("INVALID_RECORD");
   }
   const sessionAliases = evidenceAliases(m.sessionIds, "session"), eventAliases = evidenceAliases(m.eventIds, "event");
   const session = (id: string) => evidenceAlias(sessionAliases, id);
-  const sections = [["unified-summary", "Overview"], ["unified-commands", "Time and commands"], ["unified-tokens", "Tokens"],
+  const sections = [["unified-summary", "Overview"], ["unified-active-time", "Active Time"], ["unified-commands", "Time and commands"], ["unified-tokens", "Tokens"],
     ["unified-failures", "Failures"], ["unified-retry", "Retry and recovery"], ["unified-reads", "Read and search"],
     ["unified-slow", "Slow Tool"], ["unified-exploration", "Exploration"], ["unified-timeline", "Intervals"], ["rules", "Patterns and validation"]] as const;
   const body = [`<nav aria-label="Unified report sections">${sections.map(([id, label]) => evidenceLink(id, label)).join(" ")}</nav>`,
@@ -40,8 +44,9 @@ export function renderUnifiedSourceReport(m: UnifiedSourceReport): string {
     countTable("unified-inventory", "Stored inventory — not eligible statistical populations", { events: m.summary.inventory.events, turns: m.summary.inventory.turns, usage: m.summary.inventory.usage, observations: m.summary.inventory.observations, diagnostics: m.summary.inventory.diagnostics }),
     evidenceTable("unified-assessments", "Separate domain assessments; unavailable is not zero", ["Domain", "Assessment", "Suppression / reason"], [
       ["Summary", m.summary.suppressionReason === null ? "observed_eligible_subset" : "suppressed", m.summary.suppressionReason ?? "none"],
+      ["Active Time", m.activeTime.assessment, `assessment reason: ${m.activeTime.activeTimeAssessmentReason ?? "none"}; suppression: ${m.activeTime.suppressionReason ?? "none"}`],
       ...([["Native failure", m.failures], ["Slow Tool", m.slow], ["Recovery", m.recovery], ["Retry overhead", m.retry], ["Read revisits", m.reads], ["Search recurrence", m.searches], ["Patterns", m.patterns], ["Exploration", m.exploration]] as const).map(([label, a]) => [label, a.assessment, a.suppressionReason ?? "none"]),
-    ]), `</section><section id="unified-commands"><h2>Time and command measurements</h2><p>Recorded durations and positioned interval unions have different scopes. Neither implies model/network latency, critical path, avoidable time or a global elapsed-time total. Command shares use the full native partition denominator before any display cap.</p>`,
+    ]), `</section>`, renderActiveTimeSection(m.activeTime, sessionAliases), `<section id="unified-commands"><h2>Time and command measurements</h2><p>Recorded durations and positioned interval unions have different scopes. Neither implies model/network latency, critical path, avoidable time or a global elapsed-time total. Command shares use the full native partition denominator before any display cap.</p>`,
     countTable("unified-duration-coverage", "Recorded-duration admission and exclusions", { included: m.summary.durationEligibility.included, terminalCandidates: m.summary.durationEligibility.terminalCandidates, ...m.summary.durationEligibility.exclusions })];
   const durations = m.summary.durations ?? [], shownDurations = durations.slice(0, L.rows);
   body.push(omissions("Duration cohorts", shownDurations.length, durations.length),

@@ -8,6 +8,7 @@ import { analyzeSourceRecovery } from "../analysis/source-recovery.js";
 import { analyzeSourceRetryOverhead } from "../analysis/source-retry-overhead.js";
 import { analyzeSourceReadRevisits } from "../analysis/source-read-revisits.js";
 import { analyzeSourceSearchRecurrence } from "../analysis/source-search-recurrence.js";
+import { analyzeSourceActiveTime } from "../analysis/source-active-time.js";
 import { analyzeSourceExploration } from "../analysis/source-exploration.js";
 import { analyzeSourcePatterns } from "../analysis/source-patterns.js";
 import { buildSourceCommandBreakdown } from "./command-breakdown.js";
@@ -25,8 +26,12 @@ export function buildUnifiedSourceReport(source: StoredSource) {
   const recovery = analyzeSourceRecovery(source), retry = analyzeSourceRetryOverhead(source);
   const reads = analyzeSourceReadRevisits(source), searches = analyzeSourceSearchRecurrence(source);
   const patterns = analyzeSourcePatterns(source), exploration = analyzeSourceExploration(source);
+  const activeTime = analyzeSourceActiveTime(source);
+  for (const field of ["parserVersion", "normalizationVersion", "keyVersion"] as const) {
+    if (activeTime[field] !== source[field]) throw new SafeError("INVALID_RECORD");
+  }
   if (exploration.parserVersion !== source.parserVersion) throw new SafeError("INVALID_RECORD");
-  for (const part of [summary, slow, commands, failures, recovery, retry, reads, searches, patterns, exploration]) {
+  for (const part of [summary, slow, commands, failures, recovery, retry, reads, searches, patterns, exploration, activeTime]) {
     for (const field of ["sourceId", "provider", "revision", "completedOffset", "observedSize"] as const) {
       if (part[field] !== source[field]) throw new SafeError("INVALID_RECORD");
     }
@@ -48,9 +53,9 @@ export function buildUnifiedSourceReport(source: StoredSource) {
   for (const row of source.evidence?.turns ?? []) sessions.add(row.sessionId);
   return Object.freeze({ schema: "agentprof.unified-source-report/v1" as const,
     sourceId: source.sourceId, provider: source.provider, revision: source.revision,
-    parserVersion: source.parserVersion, completedOffset: source.completedOffset, observedSize: source.observedSize,
+    parserVersion: source.parserVersion, normalizationVersion: source.normalizationVersion, keyVersion: source.keyVersion, completedOffset: source.completedOffset, observedSize: source.observedSize,
     sessionIds: Object.freeze([...sessions].sort(compare)), eventIds: Object.freeze([...events.keys()].sort(compare)),
-    summary, slow, commands, failures, recovery, retry, reads, searches, patterns, exploration,
+    summary, slow, commands, failures, recovery, retry, reads, searches, patterns, exploration, activeTime,
     timeline, positionedEventN: positioned.size, timelineSuppressed: patterns.timePartitions === null });
 }
 export type UnifiedSourceReport = ReturnType<typeof buildUnifiedSourceReport>;
