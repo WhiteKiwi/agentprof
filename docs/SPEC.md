@@ -490,3 +490,8 @@ The [initial narrow integration specification](P5-PROVIDER-EVIDENCE-INTEGRATION.
 ### Provider evidence researched compatibility amendment — 2026-10-04 KST
 
 Actual ordinary sealed mode replay establishes identical complete native events/turns/proofs across the exact Codex1/2/3 and Claude2/3/4 contracts for plain calls. Native-copy signature comparison must recognize only these established aliases while keeping actual persisted versions, full event/proof/admission/position restrictions and enriched-field conflicts strict. Matching Codex3 must preserve native10000ms turn union/span/proof membership and distinct8150ms supplied duration; observation timestamps do not become turn proof. The [completed reviewed plan](P5-PROVIDER-EVIDENCE-INTEGRATION.md#reviewed-integration-decisions-and-concrete-plan--2026-10-04-kst) records source-backed failures, exact unsupported-future sentinel advances, separate developer ownership and concrete verification before code.
+
+
+## Durable observed directory membership — 2026-10-04
+
+An explicit internal one-directory enrollment API records raw-free, authenticated historical membership across restart through the existing scanner. Complete, stable pre/post censuses and successful per-source receipts are required; omitted old members become `not_observed`, never unavailable or deleted. One run retains the existing 64-source discovery ceiling; durable history is bounded to 4,096 members and a 1 MiB canonical manifest, failing closed without eviction. This API is a prerequisite to directory lifecycle reconciliation, not a CLI or retirement feature. [Contract and reviewed plan](P4-DIRECTORY-MEMBERSHIP.md).

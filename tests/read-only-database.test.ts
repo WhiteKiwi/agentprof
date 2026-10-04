@@ -61,7 +61,7 @@ describe("existing-store read-only safety", () => {
     await expect(withReadOnlyStore(f.dir, () => 1)).rejects.toMatchObject({ code: "INVALID_IDENTITY_KEY" });
     expect(await snapshot(f.dir)).toEqual(before);
   });
-  it.each([0, 2, 3, 4, 5, 7])("rejects schema %s without migration", async version => {
+  it.each([0, 2, 3, 4, 5, 6, 8])("rejects schema %s without migration", async version => {
     const f = await fixture(); f.db.exec(`PRAGMA user_version=${version}`); f.db.close(); const before = await snapshot(f.dir);
     await expect(withReadOnlyStore(f.dir, () => 1)).rejects.toMatchObject({ code: "DATABASE_SCHEMA_INCOMPATIBLE" }); expect(await snapshot(f.dir)).toEqual(before);
   });
@@ -149,9 +149,9 @@ describe("existing-store read-only safety", () => {
   });
 });
 
-it.each([3, 4])("rejects actual historical schema%i without writes, then reads explicitly migrated schema6 with absent relationships", async version => {
+it.each([3, 4])("rejects actual historical schema%i without writes, then reads explicitly migrated schema7 with absent relationships", async version => {
   const f = await fixture(); createSourceStore(f.db, f.context.keyId).replaceSource(f.input, null);
-  f.db.exec("DROP TABLE source_parser_checkpoints; DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DELETE FROM schema_migrations WHERE version>=5; PRAGMA user_version=4");
+  f.db.exec("DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DROP TABLE source_parser_checkpoints; DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DELETE FROM schema_migrations WHERE version>=5; PRAGMA user_version=4");
   if (version === 3) f.db.exec("DROP TABLE source_cache_evidence; DELETE FROM schema_migrations WHERE version=4; PRAGMA user_version=3");
   f.db.close(); const before = await snapshot(f.dir);
   await expect(withReadOnlyStore(f.dir, () => 1)).rejects.toMatchObject({ code: "DATABASE_SCHEMA_INCOMPATIBLE" }); expect(await snapshot(f.dir)).toEqual(before);

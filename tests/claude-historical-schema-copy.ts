@@ -34,8 +34,8 @@ export async function migrateHistoricalSchema5Copy(original: string, copied: str
   // Migration is an explicit authorized test write to the copied fixture only.
   const migrated = await openDatabase(copied);
   try {
-    strictEqual(migrated.prepare('PRAGMA user_version').get()?.['user_version'], 6);
-    deepStrictEqual(migrated.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(row => row['version']), [1, 2, 3, 4, 5, 6]);
+    strictEqual(migrated.prepare('PRAGMA user_version').get()?.['user_version'], 7);
+    deepStrictEqual(migrated.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map(row => row['version']), [1, 2, 3, 4, 5, 6, 7]);
     deepStrictEqual(historicalRows(migrated), rows);
     deepStrictEqual(migrated.prepare('SELECT * FROM source_parser_checkpoints').all(), []);
   } finally { migrated.close(); }
