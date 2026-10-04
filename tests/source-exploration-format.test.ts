@@ -28,6 +28,7 @@ it("refuses oversized JSON instead of silently clipping its evidence",()=>{
 it("ordinary positive and empty preserve safeguards and unavailable is not zero",()=>{
   const a=analyzeSourceExploration(source(Array.from({length:20},(_,i)=>event(`q${i}`,1000))));
   const text=formatSourceExploration(a);expect(text.split("\n").length).toBeLessThanOrEqual(40);expect(Buffer.byteLength(text)).toBeLessThanOrEqual(5120);
+  expect(a.candidates![0]!.severity).toBe("INFO");expect(text).toContain("severity=INFO");
   expect(text).toContain("informational");expect(text).toContain("included in waste=0");
   const empty=formatSourceExploration(analyzeSourceExploration(source()));expect(empty).toContain("shown=0/0");
   const unavailable=formatSourceExploration(analyzeSourceExploration({...source(),availability:"unavailable"}));expect(unavailable).toContain("unavailable; not zero findings");

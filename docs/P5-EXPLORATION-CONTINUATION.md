@@ -27,3 +27,7 @@ Reserved production: new `src/analysis/source-exploration.ts`, new `src/cli/expl
 ## Verification status
 
 Plan precedes implementation. Tests not yet run. Browser/native/real-user usefulness, representative performance, false-positive rates and package release are not inferred from synthetic tests. Directory-wide durable membership is a separate remaining development scope.
+
+## Maintainer enum correction — 2026-10-04 KST
+
+After the additive SPEC, separate FINDINGS, reviewed IMPLEMENTATION and saved issue50 developer claim, `/root/exploration151_development` changed only the new exploration candidate's declared/emitted severity to `INFO`, matching the maintained diagnostic vocabulary. Human informational explanation, fixed thresholds, native proof/privacy gates and empty waste membership remain unchanged. New pure/formatter and actual built/scripts-disabled installed CLI assertions cover the enum and human `severity=INFO` across ordinary Claude2/3/4 default/timing/pattern captures. The developer ran no build, test or installation; the parent owns qualification, exact-source publication and actual merged-main verification. Earlier author evidence and broader acceptance limits remain historical and separate.

@@ -20,6 +20,8 @@ it.each([[],["--usage-timing"],["--pattern-evidence"]].map(flags=>({flags})))("r
   const expected=await runInsights({source:x.sourceId,dataDir:x.data,exploration:true});
   for(const json of [false,true]){
     const r=invoke([...args,...(json?["--json"]:[])]);expect(r.status,r.stderr).toBe(0);expect(r.stderr).toBe("");expect(r.stdout).toBe(formatInsightsResult(expected,json));
+    if(json)expect(JSON.parse(r.stdout).result.analysis.candidates[0].severity).toBe("INFO");
+    else {expect(r.stdout).toContain("severity=INFO");expect(r.stdout).toContain("informational");}
     expect(r.stdout).not.toMatch(/FICTITIOUS_|lookupKey|operationKey/);
   }
   expect(expected.mode).toBe("selected_source_exploration");expect(expected.analysis.candidates).toHaveLength(1);expect(await bytes(x.data)).toEqual(before);
@@ -54,7 +56,10 @@ it("scripts-disabled installed artifact preserves exploration and legacy insight
     for(const flags of [[],["--json"],["--exploration"],["--exploration","--json"]]){
       const args=["insights","--source",x.sourceId,"--data-dir",x.data,...flags],built=invoke(args,binary,execute),actual=invoke(args,installed,execute);
       expect(actual).toEqual(built);expect(actual.status,actual.stderr).toBe(0);
-      if(flags.includes("--exploration")&&flags.includes("--json"))expect(JSON.parse(actual.stdout).result.analysis.candidates).toHaveLength(1);
+      if(flags.includes("--exploration")&&flags.includes("--json")){
+        const candidates=JSON.parse(actual.stdout).result.analysis.candidates;expect(candidates).toHaveLength(1);expect(candidates[0].severity).toBe("INFO");
+      }
+      if(flags.includes("--exploration")&&!flags.includes("--json")){expect(actual.stdout).toContain("severity=INFO");expect(actual.stdout).toContain("informational");}
     }
     expect(await bytes(x.data)).toEqual(before);
   }

@@ -12,7 +12,7 @@ function checked(s: StoredSource) {
   const emitted = JSON.stringify(a);
   for (const e of s.events) for (const key of [e.lookupKey, e.operationKey, e.fileFingerprint, e.contentFingerprint]) if (key) expect(emitted).not.toContain(key);
   for (const c of a.candidates ?? []) {
-    expect(c.includedEventIds).toEqual([]); expect(c.severity).toBe("informational");
+    expect(c.includedEventIds).toEqual([]); expect(c.severity).toBe("INFO");
     expect(new Set(c.evidenceEventIds).size).toBe(c.evidenceEventIds.length);
     expect(c.evidenceObservationIds).toHaveLength(c.evidenceEventIds.length * 2);
     for (const proof of c.evidenceObservationIds) {

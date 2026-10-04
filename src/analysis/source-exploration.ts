@@ -14,7 +14,7 @@ export type ExplorationPartition = Readonly<{
   windowEndpointsEvaluated: number | null; numericQualifiedWindows: number | null; opaqueBlockedWindows: number | null;
 }>;
 export type ExplorationCandidate = Readonly<{
-  id: string; partitionId: string; sessionId: string; severity: "informational";
+  id: string; partitionId: string; sessionId: string; severity: "INFO";
   window: Readonly<{ startInclusive: string; endInclusive: string; widthMs: 600000 }>;
   lookupN: number; mutationN: number; largestRepeatedSearchN: number;
   lookupEventIds: readonly string[]; mutationEventIds: readonly string[];
@@ -151,7 +151,7 @@ export function analyzeSourceExploration(source: StoredSource): SourceExploratio
           .map(ids => ids.sort(compare)).sort((a, z) => compare(a[0]!, z[0]!));
         const lookupIds = s.rows.map(r => r.eventId).sort(compare), mutationIds = s.mutations.map(r => r.eventId).sort(compare);
         const selectedIds = [...lookupIds, ...mutationIds].sort(compare);
-        candidates.push({ id: `exploration-${candidates.length + 1}`, partitionId: id, sessionId, severity: "informational",
+        candidates.push({ id: `exploration-${candidates.length + 1}`, partitionId: id, sessionId, severity: "INFO",
           window: { startInclusive: new Date(s.left).toISOString(), endInclusive: new Date(s.right).toISOString(), widthMs: 600000 },
           lookupN: lookupIds.length, mutationN: mutationIds.length, largestRepeatedSearchN: s.maximum,
           lookupEventIds: lookupIds, mutationEventIds: mutationIds,
