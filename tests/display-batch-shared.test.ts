@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { assertScanHelpEnrollmentDelta } from "./scan-help-compatibility.js";
 import { summarizeSource } from "../src/analysis/source-summary.js";
 import { runStats, formatStatsResult } from "../src/cli/stats.js";
 import { nativeContext } from "../src/cli/source-native-context.js";
@@ -86,7 +87,10 @@ const baseline = process.env["AGENTPROF_DISPLAY_BATCH_BASELINE_BINARY"], install
 describe.skipIf(!baseline)("genuine immediate PR63 parity", () => {
   it("matches every previous human/JSON command and allows only new help rows and mechanical padding", async () => {
     const x = await scanned(), before = await bytes(x.data);
-    for (const args of [["--help"], ["--version"], ["scan", "--help"], ["insights", "--help"], ["report", "--help"], ["open", "--help"]]) expect(invoke(binary, x.data, args)).toEqual(invoke(baseline!, x.data, args));
+    for (const args of [["--help"], ["--version"], ["scan", "--help"], ["insights", "--help"], ["report", "--help"], ["open", "--help"]]) {
+      if (args[0] === "scan") assertScanHelpEnrollmentDelta(invoke(binary, x.data, args), invoke(baseline!, x.data, args));
+      else expect(invoke(binary, x.data, args)).toEqual(invoke(baseline!, x.data, args));
+    }
     const flags = ["--failures", "--read-revisits", "--invocation-overlap", "--search-recurrence", "--recovery", "--retry-overhead", "--active-time", "--tokens", "--time-breakdown"];
     for (const args of [["stats", "--list-sources"], ["stats", "--source", x.sourceId], ["insights", "--source", x.sourceId], ...flags.map(flag => ["stats", "--source", x.sourceId, flag])]) for (const format of [[], ["--json"]]) expect(invoke(binary, x.data, [...args, ...format])).toEqual(invoke(baseline!, x.data, [...args, ...format]));
     const current = invoke(binary, x.data, ["stats", "--help"]), prior = invoke(baseline!, x.data, ["stats", "--help"]);

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
+import { assertScanHelpEnrollmentDelta } from "./scan-help-compatibility.js";
 import { temporaryDirectory } from "./helpers.js";
 import { assertFreshParserVersionParity } from "./claude-parser-version-parity.js";
 import { migrateHistoricalSchema5Copy } from "./claude-historical-schema-copy.js";
@@ -225,7 +226,8 @@ describe.skipIf(!baselineBinary)("frozen baseline exact old-command parity", () 
     for (const args of [["--version"], ["scan", "--help"], ["insights", "--help"]]) {
       const current = invoke(binary, data, args);
       if (args[0] === "insights") current.stdout = current.stdout.replace(/^  --exploration  show informational native exploration patterns\n/m, "").replace(/\n--exploration selects bounded Claude parser2\/3\/4 observations; informational only, with unknown\/blocked states and no waste or savings claim\.\n$/, "");
-      expect(current).toEqual(invoke(baselineBinary!, data, args));
+      if (args[0] === "scan") assertScanHelpEnrollmentDelta(current, invoke(baselineBinary!, data, args));
+      else expect(current).toEqual(invoke(baselineBinary!, data, args));
     }
     const pendingOpenHelp = `Usage: agentprof open [options] <file>
 
