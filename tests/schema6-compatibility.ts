@@ -13,20 +13,20 @@ const inheritedTables = [
   "source_metric_headers", "source_metric_contributions", "source_cache_evidence",
   "source_relationship_headers", "source_relationship_contributions", "source_parser_checkpoints",
 ] as const;
-const membershipTables = ["directory_membership_roots", "directory_membership_members"] as const;
+const addedTables = ["directory_membership_roots", "directory_membership_members", "directory_batch_resume"] as const;
 
 function directoryBytes(path: string) {
   return { mode: statSync(path).mode, files: readdirSync(path).sort().map(name => ({
     name, mode: statSync(join(path, name)).mode, bytes: readFileSync(join(path, name)),
   })) };
 }
-function rows(database: DatabaseSync, version: 6 | 7) {
+function rows(database: DatabaseSync, version: 6 | 8) {
   strictEqual(database.prepare("PRAGMA user_version").get()?.["user_version"], version);
   deepStrictEqual(database.prepare("SELECT version FROM schema_migrations ORDER BY version").all().map(row => row["version"]),
-    version === 6 ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6, 7]);
+    version === 6 ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6, 7, 8]);
   deepStrictEqual(database.prepare("SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name").all().map(row => row["name"]),
-    [...inheritedTables, "schema_migrations", ...(version === 7 ? membershipTables : [])].sort());
-  if (version === 7) for (const table of membershipTables) deepStrictEqual(database.prepare(`SELECT * FROM ${table}`).all(), []);
+    [...inheritedTables, "schema_migrations", ...(version === 8 ? addedTables : [])].sort());
+  if (version === 8) for (const table of addedTables) deepStrictEqual(database.prepare(`SELECT * FROM ${table}`).all(), []);
   return Object.fromEntries(inheritedTables.map(table => [table, database.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all()]));
 }
 type Runtime = {
@@ -92,7 +92,7 @@ export async function migrateHistoricalSchema6Copy(binary: string, original: str
   cpSync(original, copied, { recursive: true, errorOnExist: true, force: false });
   deepStrictEqual(directoryBytes(copied), originalBytes);
   const migrated = await openDatabase(copied);
-  try { deepStrictEqual(rows(migrated, 7), inherited); } finally { migrated.close(); }
+  try { deepStrictEqual(rows(migrated, 8), inherited); } finally { migrated.close(); }
   const copiedBytes = directoryBytes(copied);
   deepStrictEqual(await generations({ withReadOnlyStore, createSourceStore, createIdentityContext, parseIdentityKey }, copied), originalGenerations);
   deepStrictEqual(directoryBytes(copied), copiedBytes);

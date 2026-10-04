@@ -61,6 +61,11 @@ function signalCheck(signal: AbortSignal | undefined): void {
 /** A bounded source-contribution store, not a durable parser or canonical aggregator. */
 export function createSourceStore(database: DatabaseSync, key: string) {
   const keyId = validateKeyId(key);
+  // Legacy SDK readers may inspect historical schemas before explicit migration.
+  function hasResumeRows(): boolean {
+    return database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='directory_batch_resume'").get() !== undefined
+      && database.prepare("SELECT 1 FROM directory_batch_resume LIMIT 1").get() !== undefined;
+  }
   function write(signal: AbortSignal | undefined, operation: (checkAbort: () => void) => SourceWriteResult): SourceWriteResult {
     signalCheck(signal);
     if (signal?.aborted) return Object.freeze({ status: "aborted" });
@@ -71,7 +76,7 @@ export function createSourceStore(database: DatabaseSync, key: string) {
     try {
       return transaction(database, () => {
         const installed = database.prepare("SELECT key_id FROM source_store_identity WHERE singleton = 1").get()?.["key_id"];
-        if (installed !== undefined && installed !== keyId) {
+        if (installed !== undefined ? installed !== keyId : hasResumeRows()) {
           keyMismatch = true;
           throw new SafeError("INVALID_IDENTITY_KEY");
         }
@@ -226,7 +231,7 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       const bindings = database.prepare("SELECT CASE WHEN typeof(singleton)='integer' THEN singleton ELSE NULL END AS singleton, CASE WHEN typeof(key_id)='text' AND length(CAST(key_id AS BLOB))=32 THEN key_id ELSE NULL END AS key_id FROM source_store_identity LIMIT 2").all();
       if (bindings.length > 1 || bindings.length === 1 && (bindings[0]!["singleton"] !== 1 || bindings[0]!["key_id"] === null)) throw new Error();
       if (bindings.length === 0) {
-        if (database.prepare("SELECT 1 FROM source_event_headers LIMIT 1").get() !== undefined) throw new Error();
+        if (database.prepare("SELECT 1 FROM source_event_headers LIMIT 1").get() !== undefined || hasResumeRows()) throw new Error();
       } else {
         const installed = validateKeyId(bindings[0]!["key_id"]);
         if (installed !== keyId) throw new SafeError("INVALID_IDENTITY_KEY");
@@ -270,7 +275,7 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       const bindings = database.prepare("SELECT CASE WHEN typeof(singleton)='integer' THEN singleton ELSE NULL END AS singleton, CASE WHEN typeof(key_id)='text' AND length(CAST(key_id AS BLOB))=32 THEN key_id ELSE NULL END AS key_id FROM source_store_identity LIMIT 2").all();
       if (bindings.length > 1 || bindings.length === 1 && (bindings[0]!["singleton"] !== 1 || bindings[0]!["key_id"] === null)) throw new Error();
       if (bindings.length === 0) {
-        if (database.prepare("SELECT 1 FROM source_event_headers LIMIT 1").get() !== undefined) throw new Error();
+        if (database.prepare("SELECT 1 FROM source_event_headers LIMIT 1").get() !== undefined || hasResumeRows()) throw new Error();
       } else if (validateKeyId(bindings[0]!["key_id"]) !== keyId) throw new SafeError("INVALID_IDENTITY_KEY");
       const result = readIngestionPinned(sourceId, context);
       database.exec("COMMIT"); began = false;

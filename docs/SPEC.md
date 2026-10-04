@@ -506,3 +506,8 @@ An explicit internal one-directory enrollment API records raw-free, authenticate
 ### Genuine historical compatibility across schema7 — 2026-10-04
 
 Historical compatibility comparisons must preserve a genuine previous-version database in its original schema and compare its reader with the current reader on an explicitly migrated copy. Readers continue to refuse incompatible schemas without writes. Preserve complete source semantics, generation authentication, original human/JSON/report bytes and each side's private database/key bytes after the migration setup. A schema7 database is not an input supported by an older schema6 reader. This verification correction does not change product migrations, source contracts or compatibility policy.
+
+
+## Schema8 genuine historical compatibility — 2026-10-04
+
+Preserve genuine schema5/schema6 originals and their complete source semantics/private bytes. Explicitly migrate only a fresh copy to the current schema8, preserve authenticated source generations and full output comparisons, and retain both incompatible-reader non-write refusals. The directory resume storage is only an authenticated hint; committed and unchanged membership captures require distinct restart handling and exact run-owned-seal cleanup, with fresh full census/content/generation authority before skipping. [Current scoped specification and ordered contract](P4-DIRECTORY-RESUME-COMPATIBILITY.md); actual coordinator/process acceptance remains separate.

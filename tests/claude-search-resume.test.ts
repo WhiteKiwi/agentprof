@@ -53,7 +53,7 @@ async function fixture() {
       }
     }
     db.exec('COMMIT');
-    expect(db.prepare('PRAGMA user_version').get()).toEqual({ user_version: 7 });
+    expect(db.prepare('PRAGMA user_version').get()).toEqual({ user_version: 8 });
     const store = createSourceStore(db, keyId), seeded = store.readSourceForIngestion(historical.sourceId, context);
     expect(seeded.source).toMatchObject({ parserVersion: 1, revision: 1 });
     expect(seeded.checkpoint).not.toBeNull();

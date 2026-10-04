@@ -791,3 +791,8 @@ Independent follow-up research found42 optional historical controls assumed both
 The same follow-up adds the existing `claude-historical-schema-copy.ts` helper: keep all schema5 table/byte comparisons, exclude only the two newly introduced membership tables from the historical projection and assert both are empty after explicit migration. Verify the original genuine-schema5 test with the exact5614 binary before calling this control passed.
 
 The extended full also activates `fresh-precode-controls.test.ts`'s authentic schema5 write/resume case. Correct only its stale current6/marker-list expectation to7 after independent source review and separate developer readback. Preserve all genuine old5, original-byte, source identity/revision, checkpoint/reuse and exact suffix assertions. Reconcile the whole affected-file retry against the retained full by case identity; do not claim a clean zero-failure full rerun or double-count its repeated passes.
+
+
+## Ordered schema8 compatibility integration — 2026-10-04
+
+After scoped SPEC and separate source FINDINGS, parent reviewed the [five-step compatibility plan](P4-DIRECTORY-RESUME-COMPATIBILITY.md#parent-reviewed-implementation-plan-and-concrete-verify--2026-10-04). A separately registered developer owns only two retained test conflicts plus tests/schema6-compatibility.ts; preserve production5/feature101/authenticSQL, original5/6 semantics and all actual historical conditions. Developer returns reviewed bytes before parent-owned one combined23-file typecheck/build/installed-artifact qualification and ordered source/main publication. Concrete Verify and live contributor ownership stay in issue167, preserving its distinct active PhaseB coordinator; storage does not close167 or broad5.

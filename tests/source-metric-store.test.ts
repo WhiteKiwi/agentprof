@@ -44,7 +44,7 @@ async function fixture(name = "codex-real-shapes.jsonl", fileIdentity = "FICTITI
 }
 function schemaTwo(db: DatabaseSync) {
   // Schema 2's tables remain unchanged. Remove later metric/cache extensions.
-  db.exec("DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DROP TABLE source_parser_checkpoints; DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DROP TABLE source_cache_evidence; DROP TABLE source_metric_contributions; DROP TABLE source_metric_headers; DELETE FROM schema_migrations WHERE version>=3; PRAGMA user_version=2");
+  db.exec("DROP TABLE directory_batch_resume; DROP TABLE directory_membership_members; DROP TABLE directory_membership_roots; DROP TABLE source_parser_checkpoints; DROP TABLE source_relationship_contributions; DROP TABLE source_relationship_headers; DROP TABLE source_cache_evidence; DROP TABLE source_metric_contributions; DROP TABLE source_metric_headers; DELETE FROM schema_migrations WHERE version>=3; PRAGMA user_version=2");
 }
 
 describe("historical metric evidence and atomic migration", () => {
@@ -61,7 +61,7 @@ describe("historical metric evidence and atomic migration", () => {
       expect(rows(db)).toEqual(prior);
       expect(db.prepare("SELECT * FROM settings ORDER BY key").all()).toEqual([{ key: "key_version", value: 1 }, { key: "normalization_version", value: 1 }]);
       expect(db.prepare("SELECT * FROM unrelated").get()).toEqual({ value: 42 });
-      expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }, { version: 7 }]);
+      expect(db.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }, { version: 7 }, { version: 8 }]);
     } finally { db.close(); }
   });
   it("serializes a peer-completed 2→5 migration before observing schema", async () => {
@@ -71,7 +71,7 @@ describe("historical metric evidence and atomic migration", () => {
       schemaTwo(first);
       first.exec = (sql) => { if (sql === "BEGIN IMMEDIATE" && !interleaved) { interleaved = true; migrate(peer); } exec(sql); };
       expect(() => migrate(first)).not.toThrow(); expect(interleaved).toBe(true);
-      expect(first.prepare("PRAGMA user_version").get()).toEqual({ user_version: 7 });
+      expect(first.prepare("PRAGMA user_version").get()).toEqual({ user_version: 8 });
       expect(first.prepare("SELECT * FROM source_metric_headers").all()).toEqual([]);
     } finally { first.exec = exec; first.close(); peer.close(); }
   });
@@ -90,7 +90,7 @@ describe("historical metric evidence and atomic migration", () => {
     db.exec("CREATE TABLE unrelated(value INTEGER); BEGIN IMMEDIATE; INSERT INTO unrelated VALUES(42)");
     expect(() => migrate(db)).toThrow(); db.exec("COMMIT");
     expect(db.prepare("SELECT * FROM unrelated").get()).toEqual({ value: 42 });
-    db.exec("PRAGMA user_version=8"); const before = db.prepare("SELECT * FROM sqlite_schema ORDER BY name").all();
+    db.exec("PRAGMA user_version=9"); const before = db.prepare("SELECT * FROM sqlite_schema ORDER BY name").all();
     expect(() => migrate(db)).toThrowError(expect.objectContaining({ code: "DATABASE_SCHEMA_TOO_NEW" }));
     expect(db.prepare("SELECT * FROM sqlite_schema ORDER BY name").all()).toEqual(before);
   });

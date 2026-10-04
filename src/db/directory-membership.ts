@@ -30,7 +30,7 @@ export function createDirectoryMembershipStore(database: DatabaseSync, context: 
   function binding(): void {
     const found = database.prepare(`SELECT ${number("singleton")},${text("key_id", 32)} FROM source_store_identity LIMIT 2`).all();
     if (found.length > 1 || found.length === 1 && (found[0]!["singleton"] !== 1 || found[0]!["key_id"] !== key)) throw new SafeError("INVALID_IDENTITY_KEY");
-    if (!found.length && ["source_event_headers", "directory_membership_roots", "directory_membership_members"].some(table => database.prepare(`SELECT 1 FROM ${table} LIMIT 1`).get() !== undefined)) throw new SafeError("INVALID_IDENTITY_KEY");
+    if (!found.length && ["source_event_headers", "directory_membership_roots", "directory_membership_members", "directory_batch_resume"].some(table => database.prepare(`SELECT 1 FROM ${table} LIMIT 1`).get() !== undefined)) throw new SafeError("INVALID_IDENTITY_KEY");
   }
   function pinned(rootId: string): DirectoryMembership | null {
     binding();
