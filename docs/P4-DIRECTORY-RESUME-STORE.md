@@ -29,3 +29,12 @@ The storage API authenticates state, but cannot independently verify filesystem 
 4. Build and qualify the scripts-disabled installed package and frozen published source. Record exact commands, failures, skips and limits in P4-DIRECTORY-RESUME-STORE-VERIFY.md. Verify exact-head CI separately from local runs and retain Draft until independent review/integration.
 
 Single current ChatGPT implementation/self-review session; no independent subagent or runtime ID is available or claimed. No main merge/release, actual user logs or Work/Codex task launch. The next phase remains scanner/coordinator wiring, prefix verification, automatic maintenance invalidation and actual directory interruption/resume qualification.
+
+
+## Completion cleanup clarification — issue #169 (2026-10-04)
+
+The original storage-only implementation and qualification above remain unchanged. The [current completion contract and Phase B Verify matrix](P4-DIRECTORY-BATCH-RESUME.md#completion) supersede the original blanket revision-change explanation: membership `committed` advances the prior revision (or establishes `1`), while `unchanged` returns exactly the prior revision. Thus an unchanged post-capture cursor can retain its membership anchor. Only fresh complete census/physical-root/mode/anchor and actual source-content/authenticated-generation prefix validation can authorize page reuse; final census/lease and membership CAS authority still apply.
+
+Normal completion cleanup after either successful result must remove only the previously observed seal. A concurrent replacement makes that removal stale and must survive; cleanup must not retry against the replacement’s newly read seal. An absent row with expected `null` is an `unchanged` no-op; an absent row with the old non-null seal returns `stale` without mutation. Interrupted cleanup leaves an optimization hint, not evidence of absence or permission to bypass final capture. Valid stale-state fallback stays separate from fail-closed tamper/key/schema/malformed-row handling. It cannot override existing `root_changed`/ineligible membership admission or the explicit physical-root rebind requirement.
+
+Both-provider interruption immediately after capture and immediately before cleanup, for both `committed` and `unchanged`, plus concurrent replacement are required #167 coordinator tests. They are **NOT RUN here**. This documentation correction does not change schema8, the qualified storage primitives, or establish implemented scanner resume.
