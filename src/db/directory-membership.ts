@@ -6,6 +6,8 @@ import { SafeError } from "../privacy/diagnostics.js";
 import { array, choice, fields, identity, integer, keyId } from "./source-validation.js";
 
 export const DIRECTORY_MEMBERSHIP_LIMITS = Object.freeze({ members: 4096, bytes: 1024 * 1024, observed: 64 });
+export const DIRECTORY_CATALOGUE_LIMITS = Object.freeze({ roots: 64, members: 16384 });
+export class DirectoryCatalogueLimit extends Error { constructor() { super("Directory membership catalogue exceeds reconciliation limits."); } }
 export type DirectoryMember = Readonly<{ sourceId: string; sourceRevision: number; observation: "observed" | "not_observed" }>;
 export type DirectoryMembership = Readonly<{ rootId: string; provider: "codex" | "claude"; rootFingerprint: string; revision: number; members: readonly DirectoryMember[] }>;
 export type DirectoryCapture = Readonly<{ rootId: string; provider: "codex" | "claude"; rootFingerprint: string; observed: readonly Readonly<{ sourceId: string; sourceRevision: number }>[] }>;
@@ -58,6 +60,30 @@ export function createDirectoryMembershipStore(database: DatabaseSync, context: 
     try { database.exec("BEGIN"); began = true; const value = pinned(rootId); database.exec("COMMIT"); began = false; return value; }
     catch (error) { if (began) try { database.exec("ROLLBACK"); } catch { /* Owned read only. */ } if (error instanceof SafeError && error.code === "INVALID_IDENTITY_KEY") throw error; throw new SafeError("DATABASE_ACCESS_FAILED"); }
   }
+  /** Internal composition: authenticate every bounded root inside the caller's transaction. */
+  function readAllForMutation(): readonly DirectoryMembership[] {
+    if (!database.isTransaction) throw new SafeError("DATABASE_TRANSACTION_FAILED");
+    try {
+      binding();
+      const headers = database.prepare(`SELECT ${text("root_id", 128)} FROM directory_membership_roots ORDER BY root_id LIMIT 65`).all();
+      if (headers.length > DIRECTORY_CATALOGUE_LIMITS.roots) throw new DirectoryCatalogueLimit();
+      // Check orphan rows as well: otherwise an unanchored veto could be silently ignored.
+      if (database.prepare("SELECT 1 FROM directory_membership_members m LEFT JOIN directory_membership_roots r ON r.root_id=m.root_id WHERE r.root_id IS NULL LIMIT 1").get()) throw new Error();
+      const roots: DirectoryMembership[] = [];
+      let members = 0;
+      for (const header of headers) {
+        const root = pinned(identity(header["root_id"], "source", key));
+        if (root === null) throw new Error();
+        members += root.members.length;
+        if (members > DIRECTORY_CATALOGUE_LIMITS.members) throw new DirectoryCatalogueLimit();
+        roots.push(root);
+      }
+      return Object.freeze(roots);
+    } catch (error) {
+      if (error instanceof DirectoryCatalogueLimit || error instanceof SafeError && error.code === "INVALID_IDENTITY_KEY") throw error;
+      throw new SafeError("DATABASE_ACCESS_FAILED");
+    }
+  }
   function capture(input: DirectoryCapture, expectedRevision: number | null, signal?: AbortSignal): DirectoryCaptureResult {
     const v = plain(input, ["rootId", "provider", "rootFingerprint", "observed"]);
     const rootId = identity(v["rootId"], "source", key), provider = choice(v["provider"], ["codex", "claude"] as const), rootFingerprint = identity(v["rootFingerprint"], "content", key);
@@ -105,5 +131,5 @@ export function createDirectoryMembershipStore(database: DatabaseSync, context: 
       throw new SafeError("DATABASE_ACCESS_FAILED");
     }
   }
-  return Object.freeze({ read, capture });
+  return Object.freeze({ read, capture, readAllForMutation });
 }
