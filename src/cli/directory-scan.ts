@@ -12,6 +12,7 @@ import type { ScanArguments } from "./scan.js";
 export type DirectoryScanArguments = ScanArguments & Readonly<{
   enrollDirectory: boolean;
   retireMissing?: boolean;
+  batchDirectory?: boolean;
   reconcile?: boolean;
   json?: boolean;
 }>;
@@ -47,16 +48,16 @@ function pathArray(value: unknown): string[] {
   return result;
 }
 
-export function validateDirectoryScanArguments(value: DirectoryScanArguments): Readonly<{ dataDir: string; root: InputRoot; capture: CaptureMode; retireMissing: boolean }> {
+export function validateDirectoryScanArguments(value: DirectoryScanArguments): Readonly<{ dataDir: string; root: InputRoot; capture: CaptureMode; retireMissing: boolean; batchDirectory?: true }> {
   if (value === null || typeof value !== "object" || types.isProxy(value)
     || ![Object.prototype, null].includes(Object.getPrototypeOf(value))) return invalid();
   const fields = Object.getOwnPropertyDescriptors(value);
-  const allowed = ["dataDir", "codexRoot", "claudeRoot", "usageTiming", "patternEvidence", "enrollDirectory", "retireMissing", "reconcile", "json"];
+  const allowed = ["dataDir", "codexRoot", "claudeRoot", "usageTiming", "patternEvidence", "enrollDirectory", "retireMissing", "batchDirectory", "reconcile", "json"];
   for (const name of Reflect.ownKeys(fields)) {
     if (typeof name !== "string" || !allowed.includes(name)) return invalid();
     const field = fields[name]!;
     if (!("value" in field) || !field.enumerable) return invalid();
-    if (["usageTiming", "patternEvidence", "enrollDirectory", "retireMissing", "reconcile", "json"].includes(name) && typeof field.value !== "boolean") return invalid();
+    if (["usageTiming", "patternEvidence", "enrollDirectory", "retireMissing", "batchDirectory", "reconcile", "json"].includes(name) && typeof field.value !== "boolean") return invalid();
     if (name === "dataDir" && typeof field.value !== "string") return invalid();
   }
   if (fields["enrollDirectory"]?.value !== true || fields["reconcile"]?.value === true) return invalid();
@@ -70,7 +71,7 @@ export function validateDirectoryScanArguments(value: DirectoryScanArguments): R
     ...(fields["dataDir"] === undefined ? {} : { dataDir: fields["dataDir"]!.value as string }),
     ...capture,
   });
-  return Object.freeze({ dataDir: selected.dataDir, root: Object.freeze(selected.roots[0]!), capture, retireMissing: fields["retireMissing"]?.value === true });
+  return Object.freeze({ dataDir: selected.dataDir, root: Object.freeze(selected.roots[0]!), capture, retireMissing: fields["retireMissing"]?.value === true, ...(fields["batchDirectory"]?.value === true ? { batchDirectory: true as const } : {}) });
 }
 
 const result = (
@@ -100,7 +101,7 @@ export function projectDirectoryEnrollment(enrollment: DirectoryEnrollmentResult
 
 /** Explicit mutation boundary; regular scan and file reconciliation never call this. */
 export async function runDirectoryScan(options: DirectoryScanArguments, signal?: AbortSignal): Promise<DirectoryScanResult> {
-  const { dataDir, root, capture, retireMissing } = validateDirectoryScanArguments(options);
+  const { dataDir, root, capture, retireMissing, batchDirectory = false } = validateDirectoryScanArguments(options);
   if (signal !== undefined && (types.isProxy(signal) || !(signal instanceof AbortSignal))) return invalid();
   const controller = new AbortController(), interrupt = () => controller.abort();
   process.on("SIGINT", interrupt);
@@ -109,13 +110,13 @@ export async function runDirectoryScan(options: DirectoryScanArguments, signal?:
   const aborted = () => result(root.provider, "aborted", "aborted");
   try {
     if (controller.signal.aborted) return aborted();
-    const { censusDirectory, openDirectoryLease, CensusFailure } = await import("../scanner/directory-census.js");
+    const { censusDirectory, censusDirectoryBatched, openDirectoryLease, CensusFailure } = await import("../scanner/directory-census.js");
     if (controller.signal.aborted) return aborted();
     // Refuse bad or incomplete roots before creating a private data directory.
     // The native enrollment repeats these checks; preflight is not authority.
     try {
       const lease = await openDirectoryLease(root.path);
-      try { await censusDirectory(root.path, controller.signal); await lease.verify(); }
+      try { await (batchDirectory ? censusDirectoryBatched : censusDirectory)(root.path, controller.signal); await lease.verify(); }
       finally { await lease.close(); }
     } catch (error) {
       if (controller.signal.aborted) return aborted();
@@ -135,9 +136,9 @@ export async function runDirectoryScan(options: DirectoryScanArguments, signal?:
       const { enrollDirectory } = await import("../scanner/directory-enrollment.js");
       const { createDirectoryMembershipStore } = await import("../db/directory-membership.js");
       if (controller.signal.aborted) return aborted();
-      const enrollment = await enrollDirectory(database, context, root, { signal: controller.signal, ...capture });
+      const enrollment = await enrollDirectory(database, context, root, { signal: controller.signal, ...capture, ...(batchDirectory ? { batchDirectory: true } : {}) });
       const retirement = retireMissing
-        ? await (await import("../scanner/directory-reconciliation.js")).reconcileDirectoryAbsence(database, context, root, enrollment, controller.signal)
+        ? await (await import("../scanner/directory-reconciliation.js")).reconcileDirectoryAbsence(database, context, root, enrollment, controller.signal, batchDirectory)
         : undefined;
       // No await between reading the current authenticated snapshot and comparison.
       const membership = enrollment.membership.status === "committed" || enrollment.membership.status === "unchanged"

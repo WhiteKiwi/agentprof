@@ -37,7 +37,7 @@ export async function run(argv: string[]): Promise<void> {
   program.on("option:data-dir", () => { reportDataFlags++; });
   program.on("option:json", () => { reportJsonFlags++; });
 
-  let usageTimingFlags = 0, patternEvidenceFlags = 0, reconcileFlags = 0, enrollDirectoryFlags = 0, retireMissingFlags = 0;
+  let usageTimingFlags = 0, patternEvidenceFlags = 0, reconcileFlags = 0, enrollDirectoryFlags = 0, retireMissingFlags = 0, batchDirectoryFlags = 0;
   const scan = program.command("scan").option("--usage-timing", "opt into versioned record timestamps for history --tokens")
     .option("--pattern-evidence", "capture exact observed errors and supported structured file evidence; includes usage timing")
     .on("option:pattern-evidence", () => { if (++patternEvidenceFlags > 1) throw new SafeError("INVALID_ARGUMENT"); })
@@ -48,12 +48,14 @@ export async function run(argv: string[]): Promise<void> {
     .on("option:enroll-directory", () => { if (++enrollDirectoryFlags > 1) throw new SafeError("INVALID_ARGUMENT"); })
     .option("--retire-missing", "with --enroll-directory, guard and mark absent members unavailable without deleting history")
     .on("option:retire-missing", () => { if (++retireMissingFlags > 1) throw new SafeError("INVALID_ARGUMENT"); })
+    .option("--batch-directory", "with --enroll-directory, collect up to 4096 files in bounded pages")
+    .on("option:batch-directory", () => { if (++batchDirectoryFlags > 1) throw new SafeError("INVALID_ARGUMENT"); })
     .description("Collect explicit --codex-root/--claude-root inputs only (at least one required)")
-    .addHelpText("after", "\nBounded scan: at most 16 roots, 64 sources, 256 directories, 4096 nodes and yielded entries,\n16 MiB/32768 records per source, 256 diagnostic samples. No aggregation or parser resume.\n--reconcile requires explicit .jsonl file roots, not directories. Only proven missing leaves are retired; stored evidence remains.\nMissing/unreadable parents and symlinks are not deletion evidence. No automatic directory pruning or inferred moves.\n--enroll-directory requires exactly one explicit provider directory and excludes --reconcile.\nMembership not_observed is not deletion evidence; the original source data remains.\n--retire-missing requires --enroll-directory; complete census, current revisions and all-root guards precede retirement. History is retained; no move identity is inferred.")
+    .addHelpText("after", "\nBounded scan: at most 16 roots, 64 sources, 256 directories, 4096 nodes and yielded entries,\n16 MiB/32768 records per source, 256 diagnostic samples. No aggregation or parser resume.\n--reconcile requires explicit .jsonl file roots, not directories. Only proven missing leaves are retired; stored evidence remains.\nMissing/unreadable parents and symlinks are not deletion evidence. No automatic directory pruning or inferred moves.\n--enroll-directory requires exactly one explicit provider directory and excludes --reconcile.\nMembership not_observed is not deletion evidence; the original source data remains.\n--retire-missing requires --enroll-directory; complete census, current revisions and all-root guards precede retirement. History is retained; no move identity is inferred.\n--batch-directory requires --enroll-directory: up to 4096 files, 256 directories, 16384 entries; 16-file pages and one final complete membership capture.")
     .action(async () => {
-      const options = { ...program.opts(), ...scan.opts() } as ScanArguments & { json?: boolean; reconcile?: boolean; enrollDirectory?: boolean; retireMissing?: boolean };
+      const options = { ...program.opts(), ...scan.opts() } as ScanArguments & { json?: boolean; reconcile?: boolean; enrollDirectory?: boolean; retireMissing?: boolean; batchDirectory?: boolean };
       if (options.usageTiming && (reportDataFlags > 1 || reportJsonFlags > 1)) throw new SafeError("INVALID_ARGUMENT");
-      if (options.retireMissing === true && options.enrollDirectory !== true) throw new SafeError("INVALID_ARGUMENT");
+      if ((options.retireMissing === true || options.batchDirectory === true) && options.enrollDirectory !== true) throw new SafeError("INVALID_ARGUMENT");
       if (options.enrollDirectory === true) {
         if (reportDataFlags > 1 || reportJsonFlags > 1 || scan.args.length !== 0) throw new SafeError("INVALID_ARGUMENT");
         const { runDirectoryScan, formatDirectoryScan, directoryScanExitCode } = await import("./directory-scan.js");
