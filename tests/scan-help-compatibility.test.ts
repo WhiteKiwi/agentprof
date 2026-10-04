@@ -50,6 +50,10 @@ const warning = "Missing/unreadable parents and symlinks are not deletion eviden
 const noteOne = "--enroll-directory requires exactly one explicit provider directory and excludes --reconcile.\n";
 const noteTwo = "Membership not_observed is not deletion evidence; the original source data remains.\n";
 const notes = noteOne + noteTwo;
+const retirementFirst = "  --retire-missing    with --enroll-directory, guard and mark absent members\n";
+const retirementContinuation = "                      unavailable without deleting history\n";
+const retirementOption = retirementFirst + retirementContinuation;
+const retirementFooter = "--retire-missing requires --enroll-directory; complete census, current revisions and all-root guards precede retirement. History is retained; no move identity is inferred.\n";
 let current: ScanHelpReceipt;
 let absent: string;
 let frozenCurrent: string;
@@ -113,9 +117,9 @@ const stdoutMutations: [string, (stdout: string) => string][] = [
   ["stray carriage return", s => s.replace(optionFirst, optionFirst.slice(0, -1) + "\r\n")],
   ["missing final LF", s => s.slice(0, -1)],
   ["extra final LF", s => s + "\n"],
-  ["option after help", s => s.replace(option + help, help + option)],
+  ["option after help", s => s.replace(option + retirementOption + help, retirementOption + help + option)],
   ["option before Options", s => s.replace(option, "").replace("Options:\n", option + "Options:\n")],
-  ["option separated from help", s => s.replace(option + help, option + "\n" + help)],
+  ["option separated from help", s => s.replace(option + retirementOption + help, option + "\n" + retirementOption + help)],
   ["reordered notes", s => s.replace(notes, noteTwo + noteOne)],
   ["notes before unchanged warning", s => s.replace(warning + notes, notes + warning)],
   ["text after final notes", s => s + "Additional output.\n"],
@@ -134,6 +138,73 @@ it.each(stdoutMutations)("rejects current help drift: %s", (_name, change) => {
   const stdout = change(current.stdout);
   expect(stdout).not.toBe(current.stdout);
   expect(() => assertScanHelpEnrollmentDelta({ ...current, stdout }, fixture.receipt)).toThrow();
+});
+
+const retirementMutations: [string, (stdout: string) => string][] = [
+  ["missing both retirement components", s => s.replace(retirementOption, "").slice(0, -retirementFooter.length)],
+  ["missing retirement option", s => s.replace(retirementOption, "")],
+  ["missing retirement flag row", s => s.replace(retirementFirst, "")],
+  ["missing retirement continuation", s => s.replace(retirementContinuation, "")],
+  ["missing retirement footer", s => s.slice(0, -retirementFooter.length)],
+  ["duplicate retirement option", s => s.replace(retirementOption, retirementOption + retirementOption)],
+  ["duplicate retirement flag row", s => s.replace(retirementFirst, retirementFirst + retirementFirst)],
+  ["duplicate retirement continuation", s => s.replace(retirementContinuation, retirementContinuation + retirementContinuation)],
+  ["duplicate retirement footer", s => s + retirementFooter],
+  ["retirement flag typo", s => s.replace(retirementFirst, retirementFirst.replace("--retire-missing", "--retire-missings"))],
+  ["retirement description typo", s => s.replace("guard and mark absent members", "guard and delete absent members")],
+  ["retirement continuation typo", s => s.replace("unavailable without deleting history", "unavailable while deleting history")],
+  ["retirement footer typo", s => s.replace("all-root guards precede retirement", "some-root guards precede retirement")],
+  ["retirement flag padding", s => s.replace("--retire-missing    with", "--retire-missing   with")],
+  ["retirement flag indentation", s => s.replace(retirementFirst, " " + retirementFirst)],
+  ["retirement continuation indentation", s => s.replace(retirementContinuation, retirementContinuation.slice(1))],
+  ["retirement flag trailing space", s => s.replace(retirementFirst, retirementFirst.slice(0, -1) + " \n")],
+  ["retirement continuation trailing space", s => s.replace(retirementContinuation, retirementContinuation.slice(0, -1) + " \n")],
+  ["retirement footer leading space", s => s.replace(retirementFooter, " " + retirementFooter)],
+  ["retirement footer trailing space", s => s.replace(retirementFooter, retirementFooter.slice(0, -1) + " \n")],
+  ["merged retirement rows", s => s.replace(retirementOption, retirementFirst.trimEnd() + " " + retirementContinuation.trimStart())],
+  ["rewrapped retirement description", s => s.replace("guard and mark absent members\n", "guard and mark\n                      absent members\n")],
+  ["inserted retirement row", s => s.replace(retirementFirst, retirementFirst + "                      undeclared retirement instruction\n")],
+  ["retirement CRLF", s => s.replace(retirementOption, retirementOption.replaceAll("\n", "\r\n"))],
+  ["retirement embedded carriage return", s => s.replace("guard and mark", "guard\rand mark")],
+  ["retirement footer without final LF", s => s.slice(0, -1)],
+  ["retirement before enrollment", s => s.replace(option + retirementOption, retirementOption + option)],
+  ["retirement after help", s => s.replace(retirementOption + help, help + retirementOption)],
+  ["retirement inside enrollment", s => s.replace(option + retirementOption, optionFirst + retirementOption + optionContinuation)],
+  ["gap before retirement", s => s.replace(option + retirementOption, option + "\n" + retirementOption)],
+  ["gap after retirement", s => s.replace(retirementOption + help, retirementOption + "\n" + help)],
+  ["retirement before Options", s => s.replace(retirementOption, "").replace("Options:\n", retirementOption + "Options:\n")],
+  ["retirement footer before first note", s => s.replace(notes + retirementFooter, retirementFooter + notes)],
+  ["retirement footer before second note", s => s.replace(notes + retirementFooter, noteOne + retirementFooter + noteTwo)],
+  ["retirement footer before warning", s => s.replace(warning + notes + retirementFooter, retirementFooter + warning + notes)],
+  ["retirement footer before heading", s => s.replace(retirementFooter, "").replace("Usage:", retirementFooter + "Usage:")],
+  ["reordered retirement suffix", s => s.replace(notes + retirementFooter, noteTwo + noteOne + retirementFooter)],
+  ["separated retirement footer", s => s.replace(notes + retirementFooter, notes + "\n" + retirementFooter)],
+  ["text after retirement footer", s => s + "Undeclared output.\n"],
+  ["unrelated provider root description", s => s.replace("explicit --codex-root/--claude-root inputs only", "implicit provider roots")],
+  ["unrelated original reconcile footer", s => s.replace("Only proven missing leaves are retired", "All missing leaves are retired")],
+  ["unrelated extra option beside retirement", s => s.replace(retirementOption, retirementOption + "  --retire-all        undeclared policy\n")],
+  ["private path beside retirement", s => s.replace(retirementOption, retirementOption + "/Users/PRIVATE_PATH_SENTINEL/source.jsonl\n")],
+  ["private content beside retirement", s => s.replace(retirementFooter, "PRIVATE_CONTENT_SENTINEL\n" + retirementFooter)],
+  ["future directory command", s => s.replace("Options:\n", "Commands:\n  directory  future directory workflow\nOptions:\n")],
+  ["undeclared retirement variant", s => s.replace(retirementOption, retirementOption.replace("--retire-missing", "--retire-directory"))],
+];
+it.each(retirementMutations)("rejects retirement help drift: %s", (_name, change) => {
+  const stdout = change(current.stdout);
+  expect(stdout).not.toBe(current.stdout);
+  expect(() => assertScanHelpEnrollmentDelta({ ...current, stdout }, fixture.receipt)).toThrow();
+});
+
+it.each([
+  ["retirement option", (s: string) => s.replace(help, retirementOption + help)],
+  ["retirement flag row", (s: string) => s.replace(help, retirementFirst + help)],
+  ["retirement continuation", (s: string) => s + retirementContinuation],
+  ["retirement footer", (s: string) => s + retirementFooter],
+  ["retirement guard marker", (s: string) => s + "all-root guards precede retirement\n"],
+  ["retirement move marker", (s: string) => s + "no move identity is inferred\n"],
+] as const)("rejects retirement markers in historical help: %s", (_name, change) => {
+  const stdout = change(fixture.receipt.stdout);
+  expect(stdout).not.toBe(fixture.receipt.stdout);
+  expect(() => assertScanHelpEnrollmentDelta(current, { ...fixture.receipt, stdout })).toThrow();
 });
 
 it.each([
