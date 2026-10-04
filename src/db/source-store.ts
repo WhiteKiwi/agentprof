@@ -173,12 +173,35 @@ export function createSourceStore(database: DatabaseSync, key: string) {
     return write(signal, (): SourceWriteResult => {
       const actual = revision(database.prepare("SELECT revision FROM source_event_headers WHERE source_id = ?").get(sourceId)?.["revision"]);
       if (actual !== expectation) return { status: "stale", actualRevision: actual };
-      const next = integer(actual + 1, 1);
-      database.prepare("DELETE FROM source_cache_evidence WHERE source_id = ?").run(sourceId);
-      database.prepare("DELETE FROM source_parser_checkpoints WHERE source_id = ?").run(sourceId);
-      database.prepare("UPDATE source_event_headers SET availability = 'unavailable', revision = ? WHERE source_id = ?").run(next, sourceId);
-      return { status: "committed", revision: next };
+      return retirePinned(sourceId, actual);
     });
+  }
+  function retirePinned(sourceId: string, actual: number): SourceWriteResult {
+    const next = integer(actual + 1, 1);
+    database.prepare("DELETE FROM source_cache_evidence WHERE source_id = ?").run(sourceId);
+    database.prepare("DELETE FROM source_parser_checkpoints WHERE source_id = ?").run(sourceId);
+    database.prepare("UPDATE source_event_headers SET availability = 'unavailable', revision = ? WHERE source_id = ?").run(next, sourceId);
+    return Object.freeze({ status: "committed", revision: next });
+  }
+  /** Internal composition only: caller owns a write transaction and its rollback. */
+  function readSourceForMutation(sourceId: string, context: IdentityContext): SourceIngestionCandidate {
+    identity(sourceId, "source", keyId); assertContext(context, keyId);
+    if (!database.isTransaction) throw new SafeError("DATABASE_TRANSACTION_FAILED");
+    try {
+      const installed = database.prepare("SELECT key_id FROM source_store_identity WHERE singleton=1").get()?.["key_id"];
+      if (installed !== keyId) throw new SafeError("INVALID_IDENTITY_KEY");
+      return readIngestionPinned(sourceId, context);
+    } catch (error) {
+      if (error instanceof SafeError && error.code === "INVALID_IDENTITY_KEY") throw error;
+      throw new SafeError("DATABASE_ACCESS_FAILED");
+    }
+  }
+  /** Same retirement mutation as markUnavailable, but never opens/commits a nested transaction. */
+  function markUnavailableInTransaction(sourceId: string, expectedRevision: number, context: IdentityContext): SourceWriteResult {
+    const expectation = integer(expectedRevision, 1);
+    const current = readSourceForMutation(sourceId, context).source;
+    if (current === null || current.revision !== expectation) return Object.freeze({ status: "stale", actualRevision: current?.revision ?? null });
+    return retirePinned(sourceId, current.revision);
   }
   // Called only after the scanner verifies a matching whole-byte observation.
   // Own a new snapshot: reusing a caller transaction could hide a newer generation.
@@ -466,5 +489,5 @@ export function createSourceStore(database: DatabaseSync, key: string) {
       throw new SafeError("DATABASE_ACCESS_FAILED");
     }
   }
-  return Object.freeze({ replaceSource, replaceSourceSnapshot, replaceSourceSnapshotWithCheckpoint, markUnavailable, readSource, readSourceForIngestion, confirmUnchangedSource, confirmUnchangedSourceWithCheckpoint, listSources });
+  return Object.freeze({ replaceSource, replaceSourceSnapshot, replaceSourceSnapshotWithCheckpoint, markUnavailable, markUnavailableInTransaction, readSourceForMutation, readSource, readSourceForIngestion, confirmUnchangedSource, confirmUnchangedSourceWithCheckpoint, listSources });
 }
