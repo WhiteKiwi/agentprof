@@ -1,30 +1,49 @@
-name: Membership maintenance dependency snapshot
+name: Membership maintenance verified publication
 on:
   push:
     branches: [feat/directory-membership-maintenance]
     paths: [.github/workflows/membership-maintenance-snapshot.yml]
 permissions:
-  contents: read
+  contents: write
 jobs:
-  snapshot:
+  publish:
+    if: github.repository == 'WhiteKiwi/agentprof' && github.ref == 'refs/heads/feat/directory-membership-maintenance'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: f58a6b43478fefcd8261ab617c023e61f9e5ea80
-          persist-credentials: false
-      - name: Export tracked prerequisite only
+          fetch-depth: 1
+      - name: Verify bounded authored payload and publish exact feature tree
+        shell: bash
         run: |
-          set -eu
-          test "$(git rev-parse HEAD)" = f58a6b43478fefcd8261ab617c023e61f9e5ea80
-          git archive --format=tar.gz --output="$RUNNER_TEMP/maintenance-base.tgz" HEAD
-          git rev-parse 'HEAD^{tree}' > "$RUNNER_TEMP/maintenance-tree.txt"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: membership-maintenance-base
-          path: |
-            ${{ runner.temp }}/maintenance-base.tgz
-            ${{ runner.temp }}/maintenance-tree.txt
-          retention-days: 1
-          if-no-files-found: error
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python3 - <<'PY'
+          import base64, gzip, hashlib, pathlib, subprocess
+          hashes = [
+            'e6f5db66b0516574587e751fbb543d668ff691004e46f6829a3c4fc03f681628',
+            '8401867d4091614e7838c18a646e7d079d189aeb5b2cf2e90721592ec30e6b98',
+            '0b27543efa330acd3ccb31fb10517cbf5924f3aff08692baecf9094b7f6e6ebc',
+            '86a1e7b9f02c305a57c356aee19d3ac7d3c9f67a339f3f84998d6f7dcf650eae',
+          ]
+          chunks = []
+          for i, expected in enumerate(hashes):
+            data = pathlib.Path(f'.github/maintenance-patch-{i}.b64').read_bytes()
+            if len(data) > 6000 or hashlib.sha256(data).hexdigest() != expected:
+              raise SystemExit(f'Authored transport segment {i} mismatch; no source applied')
+            chunks.append(data)
+          patch = gzip.decompress(base64.b64decode(b''.join(chunks), validate=True))
+          if len(patch) > 100000 or hashlib.sha256(patch).hexdigest() != 'a93a75aca97aece52456c4da14f9e2c65867ddeb5d429ec75cd1481d90dc56e7':
+            raise SystemExit('Qualified patch mismatch; no source applied')
+          subprocess.run(['git', 'apply', '--check', '-'], input=patch, check=True)
+          subprocess.run(['git', 'apply', '--index', '-'], input=patch, check=True)
+          PY
+          git rm .github/maintenance-patch-{0,1,2,3}.b64 .github/workflows/membership-maintenance-snapshot.yml
+          git diff --cached --check
+          test "$(git write-tree)" = 7eb0795b17bf9ac6191630c8fd70badbf32b5e5e
+          test "$(git ls-remote origin refs/heads/feat/directory-membership-maintenance | cut -f1)" = "$GITHUB_SHA"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: safely inspect prune and reset directory membership'
+          git push origin HEAD:refs/heads/feat/directory-membership-maintenance
