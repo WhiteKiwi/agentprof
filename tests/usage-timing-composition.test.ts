@@ -18,6 +18,7 @@ import { bytes, codexMeta, context, disk, encode, record, window } from "./usage
 import type { Provider } from "./usage-timing-fixture.js";
 import { migrateHistoricalSchema6Copy, routeDataDirectory } from "./schema6-compatibility.js";
 import { htmlText } from "../src/report/evidence-page.js";
+import { assertAndStripActiveTimeHtml } from "./active-time-html-compatibility.js";
 
 const providers = ["codex", "claude"] as const;
 const current = resolve("dist/agentprof.cjs");
@@ -99,8 +100,12 @@ function nativeTable(section: string, id: string, rows: readonly (readonly (stri
   strictEqual(region(table, "<tbody>", "</tbody>").html, `<tbody>${rows.map(tableRow).join("")}</tbody>`);
 }
 function assertUnifiedHtml(oldBytes: Buffer, currentBytes: Buffer, a: SourceExplorationAnalysis, source: StoredSource) {
-  const old = oldBytes.toString("utf8"), current = currentBytes.toString("utf8");
-  deepStrictEqual(Buffer.from(old, "utf8"), oldBytes); deepStrictEqual(Buffer.from(current, "utf8"), currentBytes);
+  const old = oldBytes.toString("utf8"), rawCurrent = currentBytes.toString("utf8");
+  deepStrictEqual(Buffer.from(old, "utf8"), oldBytes); deepStrictEqual(Buffer.from(rawCurrent, "utf8"), currentBytes);
+  const nativeActiveTime = analyzeSourceActiveTime(source);
+  const activeTime = assertAndStripActiveTimeHtml(oldBytes, currentBytes, nativeActiveTime, source);
+  const current = activeTime.normalizedCurrentBytes.toString("utf8");
+  deepStrictEqual(Buffer.from(current, "utf8"), activeTime.normalizedCurrentBytes);
   for (const added of [explorationLink, '<section id="unified-exploration">', '<th scope="row">Exploration</th>', newPatternNotice])
     strictEqual(occurrences(old, added), 0, added);
   once(current, explorationLink); once(current, '<th scope="row">Exploration</th>');
@@ -183,7 +188,7 @@ function assertUnifiedHtml(oldBytes: Buffer, currentBytes: Buffer, a: SourceExpl
   const remaining = current.replace(currentNav, oldNav).replace(row, "").replace(exploration.html, "")
     .replace(newPatternNotice, oldPatternNotice);
   deepStrictEqual(Buffer.from(remaining, "utf8"), oldBytes);
-  return { row, section: exploration.html };
+  return { row, section: exploration.html, activeTime };
 }
 function publication(envelope: ReportEnvelope, fresh: boolean): Record<string, unknown> {
   strictEqual(envelope.schema, "agentprof.cli/v1"); strictEqual(envelope.command, "report");
@@ -212,7 +217,7 @@ function assertUnifiedCompatibility(old: ReportOutput, current: ReportOutput, a:
   deepStrictEqual({ ...current.cli, stdout: JSON.stringify(currentEnvelope) + "\n" }, old.cli);
   return additions;
 }
-function assertUnifiedRejectionGuards(old: ReportOutput, current: ReportOutput, a: SourceExplorationAnalysis, source: StoredSource, fresh: boolean, additions: { row: string; section: string }) {
+function assertUnifiedRejectionGuards(old: ReportOutput, current: ReportOutput, a: SourceExplorationAnalysis, source: StoredSource, fresh: boolean, additions: ReturnType<typeof assertUnifiedHtml>) {
   const html = current.html.toString("utf8"), section = additions.section, row = additions.row;
   const withReceipt = (edit: (envelope: ReportEnvelope, report: Record<string, unknown>) => void, output = current): ReportOutput => {
     const envelope = JSON.parse(output.cli.stdout) as ReportEnvelope;
@@ -233,7 +238,7 @@ function assertUnifiedRejectionGuards(old: ReportOutput, current: ReportOutput, 
     ["wrong native row", html.replace(row, tableRow(["Exploration", "WRONG_NATIVE", a.suppressionReason ?? "none"]))],
     ["missing section", html.replace(section, "")], ["duplicate section", html.replace(section, section + section)], ["misplaced section", movedSection],
     ["nested section", html.replace('<section id="unified-exploration">', '<section id="unified-exploration"><section id="inert-nested"></section>')],
-    ["wrong native assessment", html.replace(`Assessment=${htmlText(a.assessment)}`, "Assessment=WRONG_NATIVE")],
+    ["wrong native assessment", html.replace(section, section.replace(`Assessment=${htmlText(a.assessment)}`, "Assessment=WRONG_NATIVE"))],
     ["wrong threshold", html.replace('Minimum completed native lookups</th><td>20</td>', 'Minimum completed native lookups</th><td>21</td>')],
     ["wrong native population", html.replace(`Candidate windows</th><td>${a.candidates === null ? "Unavailable" : "0"}</td>`, 'Candidate windows</th><td>1</td>')],
     ["private identity", html.replace('<section id="unified-exploration">', '<section id="unified-exploration">' + source.sourceId)],
@@ -246,6 +251,10 @@ function assertUnifiedRejectionGuards(old: ReportOutput, current: ReportOutput, 
   // content/location validation rather than accidentally failing on its length.
   for (const [name, value] of badHtml) {
     ok(value !== html, name);
+    if (name === "wrong native assessment") {
+      once(section, `Assessment=${htmlText(a.assessment)}`);
+      for (const item of [additions.activeTime.navLink, additions.activeTime.assessmentRow, additions.activeTime.section]) once(value, item.html);
+    }
     expect(() => assertUnifiedCompatibility(old, withHtml(value), a, source, fresh), name).toThrow();
   }
   const badReceipts: readonly (readonly [string, ReportOutput])[] = [
