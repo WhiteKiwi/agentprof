@@ -104,16 +104,25 @@ export function registerDirectoryCommand(program: Command): void {
     .option("--root <full-root-id>", "exact root ID returned by scan --enroll-directory")
     .option("--prune", "remove only not-observed members whose current source is unavailable")
     .option("--reset", "clear this root's members and release its future retirement vetoes; preserve all sources")
-    .option("--expected-revision <revision>", "exact inspected membership revision; required for prune/reset")
+    .option("--rebind", "accept a replacement physical directory at the same path; requires empty membership")
+    .option("--path <directory>", "same logical directory path; only for --rebind")
+    .option("--expected-revision <revision>", "exact inspected membership revision; required for prune/reset/rebind")
     .allowExcessArguments(false)
-    .addHelpText("after", "\nNo input scanning, store creation/migration or source deletion. Default is read-only inspection.\nPrune/reset are mutually exclusive and require the exact inspected revision.\nReset retains the root binding and revision anchor; later explicit scans can re-enroll files.\nReset releases this root's observed vetoes on later --retire-missing operations.\nPhysical-root rebinding, root-slot reclamation and whole-history pruning are not supported.");
-  for (const name of ["root", "prune", "reset", "expected-revision"]) {
+    .addHelpText("after", "\nNo input scanning, store creation/migration or source deletion. Default is read-only inspection.\nPrune/reset are mutually exclusive and require the exact inspected revision.\nReset retains the root binding and revision anchor; later explicit scans can re-enroll files.\nReset releases this root's observed vetoes on later --retire-missing operations.\nRebind requires empty membership and --path at the same logical location; it does not scan or reset.\nRoot-slot reclamation and whole-history pruning are not supported.");
+  for (const name of ["root", "prune", "reset", "expected-revision", "rebind", "path"]) {
     let count = 0;
     command.on(`option:${name}`, () => { if (++count > 1) invalid(); });
   }
   command.action(async () => {
     if (dataFlags > 1 || jsonFlags > 1 || command.args.length !== 0) return invalid();
     const options = { ...program.opts(), ...command.opts() } as DirectoryArguments;
+    if (command.opts()["rebind"] === true) {
+      const { runDirectoryRebind, formatDirectoryRebind, directoryRebindExitCode } = await import("./directory-rebind.js");
+      const result = await runDirectoryRebind(options);
+      process.stdout.write(formatDirectoryRebind(result, options.json === true));
+      process.exitCode = directoryRebindExitCode(result);
+      return;
+    }
     const result = await runDirectoryMaintenance(options);
     process.stdout.write(formatDirectoryMaintenance(result, options.json === true));
     process.exitCode = directoryMaintenanceExitCode(result);

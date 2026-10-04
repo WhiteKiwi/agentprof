@@ -77,14 +77,17 @@ export async function withReadOnlyStore<T>(dataDir: string, operation: (database
 
 /** Explicit authenticated access; writable mode never bootstraps, migrates or repairs a store. */
 export async function withAuthenticatedStore<T>(dataDir: string, writable: boolean,
-  operation: (database: DatabaseSync, context: IdentityContext) => T, signal?: AbortSignal): Promise<T> {
+  operation: (database: DatabaseSync, context: IdentityContext) => T, signal?: AbortSignal,
+  beforeCommit?: () => void | Promise<void>): Promise<T> {
   validateOperation(operation);
   if (typeof writable !== "boolean" || signal !== undefined && (types.isProxy(signal) || !(signal instanceof AbortSignal))) throw new SafeError("INVALID_ARGUMENT");
-  return withExistingStore(dataDir, writable, operation, signal);
+  if (beforeCommit !== undefined && (!writable || typeof beforeCommit !== "function" || types.isProxy(beforeCommit))) throw new SafeError("INVALID_ARGUMENT");
+  return withExistingStore(dataDir, writable, operation, signal, beforeCommit);
 }
 
 async function withExistingStore<T>(dataDir: string, writable: boolean,
-  operation: (database: DatabaseSync, context: IdentityContext) => T, signal?: AbortSignal): Promise<T> {
+  operation: (database: DatabaseSync, context: IdentityContext) => T, signal?: AbortSignal,
+  beforeCommit?: () => void | Promise<void>): Promise<T> {
   const checkAbort = () => { if (signal?.aborted) throw new StoreOperationAborted(); };
   checkAbort();
   const directory = await validateExistingPrivateDirectory(dataDir);
@@ -128,6 +131,9 @@ async function withExistingStore<T>(dataDir: string, writable: boolean,
     await assertNoSymlink(directory);
     if (!same(directoryStat, await lstat(directory)) || !same(db.stat, await dbFile.stat()) || !same(db.stat, await lstat(path))
       || !same(key.stat, await keyFile.stat()) || !same(key.stat, await lstat(keyPath))) throw new SafeError("UNSAFE_PRIVATE_FILE");
+    // Optional external-resource lease verification runs while rollback is still possible.
+    // Existing callers do not acquire an extra asynchronous boundary.
+    if (beforeCommit !== undefined) { checkAbort(); await beforeCommit(); }
     checkAbort();
     database.exec("COMMIT"); began = false;
     return result;
