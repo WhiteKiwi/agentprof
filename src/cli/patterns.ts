@@ -83,18 +83,20 @@ export function registerPatternCommand(program: Command): void {
   const command = program.command("patterns").description("Inspect one stored source's observed validation cycles and evidence-gated patterns")
     .option("--source <id>", "one full stored source ID", validateSourceSelection)
     .option("--provider <provider>", "fresh input provider: codex or claude; requires --input and --output")
+    .option("--usage-timing", "fresh input only: capture versioned usage record timestamps")
+    .option("--pattern-evidence", "fresh input only: capture supported error/file evidence; includes usage timing")
     .option("--input <file>", "collect one explicit regular .jsonl file before export; excludes --source/roots")
     .option("--from <utc>", "inclusive UTC contribution boundary; requires --to")
     .option("--to <utc>", "exclusive UTC contribution boundary; requires --from")
     .option("--output <file>", "write a new offline .html/.htm report; stdout becomes a publication receipt")
     .allowExcessArguments(false)
     .addHelpText("after", "\nStored mode is read-only; no scan/migration. Missing error/content/scope proof stays unavailable.\nFresh --provider/--input mode requires --output; only the scan-receipt generation is exported.\nPartial evidence keeps exit1; failed/stale/aborted collection never falls back to old data.\nCycle counts describe the stored prefix; time boundaries clip contributions, not all rule windows.\nSlow Tool and exploration are separate. Pattern time is not avoided time or savings.");
-  for (const name of ["source", "from", "to", "output", "provider", "input"]) {
+  for (const name of ["source", "from", "to", "output", "provider", "input", "usage-timing", "pattern-evidence"]) {
     let n = 0;
     command.on(`option:${name}`, () => { if (++n > 1) throw new SafeError("INVALID_ARGUMENT"); });
   }
   command.action(async () => {
-    const options = { ...program.opts(), ...command.opts() } as PatternArguments & { json?: boolean; output?: string; provider?: string; input?: string };
+    const options = { ...program.opts(), ...command.opts() } as PatternArguments & { json?: boolean; output?: string; provider?: string; input?: string; usageTiming?: boolean; patternEvidence?: boolean };
     if (options.provider !== undefined || options.input !== undefined) {
       if (dataFlags > 1 || jsonFlags > 1) throw new SafeError("INVALID_ARGUMENT");
       const { runFreshAnalysis, formatFreshAnalysis, freshAnalysisExitCode } = await import("./fresh-analysis.js");
@@ -103,6 +105,7 @@ export function registerPatternCommand(program: Command): void {
       process.exitCode = freshAnalysisExitCode(result);
       return;
     }
+    if (options.usageTiming !== undefined || options.patternEvidence !== undefined) throw new SafeError("INVALID_ARGUMENT");
     if (options.output !== undefined) {
       if (dataFlags > 1 || jsonFlags > 1) throw new SafeError("INVALID_ARGUMENT");
       const { runPatternExport, formatPatternExport, patternExportExitCode } = await import("./pattern-export.js");

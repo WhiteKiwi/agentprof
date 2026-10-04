@@ -4,7 +4,9 @@ import { SafeError, safeErrorEnvelope } from "../privacy/diagnostics.js";
 import { assertNoSymlink, fileCode } from "../privacy/paths.js";
 import type { Provider } from "../privacy/paths.js";
 import { identity } from "../db/source-validation.js";
-import { collectScan, formatScanResult, validateCliPath } from "./scan.js";
+import { formatScanResult, validateCliPath } from "./scan.js";
+import { collectFreshScan, freshCapture } from "./fresh-capture.js";
+import type { CaptureMode, ParserCaptureOptions } from "../parsers/capture.js";
 import type { ScanResult } from "../scanner/scan-run.js";
 import { selectFreshReportGeneration } from "./report-fresh.js";
 import { validateHistoryArguments } from "./history.js";
@@ -16,16 +18,16 @@ import { validateReportPath, writeReportOutput } from "../report/write-output.js
 import type { Publication } from "../report/write-output.js";
 
 export type FreshAnalysisCommand = "history" | "patterns";
-export type FreshAnalysisArguments = Readonly<{
+export type FreshAnalysisArguments = ParserCaptureOptions & Readonly<{
   provider?: string; input?: string; output?: string; dataDir?: string;
   source?: string | readonly string[]; from?: string; to?: string;
-  offset?: string; session?: string; json?: boolean;
+  offset?: string; session?: string; json?: boolean; tokens?: boolean;
   codexRoot?: readonly string[]; claudeRoot?: readonly string[];
 }>;
 type Generation = NonNullable<ReturnType<typeof selectFreshReportGeneration>>;
 type Prepared = Readonly<{
   command: FreshAnalysisCommand; provider: Provider; input: string; output: string; directory: string;
-  query: HistoryQuery | null; period: PatternPeriod | null;
+  query: HistoryQuery | null; period: PatternPeriod | null; capture: CaptureMode; tokens: boolean;
 }>;
 type FreshPublication = Publication & Readonly<{
   sourceId: string; revision: number; analysisAssessment: string;
@@ -36,6 +38,7 @@ type ReportOutcome = FreshPublication
 export type FreshAnalysisResult = Readonly<{
   mode: "fresh_analysis_html"; command: FreshAnalysisCommand; provider: Provider;
   scan: ScanResult; generation: Generation | null; report: ReportOutcome; aborted: boolean;
+  analysisMode?: "tokens";
 }>;
 
 // Only a syntactic stand-in for existing pure argument validators. Never read or emitted.
@@ -48,6 +51,9 @@ const within = (parent: string, child: string): boolean => {
 
 /** Pure checks first, including period semantics and rejection of selection mixtures. */
 export function validateFreshAnalysisArguments(command: FreshAnalysisCommand, options: FreshAnalysisArguments): Prepared {
+  const capture = freshCapture(options);
+  if (options.tokens !== undefined && typeof options.tokens !== "boolean"
+    || options.tokens === true && (command !== "history" || !capture.usageTiming)) throw new SafeError("INVALID_ARGUMENT");
   if ((command !== "history" && command !== "patterns")
     || (options.provider !== "codex" && options.provider !== "claude")
     || typeof options.input !== "string" || typeof options.output !== "string"
@@ -78,7 +84,7 @@ export function validateFreshAnalysisArguments(command: FreshAnalysisCommand, op
     directory = resolve(validateReportPath(checked.directory)); period = checked.period;
   }
   if (within(directory, output)) throw new SafeError("REPORT_OUTPUT_UNSAFE");
-  return Object.freeze({ command, provider: options.provider, input, output, directory, query, period });
+  return Object.freeze({ command, provider: options.provider, input, output, directory, query, period, capture, tokens: options.tokens === true });
 }
 
 /** Preflight does not create the store or any output; publication repeats these safety checks. */
@@ -107,10 +113,12 @@ async function preflight(prepared: Prepared): Promise<void> {
 async function renderGeneration(prepared: Prepared, generation: Generation): Promise<Readonly<{ html: string; assessment: string }>> {
   const { withReadOnlyStore } = await import("../db/read-only.js");
   const { createSourceStore } = await import("../db/source-store.js");
-  const history = prepared.command === "history" ? await import("../analysis/source-history.js") : null;
+  const history = prepared.command === "history" && !prepared.tokens ? await import("../analysis/source-history.js") : null;
   const patterns = prepared.command === "patterns" ? await import("../analysis/source-patterns.js") : null;
-  const historyPage = prepared.command === "history" ? await import("../report/history-page.js") : null;
+  const historyPage = prepared.command === "history" && !prepared.tokens ? await import("../report/history-page.js") : null;
   const patternPage = prepared.command === "patterns" ? await import("../report/pattern-page.js") : null;
+  const usage = prepared.tokens ? await import("../analysis/usage-history.js") : null;
+  const usagePage = prepared.tokens ? await import("../report/usage-history-page.js") : null;
   return withReadOnlyStore(prepared.directory, (db, key) => {
     try {
       identity(generation.sourceId, "source", key);
@@ -119,6 +127,15 @@ async function renderGeneration(prepared: Prepared, generation: Generation): Pro
     const source = createSourceStore(db, key).readSource(generation.sourceId);
     if (source === null) throw new SafeError("SOURCE_NOT_FOUND");
     if (source.revision !== generation.revision || source.provider !== prepared.provider) throw new SafeError("SOURCE_REVISION_CHANGED");
+    if (usage !== null && usagePage !== null && prepared.query !== null) {
+      try {
+        const analysis = usage.analyzeUsageHistory([source], prepared.query);
+        return Object.freeze({ html: usagePage.renderUsageHistoryPage(analysis), assessment: analysis.assessment });
+      } catch (error) {
+        if (error instanceof HistoryQueryError) throw new SafeError("INVALID_ARGUMENT");
+        throw error;
+      }
+    }
     if (history !== null && historyPage !== null && prepared.query !== null) {
       try {
         const analysis = history.analyzeSelectedHistory([source], prepared.query);
@@ -145,7 +162,7 @@ export async function runFreshAnalysis(
   internal.signal?.addEventListener("abort", interrupt, { once: true });
   if (internal.signal?.aborted) controller.abort();
   try {
-    const scan = await collectScan(prepared.directory, [{ provider: prepared.provider, path: prepared.input }], controller.signal);
+    const scan = await collectFreshScan(prepared.directory, [{ provider: prepared.provider, path: prepared.input }], controller.signal, prepared.capture);
     const generation = selectFreshReportGeneration(scan, prepared.provider);
     let report: ReportOutcome;
     if (controller.signal.aborted || scan.status === "aborted") report = Object.freeze({ status: "skipped", reason: "aborted" });
@@ -161,7 +178,7 @@ export async function runFreshAnalysis(
       } catch (error) { report = Object.freeze({ status: "failed", error: Object.freeze(safeErrorEnvelope(error).error) }); }
     }
     return Object.freeze({ mode: "fresh_analysis_html", command, provider: prepared.provider, scan, generation, report,
-      aborted: controller.signal.aborted || scan.status === "aborted" });
+      aborted: controller.signal.aborted || scan.status === "aborted", ...(prepared.tokens ? { analysisMode: "tokens" as const } : {}) });
   } finally {
     process.removeListener("SIGINT", interrupt);
     internal.signal?.removeEventListener("abort", interrupt);
@@ -180,7 +197,7 @@ export function formatFreshAnalysis(result: FreshAnalysisResult, json: boolean):
       `Generation: ${r.sourceId}; revision=${r.revision}; bytes=${r.bytes}`,
       `Target=${r.targetVerification}; durability=${r.durability}; cleanup=${r.cleanup}`,
       `Warnings: ${r.warnings.join(", ") || "none"}`, ""].join("\n");
-  return `AgentProf fresh ${result.command} export${result.aborted ? " (aborted)" : ""}\n`
+  return `AgentProf fresh ${result.command}${result.analysisMode === "tokens" ? " tokens" : ""} export${result.aborted ? " (aborted)" : ""}\n`
     + formatScanResult(result.scan, false) + detail
     + "Only the generation selected by this explicit scan was used; no ongoing freshness, complete-history or savings claim.\n";
 }
