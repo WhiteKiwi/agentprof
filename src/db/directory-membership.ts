@@ -92,6 +92,22 @@ export function createDirectoryMembershipStore(database: DatabaseSync, context: 
     if (!verified || verified.revision !== next.revision) throw new SafeError("DATABASE_ACCESS_FAILED");
     return verified;
   }
+  /** Explicit same-path replacement only; callers verify the filesystem and own commit/rollback. */
+  function rebindEmptyRootInTransaction(rootId: string, expectedRevision: number, rootFingerprint: string): DirectoryMembership {
+    const expected = integer(expectedRevision, 1);
+    identity(rootFingerprint, "content", key);
+    const prior = readInTransaction(rootId);
+    if (!prior || prior.revision !== expected || prior.members.length !== 0) throw new SafeError("DATABASE_TRANSACTION_FAILED");
+    if (prior.rootFingerprint === rootFingerprint) return prior;
+    const next: DirectoryMembership = Object.freeze({ ...prior, rootFingerprint, revision: integer(expected + 1, 1) });
+    const changed = database.prepare("UPDATE directory_membership_roots SET root_fingerprint=?,revision=?,seal=? WHERE root_id=? AND revision=?")
+      .run(rootFingerprint, next.revision, sealed(context, next), rootId, expected);
+    if (changed.changes !== 1) throw new SafeError("DATABASE_TRANSACTION_FAILED");
+    const verified = readInTransaction(rootId);
+    if (!verified || verified.revision !== next.revision || verified.rootFingerprint !== rootFingerprint
+      || verified.members.length !== 0) throw new SafeError("DATABASE_ACCESS_FAILED");
+    return verified;
+  }
   /** Internal composition: authenticate every bounded root inside the caller's transaction. */
   function readAllForMutation(): readonly DirectoryMembership[] {
     if (!database.isTransaction) throw new SafeError("DATABASE_TRANSACTION_FAILED");
@@ -163,5 +179,5 @@ export function createDirectoryMembershipStore(database: DatabaseSync, context: 
       throw new SafeError("DATABASE_ACCESS_FAILED");
     }
   }
-  return Object.freeze({ read, capture, readAllForMutation, readInTransaction, removeMembersInTransaction });
+  return Object.freeze({ read, capture, readAllForMutation, readInTransaction, removeMembersInTransaction, rebindEmptyRootInTransaction });
 }
