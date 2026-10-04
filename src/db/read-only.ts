@@ -5,7 +5,8 @@ import { lstat, open } from "node:fs/promises";
 import type { FileHandle } from "node:fs/promises";
 import { join } from "node:path";
 import { types } from "node:util";
-import { parseIdentityKey } from "../normalize/identity.js";
+import { createIdentityContext, parseIdentityKey } from "../normalize/identity.js";
+import type { IdentityContext } from "../normalize/identity.js";
 import { SafeError } from "../privacy/diagnostics.js";
 import { assertNoSymlink, fileCode, validateExistingPrivateDirectory } from "../privacy/paths.js";
 import { DATABASE_SCHEMA_VERSION } from "./database.js";
@@ -60,9 +61,32 @@ function verifySchema(database: DatabaseSync, key: string): void {
   }
 }
 
+/** A cooperative cancellation rolls back the owned existing-store transaction. */
+export class StoreOperationAborted extends Error {
+  constructor() { super("The existing-store operation was cancelled."); }
+}
+function validateOperation(operation: unknown): void {
+  if (typeof operation !== "function" || types.isProxy(operation) || types.isAsyncFunction(operation)) throw new SafeError("INVALID_ARGUMENT");
+}
+
 /** One pinned request against an existing product DELETE store. No bootstrap or recovery. */
 export async function withReadOnlyStore<T>(dataDir: string, operation: (database: DatabaseSync, keyId: string) => T): Promise<T> {
-  if (types.isAsyncFunction(operation)) throw new SafeError("INVALID_ARGUMENT");
+  validateOperation(operation);
+  return withExistingStore(dataDir, false, (database, context) => operation(database, context.keyId));
+}
+
+/** Explicit authenticated access; writable mode never bootstraps, migrates or repairs a store. */
+export async function withAuthenticatedStore<T>(dataDir: string, writable: boolean,
+  operation: (database: DatabaseSync, context: IdentityContext) => T, signal?: AbortSignal): Promise<T> {
+  validateOperation(operation);
+  if (typeof writable !== "boolean" || signal !== undefined && (types.isProxy(signal) || !(signal instanceof AbortSignal))) throw new SafeError("INVALID_ARGUMENT");
+  return withExistingStore(dataDir, writable, operation, signal);
+}
+
+async function withExistingStore<T>(dataDir: string, writable: boolean,
+  operation: (database: DatabaseSync, context: IdentityContext) => T, signal?: AbortSignal): Promise<T> {
+  const checkAbort = () => { if (signal?.aborted) throw new StoreOperationAborted(); };
+  checkAbort();
   const directory = await validateExistingPrivateDirectory(dataDir);
   const directoryStat = await lstat(directory);
   const keyPath = join(directory, "identity-key.json"), path = join(directory, "agentprof.sqlite");
@@ -78,8 +102,12 @@ export async function withReadOnlyStore<T>(dataDir: string, operation: (database
       bytesRead += part.bytesRead;
     }
     if (bytesRead > 1024) throw new SafeError("INVALID_IDENTITY_KEY");
-    const keyId = parseIdentityKey(bytes.subarray(0, bytesRead).toString("utf8")).keyId;
+    const parsedKey = parseIdentityKey(bytes.subarray(0, bytesRead).toString("utf8"));
     bytes.fill(0);
+    const secret = Buffer.from(parsedKey.secret, "hex");
+    let context: IdentityContext;
+    try { context = createIdentityContext(secret, parsedKey.keyId); } finally { secret.fill(0); }
+    const keyId = context.keyId;
     const db = await existingFile(path); dbFile = db.file;
     const header = Buffer.alloc(100);
     const read = await dbFile.read(header, 0, 100, 0);
@@ -87,20 +115,25 @@ export async function withReadOnlyStore<T>(dataDir: string, operation: (database
     if (header[18] !== 1 || header[19] !== 1) throw new SafeError("DATABASE_MODE_UNSUPPORTED");
     rejectSidecars(path);
     // SQLite opens by name. External path/mode substitution is outside supported concurrency.
-    database = new DatabaseSync(path, { readOnly: true, timeout: 1000, allowExtension: false, enableForeignKeyConstraints: true });
-    database.exec("PRAGMA trusted_schema=OFF; PRAGMA query_only=ON; PRAGMA temp_store=MEMORY; BEGIN;"); began = true;
+    checkAbort();
+    database = new DatabaseSync(path, { readOnly: !writable, timeout: 1000, allowExtension: false, enableForeignKeyConstraints: true });
+    database.exec(writable
+      ? "PRAGMA trusted_schema=OFF; PRAGMA temp_store=MEMORY; BEGIN IMMEDIATE;"
+      : "PRAGMA trusted_schema=OFF; PRAGMA query_only=ON; PRAGMA temp_store=MEMORY; BEGIN;"); began = true;
     verifySchema(database, keyId);
-    const result = operation(database, keyId);
+    checkAbort();
+    const result = operation(database, context);
     if (result && typeof result === "object" && "then" in result) throw new SafeError("INVALID_ARGUMENT");
     // Keep snapshot held through path checks. Product writers may create a journal themselves.
     await assertNoSymlink(directory);
     if (!same(directoryStat, await lstat(directory)) || !same(db.stat, await dbFile.stat()) || !same(db.stat, await lstat(path))
       || !same(key.stat, await keyFile.stat()) || !same(key.stat, await lstat(keyPath))) throw new SafeError("UNSAFE_PRIVATE_FILE");
+    checkAbort();
     database.exec("COMMIT"); began = false;
     return result;
   } catch (error) {
     if (began) try { database?.exec("ROLLBACK"); } catch { /* Owned transaction only. */ }
-    if (error instanceof SafeError) throw error;
+    if (error instanceof SafeError || error instanceof StoreOperationAborted) throw error;
     throw new SafeError("DATABASE_ACCESS_FAILED");
   } finally {
     try { database?.close(); } finally { try { await dbFile?.close(); } finally { await keyFile?.close(); } }
